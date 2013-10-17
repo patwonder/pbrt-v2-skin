@@ -9,7 +9,7 @@ flex_cygwin_bin = c:\cygwin\bin\$(flex_bin)
 flex_args = -o$(core_dir)\pbrtlex.cpp $(core_dir)\pbrtlex.ll
 
 
-.PHONY : $(core_dir)\pbrtparse.cpp $(core_dir)\pbrtlex.cpp
+.PHONY : $(core_dir)\pbrtparse.cpp $(core_dir)\pbrtparse.hh $(core_dir)\pbrtlex.cpp
 
 
 $(core_dir)\pbrtparse.cpp $(core_dir)\pbrtparse.hpp : $(core_dir)\pbrtparse.yy
@@ -26,7 +26,7 @@ $(core_dir)\pbrtparse.hh : $(core_dir)\pbrtparse.hpp
 	if exist $(core_dir)\pbrtparse.hh del $(core_dir)\pbrtparse.hh
 	ren $(core_dir)\pbrtparse.hpp pbrtparse.hh
 
-$(core_dir)\pbrtlex.cpp $(core_dir)\pbrtparse.hh : $(core_dir)\pbrtlex.ll
+$(core_dir)\pbrtlex.cpp : $(core_dir)\pbrtlex.ll
 	if exist $(flex_cygwin_bin) \
 	( \
 		$(flex_cygwin_bin) $(flex_args) \
