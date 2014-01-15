@@ -104,6 +104,55 @@ void TriangleMesh::Refine(vector<Reference<Shape> > &refined) const {
                           (TriangleMesh *)this, i));
 }
 
+TriangleMesh::TriangleMesh(const TriangleMesh& mesh)
+	: Shape(mesh) { }
+
+Reference<TriangleMesh> TriangleMesh::Shrink(float distance) const {
+	// Copy Shape subobject
+	TriangleMesh* pNewMesh = new TriangleMesh(*this);
+
+	// Copy data members
+	pNewMesh->ntris = ntris;
+	pNewMesh->nverts = nverts;
+	pNewMesh->vertexIndex = new int[3 * ntris];
+	memcpy(pNewMesh->vertexIndex, vertexIndex, 3 * ntris * sizeof(int));
+	if (n) {
+		pNewMesh->n = new Normal[nverts];
+		memcpy(pNewMesh->n, n, nverts * sizeof(Normal));
+	} else {
+		pNewMesh->n = NULL;
+	}
+	if (s) {
+		pNewMesh->s = new Vector[nverts];
+		memcpy(pNewMesh->s, s, nverts * sizeof(Vector));
+	} else {
+		pNewMesh->s = NULL;
+	}
+	if (uvs) {
+		pNewMesh->uvs = new float[2 * nverts];
+		memcpy(pNewMesh->uvs, uvs, 2 * nverts * sizeof(float));
+	} else {
+		pNewMesh->uvs = NULL;
+	}
+	pNewMesh->alphaTexture = alphaTexture;
+
+	// Copy vertex positions, shrink the model if possible
+	pNewMesh->p = new Point[nverts];
+	if (n) {
+		// Compute scaled distance in world space
+		Vector unitVector(1, 0, 0);
+		float scaledDistance = distance * (*ObjectToWorld)(unitVector).Length();
+		// Apply shrinking for each vertex
+		for (int i = 0; i < nverts; i++) {
+			Normal worldNormal = Normalize((*ObjectToWorld)(n[i]));
+			pNewMesh->p[i] = p[i] - Vector(worldNormal) * scaledDistance;
+		}
+	} else {
+		memcpy(pNewMesh->p, p, nverts * sizeof(Point));
+	}
+
+	return pNewMesh;
+}
 
 BBox Triangle::ObjectBound() const {
     // Get triangle vertices in _p1_, _p2_, and _p3_

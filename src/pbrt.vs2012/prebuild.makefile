@@ -24,7 +24,7 @@ $(core_dir)\pbrtparse.cpp $(core_dir)\pbrtparse.hpp : $(core_dir)\pbrtparse.yy
 
 $(core_dir)\pbrtparse.hh : $(core_dir)\pbrtparse.hpp
 	if exist $(core_dir)\pbrtparse.hh del $(core_dir)\pbrtparse.hh
-	ren $(core_dir)\pbrtparse.hpp pbrtparse.hh
+	copy $(core_dir)\pbrtparse.hpp $(core_dir)\pbrtparse.hh
 
 $(core_dir)\pbrtlex.cpp : $(core_dir)\pbrtlex.ll
 	if exist $(flex_cygwin_bin) \

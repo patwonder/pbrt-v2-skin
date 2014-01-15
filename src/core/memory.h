@@ -62,6 +62,15 @@ public:
         ptr = r.ptr;
         if (ptr) AtomicAdd(&ptr->nReferences, 1);
     }
+
+	template<class S>
+	friend class Reference;
+
+	template<class S>
+	Reference(const Reference<S> &r) {
+		ptr = r.ptr;
+		if (ptr) AtomicAdd(&ptr->nReferences, 1);
+	}
     Reference &operator=(const Reference<T> &r) {
         if (r.ptr) AtomicAdd(&r.ptr->nReferences, 1);
         if (ptr && AtomicAdd(&ptr->nReferences, -1) == 0) delete ptr;

@@ -140,7 +140,7 @@ static bool VerifyArrayLength(ParamArray *arr, int required,
 enum { PARAM_TYPE_INT, PARAM_TYPE_BOOL, PARAM_TYPE_FLOAT, PARAM_TYPE_POINT,
     PARAM_TYPE_VECTOR, PARAM_TYPE_NORMAL, PARAM_TYPE_RGB, PARAM_TYPE_XYZ,
     PARAM_TYPE_BLACKBODY, PARAM_TYPE_SPECTRUM,
-    PARAM_TYPE_STRING, PARAM_TYPE_TEXTURE };
+    PARAM_TYPE_STRING, PARAM_TYPE_TEXTURE, PARAM_TYPE_SKINLAYER };
 static const char *paramTypeToName(int type);
 static void InitParamSet(ParamSet &ps, SpectrumType);
 static bool lookupType(const char *name, int *type, string &sname);
@@ -653,6 +653,7 @@ static const char *paramTypeToName(int type) {
     case PARAM_TYPE_SPECTRUM: return "spectrum";
     case PARAM_TYPE_STRING: return "string";
     case PARAM_TYPE_TEXTURE: return "texture";
+    case PARAM_TYPE_SKINLAYER: return "skinlayer";
     default: Severe("Error in paramTypeToName"); return NULL;
     }
 }
@@ -766,6 +767,14 @@ static void InitParamSet(ParamSet &ps, SpectrumType type) {
                     Error("Only one string allowed for \"texture\" parameter \"%s\"",
                         name.c_str());
             }
+            else if (type == PARAM_TYPE_SKINLAYER) {
+                SkinLayer* sldata = new SkinLayer[nItems];
+                for (int i = 0; i < nItems; i++) {
+                    sldata[i].thickness = ((float*)data)[i];
+                }
+                ps.AddSkinLayer(name, sldata, nItems);
+                delete [] sldata;
+            }
         }
         else
             Warning("Type of parameter \"%s\" is unknown",
@@ -801,6 +810,7 @@ static bool lookupType(const char *name, int *type, string &sname) {
     else TRY_DECODING_TYPE("xyz",       PARAM_TYPE_XYZ)
     else TRY_DECODING_TYPE("blackbody", PARAM_TYPE_BLACKBODY)
     else TRY_DECODING_TYPE("spectrum",  PARAM_TYPE_SPECTRUM)
+    else TRY_DECODING_TYPE("skinlayer", PARAM_TYPE_SKINLAYER)
     else {
         Error("Unable to decode type for name \"%s\"", name);
         return false;

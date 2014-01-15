@@ -80,6 +80,8 @@ public:
     const bool ReverseOrientation, TransformSwapsHandedness;
     const uint32_t shapeId;
     static uint32_t nextshapeId;
+protected:
+	Shape(const Shape&);
 };
 
 

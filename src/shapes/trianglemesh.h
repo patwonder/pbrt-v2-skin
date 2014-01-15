@@ -54,6 +54,7 @@ public:
     BBox WorldBound() const;
     bool CanIntersect() const { return false; }
     void Refine(vector<Reference<Shape> > &refined) const;
+	Reference<TriangleMesh> Shrink(float distance) const;
     friend class Triangle;
     template <typename T> friend class VertexTexture;
 protected:
@@ -65,6 +66,10 @@ protected:
     Vector *s;
     float *uvs;
     Reference<Texture<float> > alphaTexture;
+private:
+	// TriangleMesh Private Methods
+	// Just obtain a copy of the base class subobject
+	TriangleMesh(const TriangleMesh&);
 };
 
 

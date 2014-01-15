@@ -42,10 +42,13 @@
 #include "geometry.h"
 #include "texture.h"
 #include "spectrum.h"
- #if (_MSC_VER >= 1400)
+#include "skinlayer.h"
+
+#if (_MSC_VER >= 1400)
  #include <stdio.h>
  #define snprintf _snprintf
- #endif
+#endif
+
 #include <map>
 using std::map;
 
@@ -67,6 +70,7 @@ public:
     void AddBlackbodySpectrum(const string &, const float *, int nItems);
     void AddSampledSpectrumFiles(const string &, const char **, int nItems);
     void AddSampledSpectrum(const string &, const float *, int nItems);
+	void AddSkinLayer(const string&, const SkinLayer* layers, int nItems);
     bool EraseInt(const string &);
     bool EraseBool(const string &);
     bool EraseFloat(const string &);
@@ -76,6 +80,7 @@ public:
     bool EraseSpectrum(const string &);
     bool EraseString(const string &);
     bool EraseTexture(const string &);
+	bool EraseSkinLayer(const string&);
     float FindOneFloat(const string &, float d) const;
     int FindOneInt(const string &, int d) const;
     bool FindOneBool(const string &, bool d) const;
@@ -95,6 +100,7 @@ public:
     const Normal *FindNormal(const string &, int *nItems) const;
     const Spectrum *FindSpectrum(const string &, int *nItems) const;
     const string *FindString(const string &, int *nItems) const;
+	const SkinLayer* FindSkinLayer(const string&, int* nItems) const;
     void ReportUnused() const;
     void Clear();
     string ToString() const;
@@ -110,6 +116,7 @@ private:
     vector<Reference<ParamSetItem<Spectrum> > > spectra;
     vector<Reference<ParamSetItem<string> > > strings;
     vector<Reference<ParamSetItem<string> > > textures;
+	vector<Reference<ParamSetItem<SkinLayer> > > skinLayers;
     static map<string, Spectrum> cachedSpectra;
 };
 

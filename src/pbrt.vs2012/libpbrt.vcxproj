@@ -176,6 +176,7 @@
     <ClInclude Include="..\core\floatfile.h" />
     <ClInclude Include="..\core\geometry.h" />
     <ClInclude Include="..\core\imageio.h" />
+    <ClInclude Include="..\core\skinlayer.h" />
     <ClInclude Include="..\core\targa.h" />
     <ClInclude Include="..\core\integrator.h" />
     <ClInclude Include="..\core\intersection.h" />
@@ -262,6 +263,7 @@
     <ClInclude Include="..\shapes\disk.h" />
     <ClInclude Include="..\shapes\heightfield.h" />
     <ClInclude Include="..\shapes\hyperboloid.h" />
+    <ClInclude Include="..\shapes\layeredskin.h" />
     <ClInclude Include="..\shapes\loopsubdiv.h" />
     <ClInclude Include="..\shapes\nurbs.h" />
     <ClInclude Include="..\shapes\paraboloid.h" />
@@ -1223,6 +1225,7 @@
     <ClCompile Include="..\shapes\disk.cpp" />
     <ClCompile Include="..\shapes\heightfield.cpp" />
     <ClCompile Include="..\shapes\hyperboloid.cpp" />
+    <ClCompile Include="..\shapes\layeredskin.cpp" />
     <ClCompile Include="..\shapes\loopsubdiv.cpp" />
     <ClCompile Include="..\shapes\nurbs.cpp" />
     <ClCompile Include="..\shapes\paraboloid.cpp" />
@@ -1299,26 +1302,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>../../lib/</OutDir>
-    <IntDir>../../tmp/$(ProjectName)/</IntDir>
+    <OutDir>../../lib/$(Configuration)/$(PlatformName)/</OutDir>
+    <IntDir>../../tmp/$(Configuration)/$(PlatformName)/$(ProjectName)/</IntDir>
     <IncludePath>../;../core/;../3rdparty/;../3rdparty/ilmbase-1.0.2;../3rdparty/openexr-1.7.0;../3rdparty/zlib-1.2.5;../3rdparty/tiff-3.9.4;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(FrameworkSDKDir)\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>../../lib/</OutDir>
-    <IntDir>../../tmp/$(ProjectName)/</IntDir>
+    <OutDir>../../lib/$(Configuration)/$(PlatformName)/</OutDir>
+    <IntDir>../../tmp/$(Configuration)/$(PlatformName)/$(ProjectName)/</IntDir>
     <IncludePath>../;../core/;../3rdparty/;../3rdparty/ilmbase-1.0.2;../3rdparty/openexr-1.7.0;../3rdparty/zlib-1.2.5;../3rdparty/tiff-3.9.4;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(FrameworkSDKDir)\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>../../lib/</OutDir>
-    <IntDir>../../tmp/$(ProjectName)/</IntDir>
+    <OutDir>../../lib/$(Configuration)/$(PlatformName)/</OutDir>
+    <IntDir>../../tmp/$(Configuration)/$(PlatformName)/$(ProjectName)/</IntDir>
     <IncludePath>../;../core/;../3rdparty/;../3rdparty/ilmbase-1.0.2;../3rdparty/openexr-1.7.0;../3rdparty/zlib-1.2.5;../3rdparty/tiff-3.9.4;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(FrameworkSDKDir)\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>../../lib/</OutDir>
-    <IntDir>../../tmp/$(ProjectName)/</IntDir>
+    <OutDir>../../lib/$(Configuration)/$(PlatformName)/</OutDir>
+    <IntDir>../../tmp/$(Configuration)/$(PlatformName)/$(ProjectName)/</IntDir>
     <IncludePath>../;../core/;../3rdparty/;../3rdparty/ilmbase-1.0.2;../3rdparty/openexr-1.7.0;../3rdparty/zlib-1.2.5;../3rdparty/tiff-3.9.4;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(FrameworkSDKDir)\include</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -1329,6 +1332,7 @@
       <PreprocessorDefinitions>WIN32;_WIN32;_DEBUG;_CONSOLE;PBRT_PROBES_NONE;PBRT_HAS_OPENEXR;ZLIB_WINAPI;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <PrecompiledHeaderFile>StdAfx.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -1349,6 +1353,7 @@
       <PreprocessorDefinitions>WIN32;_WIN64;_DEBUG;_CONSOLE;PBRT_PROBES_NONE;PBRT_HAS_OPENEXR;ZLIB_WINAPI;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <PrecompiledHeaderFile>StdAfx.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -1372,6 +1377,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <PrecompiledHeaderFile>StdAfx.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -1396,6 +1402,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <PrecompiledHeaderFile>StdAfx.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

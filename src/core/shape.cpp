@@ -47,6 +47,16 @@ Shape::Shape(const Transform *o2w, const Transform *w2o, bool ro)
     PBRT_CREATED_SHAPE(this);
 }
 
+Shape::Shape(const Shape& other)
+	: ObjectToWorld(other.ObjectToWorld),
+	  WorldToObject(other.WorldToObject),
+	  ReverseOrientation(other.ReverseOrientation),
+	  TransformSwapsHandedness(other.TransformSwapsHandedness),
+	  shapeId(nextshapeId++)
+{
+    // Update shape creation statistics
+    PBRT_CREATED_SHAPE(this);
+}
 
 uint32_t Shape::nextshapeId = 1;
 BBox Shape::WorldBound() const {

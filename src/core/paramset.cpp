@@ -186,7 +186,6 @@ void ParamSet::AddSampledSpectrumFiles(const string &name, const char **names,
     delete[] s;
 }
 
-
 map<string, Spectrum> ParamSet::cachedSpectra;
 void ParamSet::AddString(const string &name, const string *data, int nItems) {
     EraseString(name);
@@ -197,6 +196,12 @@ void ParamSet::AddString(const string &name, const string *data, int nItems) {
 void ParamSet::AddTexture(const string &name, const string &value) {
     EraseTexture(name);
     textures.push_back(new ParamSetItem<string>(name, (string *)&value, 1));
+}
+
+
+void ParamSet::AddSkinLayer(const string& name, const SkinLayer* layers, int nItems) {
+	EraseSkinLayer(name);
+	skinLayers.push_back(new ParamSetItem<SkinLayer>(name, layers, nItems));
 }
 
 
@@ -284,6 +289,16 @@ bool ParamSet::EraseTexture(const string &n) {
     for (uint32_t i = 0; i < textures.size(); ++i)
         if (textures[i]->name == n) {
             textures.erase(textures.begin() + i);
+            return true;
+        }
+    return false;
+}
+
+
+bool ParamSet::EraseSkinLayer(const string &n) {
+    for (uint32_t i = 0; i < skinLayers.size(); ++i)
+        if (skinLayers[i]->name == n) {
+			skinLayers.erase(skinLayers.begin() + i);
             return true;
         }
     return false;
@@ -396,6 +411,11 @@ string ParamSet::FindTexture(const string &name) const {
 }
 
 
+const SkinLayer* ParamSet::FindSkinLayer(const string& name, int* nItems) const {
+	LOOKUP_PTR(skinLayers);
+}
+
+
 void ParamSet::ReportUnused() const {
 #define CHECK_UNUSED(v) \
     for (i = 0; i < (v).size(); ++i) \
@@ -407,7 +427,7 @@ void ParamSet::ReportUnused() const {
     CHECK_UNUSED(floats);  CHECK_UNUSED(points);
     CHECK_UNUSED(vectors); CHECK_UNUSED(normals);
     CHECK_UNUSED(spectra); CHECK_UNUSED(strings);
-    CHECK_UNUSED(textures);
+    CHECK_UNUSED(textures);CHECK_UNUSED(skinLayers);
 }
 
 
@@ -418,7 +438,7 @@ void ParamSet::Clear() {
     DEL_PARAMS(floats);  DEL_PARAMS(points);
     DEL_PARAMS(vectors); DEL_PARAMS(normals);
     DEL_PARAMS(spectra); DEL_PARAMS(strings);
-    DEL_PARAMS(textures);
+    DEL_PARAMS(textures);DEL_PARAMS(skinLayers);
 #undef DEL_PARAMS
 }
 
@@ -590,6 +610,25 @@ string ParamSet::ToString() const {
         ret += buf;
         ret += string("] ");
     }
+	for (i = 0; i < skinLayers.size(); ++i) {
+		char* bufp = buf;
+		*bufp = '\0';
+		const Reference<ParamSetItem<SkinLayer> > &item = skinLayers[i];
+		typeString = "skinlayer ";
+        // Print _ParamSetItem_ declaration, determine how many to print
+        int nPrint = item->nItems;
+        ret += string("\"");
+        ret += typeString;
+        ret += item->name;
+        ret += string("\"");
+        ret += string(" [");
+        for (j = 0; j < nPrint; ++j) {
+            const SkinLayer& layer = item->data[j];
+			bufp += snprintf(bufp, bufEnd - bufp, "%.8g ", layer.thickness);
+        }
+        ret += buf;
+        ret += string("] ");
+	}
     return ret;
 }
 

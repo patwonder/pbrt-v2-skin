@@ -912,6 +912,12 @@
     <ClInclude Include="..\core\targa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\shapes\layeredskin.h">
+      <Filter>Header Files\shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\core\skinlayer.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1681,6 +1687,9 @@
     </ClCompile>
     <ClCompile Include="..\core\targa.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shapes\layeredskin.cpp">
+      <Filter>Source Files\shapes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
