@@ -1,0 +1,50 @@
+AttributeBegin
+  Shape "trianglemesh"
+    "point P" [
+      -1000 -1000 -1000
+       1000 -1000 -1000
+       1000  1000 -1000
+      -1000  1000 -1000
+    ]
+    "integer indices" [ 0 1 2 2 3 0 ]
+  Shape "trianglemesh"
+    "point P" [
+      -1000 -1000  1000
+       1000 -1000  1000
+       1000  1000  1000
+      -1000  1000  1000
+    ]
+    "integer indices" [ 2 1 0 0 3 2 ]
+  Shape "trianglemesh"
+    "point P" [
+      -1000 -1000 -1000
+       1000 -1000 -1000
+       1000 -1000  1000
+      -1000 -1000  1000
+    ]
+    "integer indices" [ 2 1 0 0 3 2 ]
+  Shape "trianglemesh"
+    "point P" [
+      -1000  1000 -1000
+       1000  1000 -1000
+       1000  1000  1000
+      -1000  1000  1000
+    ]
+    "integer indices" [ 0 1 2 2 3 0 ]
+  Shape "trianglemesh"
+    "point P" [
+      -1000 -1000 -1000
+      -1000  1000 -1000
+      -1000  1000  1000
+      -1000 -1000  1000
+    ]
+    "integer indices" [ 0 1 2 2 3 0 ]
+  Shape "trianglemesh"
+    "point P" [
+       1000 -1000 -1000
+       1000  1000 -1000
+       1000  1000  1000
+       1000 -1000  1000
+    ]
+    "integer indices" [ 2 1 0 0 3 2 ]
+AttributeEnd

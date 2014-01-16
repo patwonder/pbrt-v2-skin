@@ -1,0 +1,1 @@
+@exrdisplay bin\skin.exr

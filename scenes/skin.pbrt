@@ -1,0 +1,54 @@
+Film "image" "integer xresolution" [640] "integer yresolution" [480]
+LookAt 0 -7 0  0 0 0  0 0 1
+Camera "perspective" "float fov" [30]
+
+# SurfaceIntegrator "dipolesubsurface"
+#  "float minsampledistance" 0.005
+#  "float maxerror" 0.002
+#  "integer maxdepth" 100
+
+Sampler "lowdiscrepancy" "integer pixelsamples" 4
+
+SurfaceIntegrator "directlighting"
+  "integer maxdepth" 5
+  "string strategy" "all"
+
+WorldBegin
+
+  AttributeBegin
+    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
+    Translate -3.2025 -3.2025 5.3374
+    Shape "sphere" "float radius" 1
+  AttributeEnd
+  
+  AttributeBegin
+    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
+    Translate 2.7574 6.4340 0
+    Shape "sphere" "float radius" 1
+  AttributeEnd
+  
+  AttributeBegin
+    # Bounding sphere
+    Material "matte" "color Kd" [.5 .5 .8]
+    ReverseOrientation
+    Shape "sphere" "float radius" 1000
+  AttributeEnd
+
+  AttributeBegin
+    Scale 10 10 10
+    Rotate 90  1 0 0
+    Translate 0 0 0.2
+#    Texture "headbump" "float" "imagemap" "string filename" "textures/bump-lowRes2.pfm"
+#      "float vscale" -1 "float vdelta" 1
+#      "string wrap" "clamp" "float scale" 0.1
+#    Texture "lambertian" "color" "imagemap" "string filename" "textures/lambertian.tga"
+#      "float vscale" -1 "float vdelta" 1
+#      "string wrap" "clamp" "float gamma" 2.2
+#    Material "kdsubsurface" "texture Kd" "lambertian"
+#      "float meanfreepath" 0.01
+#    Material "matte" "color Kd" [1 1 1] "float sigma" 0.8
+    Material "layeredskin" "skinlayer layers" [ 0.00008 1.4 0.0008 1.45]
+    Include "geometry/head.pbrt"
+  AttributeEnd
+  
+WorldEnd
