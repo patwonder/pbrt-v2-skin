@@ -42,7 +42,7 @@
 using std::map;
 
 // TriangleMesh Declarations
-class TriangleMesh : public Shape {
+class TriangleMesh : public ShrinkableShape {
 public:
     // TriangleMesh Public Methods
     TriangleMesh(const Transform *o2w, const Transform *w2o, bool ro,
@@ -54,7 +54,7 @@ public:
     BBox WorldBound() const;
     bool CanIntersect() const { return false; }
     void Refine(vector<Reference<Shape> > &refined) const;
-	Reference<TriangleMesh> Shrink(float distance) const;
+	Reference<ShrinkableShape> Shrink(float_type distance) const override;
     friend class Triangle;
     template <typename T> friend class VertexTexture;
 protected:

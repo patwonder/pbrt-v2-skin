@@ -236,6 +236,7 @@
     <ClInclude Include="..\lights\spot.h" />
     <ClInclude Include="..\materials\glass.h" />
     <ClInclude Include="..\materials\kdsubsurface.h" />
+    <ClInclude Include="..\materials\layeredskin.h" />
     <ClInclude Include="..\materials\matte.h" />
     <ClInclude Include="..\materials\measured.h" />
     <ClInclude Include="..\materials\metal.h" />
@@ -263,7 +264,6 @@
     <ClInclude Include="..\shapes\disk.h" />
     <ClInclude Include="..\shapes\heightfield.h" />
     <ClInclude Include="..\shapes\hyperboloid.h" />
-    <ClInclude Include="..\shapes\layeredskin.h" />
     <ClInclude Include="..\shapes\loopsubdiv.h" />
     <ClInclude Include="..\shapes\nurbs.h" />
     <ClInclude Include="..\shapes\paraboloid.h" />
@@ -1198,6 +1198,7 @@
     <ClCompile Include="..\lights\spot.cpp" />
     <ClCompile Include="..\materials\glass.cpp" />
     <ClCompile Include="..\materials\kdsubsurface.cpp" />
+    <ClCompile Include="..\materials\layeredskin.cpp" />
     <ClCompile Include="..\materials\matte.cpp" />
     <ClCompile Include="..\materials\measured.cpp" />
     <ClCompile Include="..\materials\metal.cpp" />
@@ -1225,7 +1226,6 @@
     <ClCompile Include="..\shapes\disk.cpp" />
     <ClCompile Include="..\shapes\heightfield.cpp" />
     <ClCompile Include="..\shapes\hyperboloid.cpp" />
-    <ClCompile Include="..\shapes\layeredskin.cpp" />
     <ClCompile Include="..\shapes\loopsubdiv.cpp" />
     <ClCompile Include="..\shapes\nurbs.cpp" />
     <ClCompile Include="..\shapes\paraboloid.cpp" />

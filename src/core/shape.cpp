@@ -109,3 +109,8 @@ float Shape::Pdf(const Point &p, const Vector &wi) const {
 }
 
 
+ShrinkableShape::ShrinkableShape(const Transform *o2w, const Transform *w2o, bool ro)
+	: Shape(o2w, w2o, ro)
+{
+}
+

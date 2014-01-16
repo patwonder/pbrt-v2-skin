@@ -54,6 +54,10 @@
 #define PBRT_IS_OPENBSD
 #endif
 
+// Global float type choice
+typedef float float_type;
+//typedef double float_type;
+
 // Global Include Files
 #include <math.h>
 #include <stdlib.h>

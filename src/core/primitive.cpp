@@ -35,6 +35,8 @@
 #include "primitive.h"
 #include "light.h"
 #include "intersection.h"
+#include "accelerators/bvh.h"
+#include "paramset.h"
 
 // Primitive Method Definitions
 uint32_t Primitive::nextprimitiveId = 1;
@@ -124,7 +126,6 @@ bool TransformedPrimitive::IntersectP(const Ray &r) const {
 }
 
 
-
 // GeometricPrimitive Method Definitions
 BBox GeometricPrimitive::WorldBound() const {
     return shape->WorldBound();
@@ -155,7 +156,7 @@ void GeometricPrimitive::
 
 
 GeometricPrimitive::GeometricPrimitive(const Reference<Shape> &s,
-        const Reference<Material> &m, AreaLight *a)
+        const Reference<Material> &m, const AreaLight *a)
     : shape(s), material(m), areaLight(a) {
 }
 
@@ -199,3 +200,191 @@ BSSRDF *GeometricPrimitive::GetBSSRDF(const DifferentialGeometry &dg,
 }
 
 
+const Shape* GeometricPrimitive::GetShape() const {
+	return shape.GetPtr();
+}
+
+
+const Material* GeometricPrimitive::GetMaterial() const {
+	return material.GetPtr();
+}
+
+
+class LayeredGeometricPrimitiveMain : public LayeredGeometricPrimitive {
+public:
+    // LayeredGeometricPrimitiveMain Public Methods
+	LayeredGeometricPrimitiveMain(const Reference<ShrinkableShape>& s,
+		const Reference<LayeredMaterial>& m, const AreaLight* a);
+ 	const ShrinkableShape* GetShrinkableShape() const;
+	const LayeredMaterial* GetLayeredMaterial() const;
+	void Refine(vector<Reference<Primitive> > &refined) const override;
+	bool IntersectInternal(const Ray& r, Intersection* isect,
+		int* layerIndex) const override;
+	BSDF *GetLayeredBSDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+	BSSRDF *GetLayeredBSSRDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+private:
+	friend class LayeredGeometricPrimitivePatch;
+    // LayeredGeometricPrimitiveMain Private Data
+	vector<Reference<ShrinkableShape> > internalShapes;
+	Reference<Aggregate> internalAggregate;
+};
+
+
+class LayeredGeometricPrimitivePatch : public LayeredGeometricPrimitive {
+public:
+    // LayeredGeometricPrimitivePatch Public Methods
+	LayeredGeometricPrimitivePatch(const Reference<Shape>& s,
+		const Reference<const LayeredGeometricPrimitiveMain>& main);
+    void Refine(vector<Reference<Primitive> > &refined) const override;
+	bool IntersectInternal(const Ray& r, Intersection* isect,
+		int* layerIndex) const override;
+	BSDF *GetLayeredBSDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+	BSSRDF *GetLayeredBSSRDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+private:
+    // LayeredGeometricPrimitivePatch Private Data
+	Reference<const LayeredGeometricPrimitiveMain> main;
+};
+
+
+LayeredGeometricPrimitive::LayeredGeometricPrimitive(const Reference<Shape>& s,
+	const Reference<LayeredMaterial>& m, const AreaLight *a)
+	: GeometricPrimitive(s, m, a)
+{
+}
+
+LayeredGeometricPrimitiveMain::LayeredGeometricPrimitiveMain(
+	const Reference<ShrinkableShape>& s,
+	const Reference<LayeredMaterial>& m, const AreaLight* a)
+	: LayeredGeometricPrimitive(s, m, a)
+{
+	vector<float_type> thicknesses = m->GetLayerThickness();
+	// Add shrinked primitives for internal intersection test
+	vector<Reference<Primitive> > internalPrimitives;
+	internalShapes.push_back(s);
+	internalPrimitives.push_back(new GeometricPrimitive(s,
+		new LayeredMaterialWrapper(m, 0), a));
+	float_type thickness = 0;
+	for (size_t i = 0; i < thicknesses.size(); i++) {
+		thickness += thicknesses[i];
+		Reference<ShrinkableShape> shrinked = s->Shrink(thickness);
+		internalShapes.push_back(shrinked);
+		internalPrimitives.push_back(new GeometricPrimitive(
+			shrinked, new LayeredMaterialWrapper(m, i + 1), a
+		));
+	}
+	internalAggregate = CreateBVHAccelerator(internalPrimitives,
+		ParamSet());
+}
+
+void LayeredGeometricPrimitiveMain::Refine(vector<Reference<Primitive> > &refined) const {
+    vector<Reference<Shape> > r;
+    shape->Refine(r);
+    for (uint32_t i = 0; i < r.size(); ++i) {
+        LayeredGeometricPrimitivePatch* patch =
+			new LayeredGeometricPrimitivePatch(r[i], this);
+        refined.push_back(patch);
+    }
+}
+
+const ShrinkableShape* LayeredGeometricPrimitiveMain::GetShrinkableShape() const {
+	return static_cast<const ShrinkableShape*>(shape.GetPtr());
+}
+
+const LayeredMaterial* LayeredGeometricPrimitiveMain::GetLayeredMaterial() const {
+	return static_cast<const LayeredMaterial*>(material.GetPtr());
+}
+
+bool LayeredGeometricPrimitiveMain::IntersectInternal(const Ray& r,
+	Intersection* isect, int* layerIndex) const
+{
+	if (!internalAggregate->Intersect(r, isect))
+		return false;
+	
+	const LayeredMaterialWrapper* material =
+		static_cast<const LayeredMaterialWrapper*>(
+		static_cast<const GeometricPrimitive*>(isect->primitive)->GetMaterial());
+
+	*layerIndex = material->GetLayerIndex();
+	return true;
+}
+
+BSDF* LayeredGeometricPrimitiveMain::GetLayeredBSDF(int layerIndex,
+	const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+	DifferentialGeometry dgs;
+	internalShapes[layerIndex]->GetShadingGeometry(ObjectToWorld, dg, &dgs);
+	return GetLayeredMaterial()->GetLayeredBSDF(layerIndex, dg, dgs, arena);
+}
+
+BSSRDF* LayeredGeometricPrimitiveMain::GetLayeredBSSRDF(int layerIndex,
+	const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+	DifferentialGeometry dgs;
+	internalShapes[layerIndex]->GetShadingGeometry(ObjectToWorld, dg, &dgs);
+	return GetLayeredMaterial()->GetLayeredBSSRDF(layerIndex, dg, dgs, arena);
+}
+
+LayeredGeometricPrimitivePatch::LayeredGeometricPrimitivePatch(
+	const Reference<Shape>& s,
+	const Reference<const LayeredGeometricPrimitiveMain>& main)
+	: LayeredGeometricPrimitive(s, static_cast<LayeredMaterial*>(main->material.GetPtr()),
+		main->GetAreaLight()), main(main)
+{
+}
+
+void LayeredGeometricPrimitivePatch::Refine(vector<Reference<Primitive> > &refined) const {
+    vector<Reference<Shape> > r;
+    shape->Refine(r);
+    for (uint32_t i = 0; i < r.size(); ++i) {
+        LayeredGeometricPrimitivePatch* patch =
+			new LayeredGeometricPrimitivePatch(r[i], main);
+        refined.push_back(patch);
+    }
+}
+
+bool LayeredGeometricPrimitivePatch::IntersectInternal(const Ray& r,
+	Intersection* isect, int* layerIndex) const
+{
+	return main->IntersectInternal(r, isect, layerIndex);
+}
+
+BSDF* LayeredGeometricPrimitivePatch::GetLayeredBSDF(int layerIndex,
+	const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+	return main->GetLayeredBSDF(layerIndex, dg, ObjectToWorld, arena);
+}
+
+BSSRDF* LayeredGeometricPrimitivePatch::GetLayeredBSSRDF(int layerIndex,
+	const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+	return main->GetLayeredBSSRDF(layerIndex, dg, ObjectToWorld, arena);
+}
+
+
+GeometricPrimitive* CreateGeometricPrimitive(
+	const Reference<Shape>& s, const Reference<Material>& m,
+	const AreaLight* a)
+{
+	// Create LayeredGeometricPrimitives for layered materials
+	try {
+		Reference<LayeredMaterial> lmtl = dynamic_cast<LayeredMaterial*>(m.GetPtr());
+		Reference<ShrinkableShape> sshp = dynamic_cast<ShrinkableShape*>(s.GetPtr());
+		if (!lmtl.GetPtr() || !sshp.GetPtr())
+			throw std::bad_cast();
+		return new LayeredGeometricPrimitiveMain(sshp, lmtl, a);
+	} catch (const std::bad_cast&) {
+		return new GeometricPrimitive(s, m, a);
+	}
+}

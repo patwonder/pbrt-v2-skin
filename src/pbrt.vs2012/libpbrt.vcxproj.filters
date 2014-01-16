@@ -912,11 +912,11 @@
     <ClInclude Include="..\core\targa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\shapes\layeredskin.h">
-      <Filter>Header Files\shapes</Filter>
-    </ClInclude>
     <ClInclude Include="..\core\skinlayer.h">
       <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\materials\layeredskin.h">
+      <Filter>Header Files\materials</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1688,8 +1688,8 @@
     <ClCompile Include="..\core\targa.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\shapes\layeredskin.cpp">
-      <Filter>Source Files\shapes</Filter>
+    <ClCompile Include="..\materials\layeredskin.cpp">
+      <Filter>Source Files\materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

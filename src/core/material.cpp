@@ -85,3 +85,26 @@ void Material::Bump(const Reference<Texture<float> > &d,
 }
 
 
+LayeredMaterialWrapper::LayeredMaterialWrapper(const Reference<LayeredMaterial>& layeredMaterial,
+	int layerIndex)
+	: layerIndex(layerIndex), layeredMaterial(layeredMaterial)
+{
+}
+
+int LayeredMaterialWrapper::GetLayerIndex() const {
+	return layerIndex;
+}
+
+BSDF* LayeredMaterialWrapper::GetBSDF(const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading, MemoryArena &arena) const
+{
+	return layeredMaterial->GetLayeredBSDF(layerIndex,
+		dgGeom, dgShading, arena);
+}
+
+BSSRDF* LayeredMaterialWrapper::GetBSSRDF(const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading, MemoryArena &arena) const
+{
+	return layeredMaterial->GetLayeredBSSRDF(layerIndex,
+		dgGeom, dgShading, arena);
+}

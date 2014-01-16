@@ -43,7 +43,7 @@ TriangleMesh::TriangleMesh(const Transform *o2w, const Transform *w2o,
         bool ro, int nt, int nv, const int *vi, const Point *P,
         const Normal *N, const Vector *S, const float *uv,
         const Reference<Texture<float> > &atex)
-    : Shape(o2w, w2o, ro), alphaTexture(atex) {
+    : ShrinkableShape(o2w, w2o, ro), alphaTexture(atex) {
     ntris = nt;
     nverts = nv;
     vertexIndex = new int[3 * ntris];
@@ -105,9 +105,9 @@ void TriangleMesh::Refine(vector<Reference<Shape> > &refined) const {
 }
 
 TriangleMesh::TriangleMesh(const TriangleMesh& mesh)
-	: Shape(mesh) { }
+	: ShrinkableShape(mesh) { }
 
-Reference<TriangleMesh> TriangleMesh::Shrink(float distance) const {
+Reference<ShrinkableShape> TriangleMesh::Shrink(float_type distance) const {
 	// Copy Shape subobject
 	TriangleMesh* pNewMesh = new TriangleMesh(*this);
 
@@ -141,7 +141,7 @@ Reference<TriangleMesh> TriangleMesh::Shrink(float distance) const {
 	if (n) {
 		// Compute scaled distance in world space
 		Vector unitVector(1, 0, 0);
-		float scaledDistance = distance * (*ObjectToWorld)(unitVector).Length();
+		float_type scaledDistance = distance * (*ObjectToWorld)(unitVector).Length();
 		// Apply shrinking for each vertex
 		for (int i = 0; i < nverts; i++) {
 			Normal worldNormal = Normalize((*ObjectToWorld)(n[i]));

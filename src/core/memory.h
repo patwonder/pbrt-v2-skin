@@ -44,7 +44,7 @@
 class ReferenceCounted {
 public:
     ReferenceCounted() { nReferences = 0; }
-    AtomicInt32 nReferences;
+    mutable AtomicInt32 nReferences;
 private:
     ReferenceCounted(const ReferenceCounted &);
     ReferenceCounted &operator=(const ReferenceCounted &);
@@ -62,6 +62,12 @@ public:
         ptr = r.ptr;
         if (ptr) AtomicAdd(&ptr->nReferences, 1);
     }
+
+	template<class S>
+	Reference(S* p) {
+		ptr = p;
+		if (ptr) AtomicAdd(&ptr->nReferences, 1);
+	}
 
 	template<class S>
 	friend class Reference;
@@ -87,10 +93,9 @@ public:
         if (ptr && AtomicAdd(&ptr->nReferences, -1) == 0)
             delete ptr;
     }
-    T *operator->() { return ptr; }
-    const T *operator->() const { return ptr; }
+    T *operator->() const { return ptr; }
     operator bool() const { return ptr != NULL; }
-    const T *GetPtr() const { return ptr; }
+    T *GetPtr() const { return ptr; }
 private:
     T *ptr;
 };

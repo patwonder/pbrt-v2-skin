@@ -768,11 +768,15 @@ static void InitParamSet(ParamSet &ps, SpectrumType type) {
                         name.c_str());
             }
             else if (type == PARAM_TYPE_SKINLAYER) {
-                SkinLayer* sldata = new SkinLayer[nItems];
-                for (int i = 0; i < nItems; i++) {
-                    sldata[i].thickness = ((float*)data)[i];
+                if ((nItems % 2) != 0)
+                    Warning("Non-even number of values given with skinlayer "
+                            "parameter \"%s\". Ignoring extra.", cur_paramlist[i].name);
+                SkinLayer* sldata = new SkinLayer[nItems / 2];
+                for (int i = 0; i < nItems / 2; i++) {
+                    sldata[i].thickness = ((float*)data)[2 * i];
+                    sldata[i].ior = ((float*)data)[2 * i + 1];
                 }
-                ps.AddSkinLayer(name, sldata, nItems);
+                ps.AddSkinLayer(name, sldata, nItems / 2);
                 delete [] sldata;
             }
         }

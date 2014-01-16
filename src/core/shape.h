@@ -85,5 +85,11 @@ protected:
 };
 
 
+class ShrinkableShape: public Shape {
+public:
+	ShrinkableShape(const Transform *o2w, const Transform *w2o, bool ro);
+	virtual Reference<ShrinkableShape> Shrink(float_type distance) const = 0;
+};
+
 
 #endif // PBRT_CORE_SHAPE_H

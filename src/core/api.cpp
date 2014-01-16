@@ -88,6 +88,7 @@
 #include "materials/shinymetal.h"
 #include "materials/translucent.h"
 #include "materials/uber.h"
+#include "materials/layeredskin.h"
 #include "renderers/aggregatetest.h"
 #include "renderers/createprobes.h"
 #include "renderers/metropolis.h"
@@ -109,7 +110,6 @@
 #include "shapes/paraboloid.h"
 #include "shapes/sphere.h"
 #include "shapes/trianglemesh.h"
-#include "shapes/layeredskin.h"
 #include "textures/bilerp.h"
 #include "textures/checkerboard.h"
 #include "textures/constant.h"
@@ -351,9 +351,6 @@ Reference<Shape> MakeShape(const string &name,
     else if (name == "nurbs")
         s = CreateNURBSShape(object2world, world2object, reverseOrientation,
                              paramSet);
-	else if (name == "layeredskin")
-		s = CreateLayeredSkinShape(object2world, world2object, reverseOrientation,
-								   paramSet, &graphicsState.floatTextures);
     else
         Warning("Shape \"%s\" unknown.", name.c_str());
     paramSet.ReportUnused();
@@ -407,6 +404,8 @@ Reference<Material> MakeMaterial(const string &name,
         material = CreateMeasuredMaterial(mtl2world, mp);
     else if (name == "shinymetal")
         material = CreateShinyMetalMaterial(mtl2world, mp);
+	else if (name == "layeredskin")
+		material = CreateLayeredSkinMaterial(graphicsState.materialParams);
     else
         Warning("Material \"%s\" unknown.", name.c_str());
     mp.ReportUnused();
@@ -1010,7 +1009,7 @@ void pbrtShape(const string &name, const ParamSet &params) {
             area = MakeAreaLight(graphicsState.areaLight, curTransform[0],
                                  graphicsState.areaLightParams, shape);
         }
-        prim = new GeometricPrimitive(shape, mtl, area);
+		prim = CreateGeometricPrimitive(shape, mtl, area);
     } else {
         // Create primitive for animated shape
 
@@ -1034,7 +1033,7 @@ void pbrtShape(const string &name, const ParamSet &params) {
         AnimatedTransform
              animatedWorldToObject(world2obj[0], renderOptions->transformStartTime,
                                    world2obj[1], renderOptions->transformEndTime);
-        Reference<Primitive> baseprim = new GeometricPrimitive(shape, mtl, NULL);
+        Reference<Primitive> baseprim = CreateGeometricPrimitive(shape, mtl, NULL);
         if (!baseprim->CanIntersect()) {
             // Refine animated shape and create BVH if more than one shape created
             vector<Reference<Primitive> > refinedPrimitives;

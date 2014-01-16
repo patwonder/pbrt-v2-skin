@@ -39,6 +39,8 @@
 // core/material.h*
 #include "pbrt.h"
 #include "memory.h"
+#include <vector>
+using std::vector;
 
 // Material Declarations
 class Material : public ReferenceCounted {
@@ -57,6 +59,39 @@ public:
         const DifferentialGeometry &dgShading, DifferentialGeometry *dgBump);
 };
 
+
+class LayeredMaterial : public Material {
+public:
+    // LayeredMaterial Interface
+	virtual vector<float_type> GetLayerThickness() const = 0;
+	virtual BSDF* GetLayeredBSDF(int layerIndex,
+		const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const = 0;
+	virtual BSSRDF* GetLayeredBSSRDF(int layerIndex,
+		const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const
+	{
+		return NULL;
+	}
+};
+
+class LayeredMaterialWrapper : public Material {
+public:
+	LayeredMaterialWrapper(const Reference<LayeredMaterial>& layeredMaterial,
+		int layerIndex);
+	int GetLayerIndex() const;
+	BSDF* GetBSDF(const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const override;
+	BSSRDF* GetBSSRDF(const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const override;
+private:
+	int layerIndex;
+	Reference<LayeredMaterial> layeredMaterial;
+};
 
 
 #endif // PBRT_CORE_MATERIAL_H

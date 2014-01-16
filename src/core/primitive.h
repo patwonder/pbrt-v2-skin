@@ -41,6 +41,8 @@
 #include "shape.h"
 #include "material.h"
 
+class LayeredGeometricPrimitive;
+
 // Primitive Declarations
 class Primitive : public ReferenceCounted {
 public:
@@ -58,14 +60,15 @@ public:
         const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
     virtual BSSRDF *GetBSSRDF(const DifferentialGeometry &dg,
         const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
-
-    // Primitive Public Data
+ 	// Low-cost RTTI
+	virtual LayeredGeometricPrimitive* ToLayered() { return NULL; }
+	virtual const LayeredGeometricPrimitive* ToLayered() const { return NULL; }
+   // Primitive Public Data
     const uint32_t primitiveId;
 protected:
     // Primitive Protected Data
     static uint32_t nextprimitiveId;
 };
-
 
 
 // GeometricPrimitive Declarations
@@ -78,17 +81,39 @@ public:
     virtual bool Intersect(const Ray &r, Intersection *isect) const;
     virtual bool IntersectP(const Ray &r) const;
     GeometricPrimitive(const Reference<Shape> &s,
-                       const Reference<Material> &m, AreaLight *a);
+                       const Reference<Material> &m, const AreaLight *a);
     const AreaLight *GetAreaLight() const;
     BSDF *GetBSDF(const DifferentialGeometry &dg,
                   const Transform &ObjectToWorld, MemoryArena &arena) const;
     BSSRDF *GetBSSRDF(const DifferentialGeometry &dg,
                       const Transform &ObjectToWorld, MemoryArena &arena) const;
-private:
+	const Shape* GetShape() const;
+	const Material* GetMaterial() const;
+protected:
     // GeometricPrimitive Private Data
     Reference<Shape> shape;
     Reference<Material> material;
-    AreaLight *areaLight;
+private:
+    // GeometricPrimitive Private Data
+    const AreaLight *areaLight;
+};
+
+
+class LayeredGeometricPrimitive : public GeometricPrimitive {
+public:
+    // LayeredGeometricPrimitive Public Methods
+	LayeredGeometricPrimitive(const Reference<Shape>& s,
+		const Reference<LayeredMaterial>& m, const AreaLight* a);
+	virtual bool IntersectInternal(const Ray& r, Intersection* isect,
+		int* layerIndex) const = 0;
+	virtual BSDF *GetLayeredBSDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
+	virtual BSSRDF *GetLayeredBSSRDF(int layerIndex,
+		const DifferentialGeometry &dg,
+		const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
+	LayeredGeometricPrimitive* ToLayered() override { return this; }
+	const LayeredGeometricPrimitive* ToLayered() const override { return this; }
 };
 
 
@@ -134,5 +159,8 @@ public:
 };
 
 
+GeometricPrimitive* CreateGeometricPrimitive(
+	const Reference<Shape>& s, const Reference<Material>& m,
+	const AreaLight* a);
 
 #endif // PBRT_CORE_PRIMITIVE_H
