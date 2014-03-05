@@ -37,6 +37,32 @@
 #include "parser.h"
 #include "parallel.h"
 
+#ifdef PBRT_IS_WINDOWS
+#include <tchar.h>
+void enterBackgroundMode() {
+   if(!SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN))
+   {
+      DWORD dwError = GetLastError();
+      if( ERROR_PROCESS_MODE_ALREADY_BACKGROUND == dwError)
+         _tprintf(TEXT("Already in background mode\n"));
+      else _tprintf(TEXT("Failed to enter background mode (%d)\n"), dwError);
+	  return;
+   }
+
+   printf("Enter background mode.\n");
+}
+
+void exitBackgroundMode() {
+   if(!SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END))
+   {
+      _tprintf(TEXT("Failed to end background mode (%d)\n"), GetLastError());
+	  return;
+   }
+
+   printf("Exit background mode.\n");
+}
+#endif
+
 // main program
 int main(int argc, char *argv[]) {
     Options options;
@@ -66,6 +92,11 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
     }
     pbrtInit(options);
+
+#ifdef PBRT_IS_WINDOWS
+	// Reduce impact to foreground processes
+	enterBackgroundMode();
+#endif
     // Process scene description
     PBRT_STARTED_PARSING();
     if (filenames.size() == 0) {
@@ -77,6 +108,11 @@ int main(int argc, char *argv[]) {
             if (!ParseFile(filenames[i]))
                 Error("Couldn't open scene file \"%s\"", filenames[i].c_str());
     }
+
+#ifdef PBRT_IS_WINDOWS
+	exitBackgroundMode();
+#endif
+    
     pbrtCleanup();
     return 0;
 }
