@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 #ifdef _DEBUG
 	// Use single thread for debugging
 	options.nCores = 1;
-	printf("Warning: using 1 working thread for debugging sessions.\n");
+	Warning("Using 1 working thread for debugging sessions.");
 #endif
 
     // Print welcome banner
