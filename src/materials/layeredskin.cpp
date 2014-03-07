@@ -87,9 +87,10 @@ public:
 	// Absorption coefficient of whole blood, mua.blood
 	// Data from: http://www.npsg.uwaterloo.ca/data/blood.php
 	Spectrum mua_blood() const {
-		const float molarWeight = 66500.f; // g/mole
+		const float loge10 = 2.303f;
+		const float molarWeight = 64500.f; // g/mole
 		const float concentration = 150.f; // g/L
-		return 1.f / molarWeight * concentration *
+		return loge10 / molarWeight * concentration *
 			(f_oxyhemoglobin * Spectrum::FromSampled(
 			oxyhemoglobin_lambdas, oxyhemoglobin_vals, oxyhemoglobin_n) +
 			(1.f - f_oxyhemoglobin) * Spectrum::FromSampled(
