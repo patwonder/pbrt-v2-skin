@@ -34,10 +34,11 @@
 #include "layeredskin.h"
 #include "paramset.h"
 
-LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers)
-	: layers(layers)
-{
 
+LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float npu)
+	: layers(layers), nmperunit(npu)
+{
+	// Done here
 }
 
 vector<float_type> LayeredSkin::GetLayerThickness() const {
@@ -90,5 +91,6 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps)
 	const SkinLayer* layers = ps.FindSkinLayer("layers", &nLayers);
 	if (!layers)
 		Error("No layers param set for LayeredSkin material.");
-	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers));
+	float nmperunit = ps.FindOneFloat("nmperunit", 100e6);
+	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers), nmperunit);
 }

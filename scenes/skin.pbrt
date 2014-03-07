@@ -46,7 +46,7 @@ WorldBegin
 #    Material "kdsubsurface" "texture Kd" "lambertian"
 #      "float meanfreepath" 0.01
 #    Material "matte" "color Kd" [1 1 1] "float sigma" 0.8
-    Material "layeredskin" "skinlayer layers" [ 0.00008 1.4 0.0008 1.45]
+    Material "layeredskin" "float nmperunit" 120e6 "skinlayer layers" [ 0.00008 1.4 0.0008 1.45]
     Include "geometry/head.pbrt"
   AttributeEnd
   

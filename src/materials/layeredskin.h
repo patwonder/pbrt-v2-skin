@@ -37,7 +37,7 @@
 class LayeredSkin : public LayeredMaterial {
 public:
     // LayeredSkin Public Methods
-	LayeredSkin(const vector<SkinLayer>& layers);
+	LayeredSkin(const vector<SkinLayer>& layers, float_type nmperunit);
 	vector<float_type> GetLayerThickness() const override;
 	BSDF* GetBSDF(const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
@@ -53,6 +53,7 @@ public:
 private:
     // LayeredSkin Private Data
 	vector<SkinLayer> layers;
+	float_type nmperunit;
 };
 
 // Creator function
