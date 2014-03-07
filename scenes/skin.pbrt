@@ -7,31 +7,30 @@ Camera "perspective" "float fov" [30]
 #  "float maxerror" 0.002
 #  "integer maxdepth" 100
 
-Sampler "lowdiscrepancy" "integer pixelsamples" 4
+Sampler "lowdiscrepancy" "integer pixelsamples" 20
 
-SurfaceIntegrator "directlighting"
+SurfaceIntegrator "layered"
   "integer maxdepth" 5
-  "string strategy" "all"
 
 WorldBegin
 
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
+    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [20]
     Translate -3.2025 -3.2025 5.3374
     Shape "sphere" "float radius" 1
   AttributeEnd
   
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
-    Translate 2.7574 6.4340 0
-    Shape "sphere" "float radius" 1
+#    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [20]
+#    Translate 2.7574 6.4340 0
+#    Shape "sphere" "float radius" 1
   AttributeEnd
   
   AttributeBegin
     # Bounding sphere
     Material "matte" "color Kd" [.5 .5 .8]
     ReverseOrientation
-    Shape "sphere" "float radius" 1000
+#    Shape "sphere" "float radius" 1000
   AttributeEnd
 
   AttributeBegin
