@@ -64,6 +64,7 @@
 #include "integrators/igi.h"
 #include "integrators/irradiancecache.h"
 #include "integrators/path.h"
+#include "integrators/layeredintegrator.h"
 #include "integrators/photonmap.h"
 #include "integrators/single.h"
 #include "integrators/useprobes.h"
@@ -542,6 +543,8 @@ SurfaceIntegrator *MakeSurfaceIntegrator(const string &name,
         si = CreateDirectLightingIntegrator(paramSet);
     else if (name == "path")
         si = CreatePathSurfaceIntegrator(paramSet);
+	else if (name == "layered")
+		si = CreateLayeredSurfaceIntegrator(paramSet);
     else if (name == "photonmap" || name == "exphotonmap")
         si = CreatePhotonMapSurfaceIntegrator(paramSet);
     else if (name == "irradiancecache")

@@ -54,14 +54,16 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 {
 	float_type ior = layers[0].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
-	bsdf->Add(BSDF_ALLOC(arena, Lambertian)(Spectrum(.5)));
-	bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, Lambertian)(Spectrum(.5))));
 	float rough = 0.4f;
-	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(ior, 1.f);
-	bsdf->Add(BSDF_ALLOC(arena, Microfacet)(Spectrum(.5), fresnel,
+	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
+	bsdf->Add(BSDF_ALLOC(arena, Microfacet)(Spectrum(1.), fresnel,
 		BSDF_ALLOC(arena, Blinn)(1.f / rough)));
-	bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, Microfacet)(Spectrum(.5), fresnel,
-		BSDF_ALLOC(arena, Blinn)(1.f / rough))));
+	bsdf->Add(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
+		BSDF_ALLOC(arena, Blinn)(1.f / rough), ior));
+	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, Microfacet)(Spectrum(1.), fresnel,
+	//	BSDF_ALLOC(arena, Blinn)(1.f / rough))));
+	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
+	//	BSDF_ALLOC(arena, Blinn)(1.f / rough), ior)));
 	return bsdf;
 }
 

@@ -222,6 +222,7 @@
     <ClInclude Include="..\integrators\glossyprt.h" />
     <ClInclude Include="..\integrators\igi.h" />
     <ClInclude Include="..\integrators\irradiancecache.h" />
+    <ClInclude Include="..\integrators\layeredintegrator.h" />
     <ClInclude Include="..\integrators\path.h" />
     <ClInclude Include="..\integrators\photonmap.h" />
     <ClInclude Include="..\integrators\single.h" />
@@ -1184,6 +1185,7 @@
     <ClCompile Include="..\integrators\glossyprt.cpp" />
     <ClCompile Include="..\integrators\igi.cpp" />
     <ClCompile Include="..\integrators\irradiancecache.cpp" />
+    <ClCompile Include="..\integrators\layeredintegrator.cpp" />
     <ClCompile Include="..\integrators\path.cpp" />
     <ClCompile Include="..\integrators\photonmap.cpp" />
     <ClCompile Include="..\integrators\single.cpp" />

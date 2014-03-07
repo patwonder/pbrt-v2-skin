@@ -222,6 +222,47 @@ Spectrum Microfacet::f(const Vector &wo, const Vector &wi) const {
 }
 
 
+MicrofacetTransmission::MicrofacetTransmission(const Spectrum& transmission,
+	Fresnel* f,
+	MicrofacetDistribution* d, float_type ior)
+	: BxDF(BxDFType(BSDF_TRANSMISSION | BSDF_GLOSSY)),
+	T(transmission), distribution(d), fresnel(f), ior(ior)
+{
+}
+
+
+Spectrum MicrofacetTransmission::f(const Vector& wo, const Vector& wi) const {
+    float cosThetaI = AbsCosTheta(wi);
+    float cosThetaO = AbsCosTheta(wo);
+    if (cosThetaI == 0.f || cosThetaO == 0.f) return Spectrum(0.f);
+	bool entering = CosTheta(wo) > 0.f;
+	float_type et = (entering) ? ior : 1.f / ior;
+	Vector wh = -(wo + et * wi);
+	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return Spectrum(0.f);
+	wh = Normalize(wh);
+	float cosThetaHI = Dot(wi, wh);
+	float cosThetaHO = Dot(wo, wh);
+	// Make sure fresnel->Evaluate gets the correct sign,
+	// as wh always points to the side with smaller ior
+	Spectrum F = fresnel->Evaluate(entering ? fabsf(cosThetaHO) : -fabsf(cosThetaHO));
+	float denominator = cosThetaHO + et * cosThetaHI;
+	denominator *= denominator;
+	return fabsf(cosThetaHI * cosThetaHO) * et * et * distribution->D(wh) *
+		G(wo, wi, wh) / (cosThetaI * cosThetaO * denominator) *
+		T * (Spectrum(1.f) - F);
+}
+
+
+float MicrofacetTransmission::G(const Vector &wo, const Vector &wi, const Vector &wh) {
+    float NdotWh = AbsCosTheta(wh);
+    float NdotWo = AbsCosTheta(wo);
+    float NdotWi = AbsCosTheta(wi);
+    float WOdotWh = AbsDot(wo, wh);
+    return min(1.f, min((2.f * NdotWh * NdotWo / WOdotWh),
+                        (2.f * NdotWh * NdotWi / WOdotWh)));
+}
+
+
 FresnelBlend::FresnelBlend(const Spectrum &d, const Spectrum &s,
                            MicrofacetDistribution *dist)
     : BxDF(BxDFType(BSDF_REFLECTION | BSDF_GLOSSY)), Rd(d), Rs(s) {
@@ -340,6 +381,49 @@ Spectrum Microfacet::Sample_f(const Vector &wo, Vector *wi,
 float Microfacet::Pdf(const Vector &wo, const Vector &wi) const {
     if (!SameHemisphere(wo, wi)) return 0.f;
     return distribution->Pdf(wo, wi);
+}
+
+
+Spectrum MicrofacetTransmission::Sample_f(const Vector& wo, Vector* wi,
+	float u1, float u2, float* pdf) const
+{
+    distribution->Sample_f(wo, wi, u1, u2, pdf);
+
+	// Compute transmitted ray direction
+	bool entering = CosTheta(wo) > 0.f;
+	float_type et = (entering) ? ior : 1.f / ior;
+	Vector wh = wo + *wi;
+ 	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return Spectrum(0.f);
+	wh = Normalize(wh);
+
+	float cosi = Dot(wo, wh);
+    float sini2 = max(0.f, 1.f - cosi * cosi);
+    float eta = 1.f / et;
+    float sint2 = eta * eta * sini2;
+
+    // Handle total internal reflection for transmission
+    if (sint2 >= 1.) return Spectrum(0.f);
+    float cost = sqrtf(max(0.f, 1.f - sint2));
+    float sintOverSini = eta;
+    *wi = -sintOverSini * wo + (sintOverSini * cosi - cost) * wh;
+
+	if (SameHemisphere(wo, *wi)) return Spectrum(0.f);
+	return f(wo, *wi);
+}
+
+
+float MicrofacetTransmission::Pdf(const Vector& wo, const Vector& wi) const {
+	if (SameHemisphere(wo, wi)) return 0.f;
+
+	// Compute reflected ray direction
+	bool entering = CosTheta(wo) > 0.f;
+	float_type et = (entering) ? ior : 1.f / ior;
+	Vector wh = -(wo + et * wi);
+	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return 0.f;
+	wh = Normalize(wh);
+
+	Vector wiR = -wo + 2.f * Dot(wo, wh) * wh;
+	return distribution->Pdf(wo, wiR);
 }
 
 

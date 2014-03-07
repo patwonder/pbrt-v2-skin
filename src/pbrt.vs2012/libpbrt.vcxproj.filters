@@ -918,6 +918,9 @@
     <ClInclude Include="..\materials\layeredskin.h">
       <Filter>Header Files\materials</Filter>
     </ClInclude>
+    <ClInclude Include="..\integrators\layeredintegrator.h">
+      <Filter>Header Files\integrators</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1690,6 +1693,9 @@
     </ClCompile>
     <ClCompile Include="..\materials\layeredskin.cpp">
       <Filter>Source Files\materials</Filter>
+    </ClCompile>
+    <ClCompile Include="..\integrators\layeredintegrator.cpp">
+      <Filter>Source Files\integrators</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

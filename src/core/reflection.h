@@ -400,7 +400,7 @@ public:
     Microfacet(const Spectrum &reflectance, Fresnel *f,
         MicrofacetDistribution *d);
     Spectrum f(const Vector &wo, const Vector &wi) const;
-    float G(const Vector &wo, const Vector &wi, const Vector &wh) const {
+    static float G(const Vector &wo, const Vector &wi, const Vector &wh) {
         float NdotWh = AbsCosTheta(wh);
         float NdotWo = AbsCosTheta(wo);
         float NdotWi = AbsCosTheta(wi);
@@ -416,6 +416,25 @@ private:
     Spectrum R;
     MicrofacetDistribution *distribution;
     Fresnel *fresnel;
+};
+
+// Transmission through microfacet model
+class MicrofacetTransmission : public BxDF {
+public:
+	// MicrofacetTransmission Public Methods
+	MicrofacetTransmission(const Spectrum& transmission, Fresnel* f,
+		MicrofacetDistribution* d, float_type ior);
+	Spectrum f(const Vector& wo, const Vector& wi) const override;
+    static float G(const Vector &wo, const Vector &wi, const Vector &wh);
+	Spectrum Sample_f(const Vector& wo, Vector* wi,
+		float u1, float u2, float* pdf) const override;
+	float Pdf(const Vector& wo, const Vector& wi) const override;
+private:
+	// MicrofacetTransmission Private Data
+	Spectrum T;
+	float_type ior;
+	MicrofacetDistribution* distribution;
+	Fresnel* fresnel;
 };
 
 
