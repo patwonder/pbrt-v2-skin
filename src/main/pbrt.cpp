@@ -65,6 +65,11 @@ void exitBackgroundMode() {
 
 // main program
 int main(int argc, char *argv[]) {
+#ifdef _DEBUG
+	// Wait for debugger to attach
+	printf("Please attach debugger. Press Enter to continue...");
+	getchar();
+#endif
     Options options;
     vector<string> filenames;
     // Process command-line arguments
@@ -81,6 +86,11 @@ int main(int argc, char *argv[]) {
         }
         else filenames.push_back(argv[i]);
     }
+#ifdef _DEBUG
+	// Use single thread for debugging
+	options.nCores = 1;
+	printf("Warning: using 1 working thread for debugging sessions.\n");
+#endif
 
     // Print welcome banner
     if (!options.quiet) {
