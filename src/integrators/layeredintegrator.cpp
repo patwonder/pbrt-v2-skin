@@ -99,7 +99,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
             break;
         specularBounce = (flags & BSDF_SPECULAR) != 0;
         pathThroughput *= f * AbsDot(wi, n) / pdf;
-        ray = RayDifferential(p, wi, ray, isectp->rayEpsilon);
+        ray = RayDifferential(p, wi, ray, 0.f);
 		if (!specularBounce && Dot(wi, isectp->dg.nn) < 0) {
 			// Ray enters the material. See if it's layered
 			const LayeredGeometricPrimitive* lprim = isectp->primitive->ToLayered();
@@ -124,7 +124,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
             break;
 
         // Find next vertex of path
-        if (!scene->Intersect(ray, &localIsect)) {
+		if (!scene->IntersectExcept(ray, &localIsect, isectp->primitiveId)) {
             if (specularBounce)
                 for (uint32_t i = 0; i < scene->lights.size(); ++i)
                    L += pathThroughput * scene->lights[i]->Le(ray);

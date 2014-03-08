@@ -319,6 +319,109 @@ bool Voxel::IntersectP(const Ray &ray, RWMutexLock &lock) {
 }
 
 
+bool GridAccel::IntersectExcept(const Ray &ray, Intersection *isect, uint32_t primitiveId) const {
+    PBRT_GRID_INTERSECTION_TEST(const_cast<GridAccel *>(this), const_cast<Ray *>(&ray));
+    // Check ray against overall grid bounds
+    float rayT;
+    if (bounds.Inside(ray(ray.mint)))
+        rayT = ray.mint;
+    else if (!bounds.IntersectP(ray, &rayT))
+    {
+        PBRT_GRID_RAY_MISSED_BOUNDS();
+        return false;
+    }
+    Point gridIntersect = ray(rayT);
+
+    // Set up 3D DDA for ray
+    float NextCrossingT[3], DeltaT[3];
+    int Step[3], Out[3], Pos[3];
+    for (int axis = 0; axis < 3; ++axis) {
+        // Compute current voxel for axis
+        Pos[axis] = posToVoxel(gridIntersect, axis);
+        if (ray.d[axis] >= 0) {
+            // Handle ray with positive direction for voxel stepping
+            NextCrossingT[axis] = rayT +
+                (voxelToPos(Pos[axis]+1, axis) - gridIntersect[axis]) / ray.d[axis];
+            DeltaT[axis] = width[axis] / ray.d[axis];
+            Step[axis] = 1;
+            Out[axis] = nVoxels[axis];
+        }
+        else {
+            // Handle ray with negative direction for voxel stepping
+            NextCrossingT[axis] = rayT +
+                (voxelToPos(Pos[axis], axis) - gridIntersect[axis]) / ray.d[axis];
+            DeltaT[axis] = -width[axis] / ray.d[axis];
+            Step[axis] = -1;
+            Out[axis] = -1;
+        }
+    }
+
+    // Walk ray through voxel grid
+    RWMutexLock lock(*rwMutex, READ);
+    bool hitSomething = false;
+    for (;;) {
+        // Check for intersection in current voxel and advance to next
+        Voxel *voxel = voxels[offset(Pos[0], Pos[1], Pos[2])];
+        PBRT_GRID_RAY_TRAVERSED_VOXEL(Pos, voxel ? voxel->size() : 0);
+        if (voxel != NULL)
+            hitSomething |= voxel->IntersectExcept(ray, isect, primitiveId, lock);
+
+        // Advance to next voxel
+
+        // Find _stepAxis_ for stepping to next voxel
+        int bits = ((NextCrossingT[0] < NextCrossingT[1]) << 2) +
+                   ((NextCrossingT[0] < NextCrossingT[2]) << 1) +
+                   ((NextCrossingT[1] < NextCrossingT[2]));
+        const int cmpToAxis[8] = { 2, 1, 2, 1, 2, 2, 0, 0 };
+        int stepAxis = cmpToAxis[bits];
+        if (ray.maxt < NextCrossingT[stepAxis])
+            break;
+        Pos[stepAxis] += Step[stepAxis];
+        if (Pos[stepAxis] == Out[stepAxis])
+            break;
+        NextCrossingT[stepAxis] += DeltaT[stepAxis];
+    }
+    return hitSomething;
+}
+
+
+bool Voxel::IntersectExcept(const Ray &ray, Intersection *isect, uint32_t primitiveId, RWMutexLock &lock) {
+    // Refine primitives in voxel if needed
+    if (!allCanIntersect) {
+        lock.UpgradeToWrite();
+        for (uint32_t i = 0; i < primitives.size(); ++i) {
+            Reference<Primitive> &prim = primitives[i];
+            // Refine primitive _prim_ if it's not intersectable
+            if (!prim->CanIntersect()) {
+                vector<Reference<Primitive> > p;
+                prim->FullyRefine(p);
+                Assert(p.size() > 0);
+                if (p.size() == 1)
+                    primitives[i] = p[0];
+                else
+                    primitives[i] = new GridAccel(p, false);
+            }
+        }
+        allCanIntersect = true;
+        lock.DowngradeToRead();
+    }
+
+    // Loop over primitives in voxel and find intersections
+    bool hitSomething = false;
+    for (uint32_t i = 0; i < primitives.size(); ++i) {
+        Reference<Primitive> &prim = primitives[i];
+        PBRT_GRID_RAY_PRIMITIVE_INTERSECTION_TEST(const_cast<Primitive *>(prim.GetPtr()));
+		// Exclude the most-recently intersected primitive, thus avoiding the use of rayEpsilon
+		if (prim->primitiveId != primitiveId && prim->Intersect(ray, isect))
+        {
+        PBRT_GRID_RAY_PRIMITIVE_HIT(const_cast<Primitive *>(prim.GetPtr()));
+            hitSomething = true;
+        }
+    }
+    return hitSomething;
+}
+
+
 GridAccel *CreateGridAccelerator(const vector<Reference<Primitive> > &prims,
         const ParamSet &ps) {
     bool refineImmediately = ps.FindOneBool("refineimmediately", false);

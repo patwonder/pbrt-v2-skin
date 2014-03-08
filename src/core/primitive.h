@@ -52,6 +52,10 @@ public:
     virtual BBox WorldBound() const = 0;
     virtual bool CanIntersect() const;
     virtual bool Intersect(const Ray &r, Intersection *in) const = 0;
+	virtual bool IntersectExcept(const Ray &r, Intersection* in, uint32_t primitiveId) const {
+		if (this->primitiveId == primitiveId) return false;
+		return Intersect(r, in);
+	}
     virtual bool IntersectP(const Ray &r) const = 0;
     virtual void Refine(vector<Reference<Primitive> > &refined) const;
     void FullyRefine(vector<Reference<Primitive> > &refined) const;

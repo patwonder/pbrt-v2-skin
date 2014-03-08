@@ -56,6 +56,7 @@ public:
     ~BVHAccel();
     bool Intersect(const Ray &ray, Intersection *isect) const;
     bool IntersectP(const Ray &ray) const;
+	bool IntersectExcept(const Ray &r, Intersection* in, uint32_t primitiveId) const override;
 private:
     // BVHAccel Private Methods
     BVHBuildNode *recursiveBuild(MemoryArena &buildArena,

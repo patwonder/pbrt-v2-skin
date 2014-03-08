@@ -488,6 +488,62 @@ bool BVHAccel::IntersectP(const Ray &ray) const {
 }
 
 
+bool BVHAccel::IntersectExcept(const Ray &ray, Intersection* isect, uint32_t primitiveId) const {
+    if (!nodes) return false;
+    PBRT_BVH_INTERSECTION_STARTED(const_cast<BVHAccel *>(this), const_cast<Ray *>(&ray));
+    bool hit = false;
+    Vector invDir(1.f / ray.d.x, 1.f / ray.d.y, 1.f / ray.d.z);
+    uint32_t dirIsNeg[3] = { invDir.x < 0, invDir.y < 0, invDir.z < 0 };
+    // Follow ray through BVH nodes to find primitive intersections
+    uint32_t todoOffset = 0, nodeNum = 0;
+    uint32_t todo[64];
+    while (true) {
+        const LinearBVHNode *node = &nodes[nodeNum];
+        // Check ray against BVH node
+        if (::IntersectP(node->bounds, ray, invDir, dirIsNeg)) {
+            if (node->nPrimitives > 0) {
+                // Intersect ray with primitives in leaf BVH node
+                PBRT_BVH_INTERSECTION_TRAVERSED_LEAF_NODE(const_cast<LinearBVHNode *>(node));
+                for (uint32_t i = 0; i < node->nPrimitives; ++i)
+                {
+                    PBRT_BVH_INTERSECTION_PRIMITIVE_TEST(const_cast<Primitive *>(primitives[node->primitivesOffset+i].GetPtr()));
+					// Exclude the most-recently intersected primitive, thus avoiding the use of rayEpsilon
+					Primitive* p = primitives[node->primitivesOffset+i].GetPtr();
+					if (p->primitiveId != primitiveId && p->Intersect(ray, isect))
+                    {
+                        PBRT_BVH_INTERSECTION_PRIMITIVE_HIT(const_cast<Primitive *>(primitives[node->primitivesOffset+i].GetPtr()));
+                        hit = true;
+                    }
+                    else {
+                        PBRT_BVH_INTERSECTION_PRIMITIVE_MISSED(const_cast<Primitive *>(primitives[node->primitivesOffset+i].GetPtr()));
+                   }
+                }
+                if (todoOffset == 0) break;
+                nodeNum = todo[--todoOffset];
+            }
+            else {
+                // Put far BVH node on _todo_ stack, advance to near node
+                PBRT_BVH_INTERSECTION_TRAVERSED_INTERIOR_NODE(const_cast<LinearBVHNode *>(node));
+                if (dirIsNeg[node->axis]) {
+                   todo[todoOffset++] = nodeNum + 1;
+                   nodeNum = node->secondChildOffset;
+                }
+                else {
+                   todo[todoOffset++] = node->secondChildOffset;
+                   nodeNum = nodeNum + 1;
+                }
+            }
+        }
+        else {
+            if (todoOffset == 0) break;
+            nodeNum = todo[--todoOffset];
+        }
+    }
+    PBRT_BVH_INTERSECTION_FINISHED();
+    return hit;
+}
+
+
 BVHAccel *CreateBVHAccelerator(const vector<Reference<Primitive> > &prims,
         const ParamSet &ps) {
     string splitMethod = ps.FindOneString("splitmethod", "sah");

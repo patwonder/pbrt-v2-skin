@@ -59,6 +59,12 @@ public:
         PBRT_FINISHED_RAY_INTERSECTIONP(const_cast<Ray *>(&ray), int(hit));
         return hit;
     }
+	bool IntersectExcept(const Ray &ray, Intersection *isect, uint32_t primitiveId) const {
+        PBRT_STARTED_RAY_INTERSECTION(const_cast<Ray *>(&ray));
+        bool hit = aggregate->IntersectExcept(ray, isect, primitiveId);
+        PBRT_FINISHED_RAY_INTERSECTION(const_cast<Ray *>(&ray), isect, int(hit));
+        return hit;
+	}
     const BBox &WorldBound() const;
 
     // Scene Public Data

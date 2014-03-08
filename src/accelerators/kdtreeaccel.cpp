@@ -470,6 +470,110 @@ bool KdTreeAccel::IntersectP(const Ray &ray) const {
 }
 
 
+bool KdTreeAccel::IntersectExcept(const Ray &ray, Intersection *isect, uint32_t primitiveId) const {
+    PBRT_KDTREE_INTERSECTION_TEST(const_cast<KdTreeAccel *>(this), const_cast<Ray *>(&ray));
+    // Compute initial parametric range of ray inside kd-tree extent
+    float tmin, tmax;
+    if (!bounds.IntersectP(ray, &tmin, &tmax))
+    {
+        PBRT_KDTREE_RAY_MISSED_BOUNDS();
+        return false;
+    }
+
+    // Prepare to traverse kd-tree for ray
+    Vector invDir(1.f/ray.d.x, 1.f/ray.d.y, 1.f/ray.d.z);
+#define MAX_TODO 64
+    KdToDo todo[MAX_TODO];
+    int todoPos = 0;
+
+    // Traverse kd-tree nodes in order for ray
+    bool hit = false;
+    const KdAccelNode *node = &nodes[0];
+    while (node != NULL) {
+        // Bail out if we found a hit closer than the current node
+        if (ray.maxt < tmin) break;
+        if (!node->IsLeaf()) {
+            PBRT_KDTREE_INTERSECTION_TRAVERSED_INTERIOR_NODE(const_cast<KdAccelNode *>(node));
+            // Process kd-tree interior node
+
+            // Compute parametric distance along ray to split plane
+            int axis = node->SplitAxis();
+            float tplane = (node->SplitPos() - ray.o[axis]) * invDir[axis];
+
+            // Get node children pointers for ray
+            const KdAccelNode *firstChild, *secondChild;
+            int belowFirst = (ray.o[axis] <  node->SplitPos()) ||
+                             (ray.o[axis] == node->SplitPos() && ray.d[axis] <= 0);
+            if (belowFirst) {
+                firstChild = node + 1;
+                secondChild = &nodes[node->AboveChild()];
+            }
+            else {
+                firstChild = &nodes[node->AboveChild()];
+                secondChild = node + 1;
+            }
+
+            // Advance to next child node, possibly enqueue other child
+            if (tplane > tmax || tplane <= 0)
+                node = firstChild;
+            else if (tplane < tmin)
+                node = secondChild;
+            else {
+                // Enqueue _secondChild_ in todo list
+                todo[todoPos].node = secondChild;
+                todo[todoPos].tmin = tplane;
+                todo[todoPos].tmax = tmax;
+                ++todoPos;
+                node = firstChild;
+                tmax = tplane;
+            }
+        }
+        else {
+            PBRT_KDTREE_INTERSECTION_TRAVERSED_LEAF_NODE(const_cast<KdAccelNode *>(node), node->nPrimitives());
+            // Check for intersections inside leaf node
+            uint32_t nPrimitives = node->nPrimitives();
+            if (nPrimitives == 1) {
+                const Reference<Primitive> &prim = primitives[node->onePrimitive];
+                // Check one primitive inside leaf node
+                PBRT_KDTREE_INTERSECTION_PRIMITIVE_TEST(const_cast<Primitive *>(prim.GetPtr()));
+				// Exclude the most-recently intersected primitive, thus avoiding the use of rayEpsilon
+				if (prim->primitiveId != primitiveId && prim->Intersect(ray, isect))
+                {
+                    PBRT_KDTREE_INTERSECTION_HIT(const_cast<Primitive *>(prim.GetPtr()));
+                    hit = true;
+                }
+            }
+            else {
+                uint32_t *prims = node->primitives;
+                for (uint32_t i = 0; i < nPrimitives; ++i) {
+                    const Reference<Primitive> &prim = primitives[prims[i]];
+                    // Check one primitive inside leaf node
+                    PBRT_KDTREE_INTERSECTION_PRIMITIVE_TEST(const_cast<Primitive *>(prim.GetPtr()));
+					// Exclude the most-recently intersected primitive, thus avoiding the use of rayEpsilon
+                    if (prim->primitiveId != primitiveId && prim->Intersect(ray, isect))
+                    {
+                        PBRT_KDTREE_INTERSECTION_HIT(const_cast<Primitive *>(prim.GetPtr()));
+                        hit = true;
+                    }
+                }
+            }
+
+            // Grab next node to process from todo list
+            if (todoPos > 0) {
+                --todoPos;
+                node = todo[todoPos].node;
+                tmin = todo[todoPos].tmin;
+                tmax = todo[todoPos].tmax;
+            }
+            else
+                break;
+        }
+    }
+    PBRT_KDTREE_INTERSECTION_FINISHED();
+    return hit;
+}
+
+
 KdTreeAccel *CreateKdTreeAccelerator(const vector<Reference<Primitive> > &prims,
         const ParamSet &ps) {
     int isectCost = ps.FindOneInt("intersectcost", 80);

@@ -54,6 +54,7 @@ public:
     ~KdTreeAccel();
     bool Intersect(const Ray &ray, Intersection *isect) const;
     bool IntersectP(const Ray &ray) const;
+    bool IntersectExcept(const Ray &ray, Intersection *isect, uint32_t primitiveId) const override;
 private:
     // KdTreeAccel Private Methods
     void buildTree(int nodeNum, const BBox &bounds,
