@@ -39,6 +39,7 @@
 // core/material.h*
 #include "pbrt.h"
 #include "memory.h"
+#include "spectrum.h"
 #include <vector>
 using std::vector;
 
@@ -60,6 +61,70 @@ public:
 };
 
 
+// Wavelength dependent value
+const int WLD_nSamples = 31;
+extern const float WLD_lambdas[WLD_nSamples];
+class WLDValue : public CoefficientSpectrum<WLD_nSamples> {
+public:
+	typedef CoefficientSpectrum<WLD_nSamples> Base;
+
+	Spectrum toSpectrum() const {
+		return Spectrum::FromSampled(WLD_lambdas, c, WLD_nSamples);
+	}
+	float& operator[](uint32_t index) {
+		return c[index];
+	}
+	const float& operator[](uint32_t index) const {
+		return c[index];
+	}
+
+	WLDValue(float v = 0.f) : Base(v) { }
+    WLDValue(const Base& v) : Base(v) { }
+
+	static WLDValue FromSampled(const float* lambdas, const float* vals, int n) {
+		WLDValue res;
+
+		// Use linear interpolation to get value at each wavelength of interest
+		int idxSampledLambda = 0;
+		float lambda0 = 0.f, lambda1 = lambdas[0];
+		float val0 = vals[0], val1 = vals[0];
+		for (int i = 0; i < WLD_nSamples; i++) {
+			float lambda = WLD_lambdas[i];
+			while (lambda > lambda1 && idxSampledLambda < n - 1) {
+				++idxSampledLambda;
+				lambda0 = lambda1;
+				lambda1 = lambdas[idxSampledLambda];
+				val0 = val1;
+				val1 = vals[idxSampledLambda];
+			}
+			if (lambda <= lambda1) {
+				res[i] = Lerp((lambda - lambda0) / (lambda1 - lambda0), val0, val1);
+			} else
+				res[i] = val1;
+		}
+
+		return res;
+	}
+};
+
+struct LayerParam {
+	LayerParam() {
+		mua = musp = WLDValue(0.f);
+		ga = b = 0.f;
+		isotropicHGPF = false;
+	}
+
+	// Thickness
+	float thickness;
+	// Absorption and (reduced) scattering coefficient 
+	WLDValue mua, musp;
+	// Anisotropy and isotropy associated with HGPF
+	float ga, b;
+	// Whether to use modified version of HGPF that accounts for isotropic scattering
+	bool isotropicHGPF;
+};
+
+
 class LayeredMaterial : public Material {
 public:
     // LayeredMaterial Interface
@@ -75,6 +140,7 @@ public:
 	{
 		return NULL;
 	}
+	virtual LayerParam GetLayerParam(int layerIndex) const = 0;
 };
 
 class LayeredMaterialWrapper : public Material {

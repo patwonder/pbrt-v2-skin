@@ -7,23 +7,23 @@ Camera "perspective" "float fov" [30]
 #  "float maxerror" 0.002
 #  "integer maxdepth" 100
 
-Sampler "lowdiscrepancy" "integer pixelsamples" 20
+Sampler "lowdiscrepancy" "integer pixelsamples" 256
 
 SurfaceIntegrator "layered"
-  "integer maxdepth" 5
+  "integer maxdepth" 100
 
 WorldBegin
 
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [20]
-    Translate -3.2025 -3.2025 5.3374
-    Shape "sphere" "float radius" 1
+#    AreaLightSource "area" "color L" [ 1 1 1 ] "integer nsamples"  [4]
+#    Translate -3.2025 -3.2025 5.3374
+#    Shape "sphere" "float radius" 1
   AttributeEnd
   
   AttributeBegin
-#    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [20]
-#    Translate 2.7574 6.4340 0
-#    Shape "sphere" "float radius" 1
+    AreaLightSource "area" "color L" [ 1 1 1 ] "integer nsamples"  [4]
+    Translate 2.7574 6.4340 0
+    Shape "sphere" "float radius" 1
   AttributeEnd
   
   AttributeBegin
@@ -46,7 +46,11 @@ WorldBegin
 #    Material "kdsubsurface" "texture Kd" "lambertian"
 #      "float meanfreepath" 0.01
 #    Material "matte" "color Kd" [1 1 1] "float sigma" 0.8
-    Material "layeredskin" "float nmperunit" 120e6 "skinlayer layers" [ 0.00008 1.4 0.0008 1.45]
+    Material "layeredskin" "float roughness" 0.4
+                           "float nmperunit" 120e6
+                           "color Kr" [1 1 1]
+                           "color Kt" [1 1 1]
+                           "skinlayer layers" [ 0.00008 1.4 0.0008 1.45]
     Include "geometry/head.pbrt"
   AttributeEnd
   

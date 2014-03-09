@@ -98,7 +98,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
         if (f.IsBlack() || pdf == 0.)
             break;
         specularBounce = (flags & BSDF_SPECULAR) != 0;
-        pathThroughput *= f * AbsDot(wi, n) / pdf;
+        pathThroughput *= f * (AbsDot(wi, n) / pdf);
         ray = RayDifferential(p, wi, ray, 0.f);
 		if (!specularBounce && Dot(wi, isectp->dg.nn) < 0) {
 			// Ray enters the material. See if it's layered

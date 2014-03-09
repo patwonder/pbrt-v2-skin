@@ -40,20 +40,20 @@
 // http://omlc.ogi.edu/news/jan98/skinoptics.html
 class SkinCoefficients {
 public:
-	static const int nSamples = 31;
-	static const float lambdas[nSamples];
-	static const float oxyhemoglobin_lambdas[];
-	static const float oxyhemoglobin_vals[];
-	static const int oxyhemoglobin_n;
-	static const float deoxyhemoglobin_lambdas[];
-	static const float deoxyhemoglobin_vals[];
-	static const int deoxyhemoglobin_n;
+	static const float ohg_lambdas[];
+	static const float ohg_vals[];
+	static const int ohg_n;
+	static const float dhg_lambdas[];
+	static const float dhg_vals[];
+	static const int dhg_n;
 
-	SkinCoefficients(float f_mel, float f_blood, float f_oxyhemoglobin)
-	: f_mel(f_mel), f_blood(f_blood), f_oxyhemoglobin(f_oxyhemoglobin) {}
+	SkinCoefficients(float f_mel, float f_blood, float f_ohg,
+		float ga_epi, float ga_derm, float b_derm)
+	: f_mel(f_mel), f_blood(f_blood), f_ohg(f_ohg),
+	  ga_epi(ga_epi), ga_derm(ga_derm), b_derm(b_derm) {}
 
 	// Baseline absorption coefficient, mua.skinbaseline
-	static Spectrum mua_skinbaseline() {
+	static WLDValue mua_skinbaseline() {
 		return calculate([] (float wl) {
 			return 0.244f + 85.3f * expf(-(wl - 154.f) / 66.2f);
 		});
@@ -61,7 +61,7 @@ public:
 
 	// == Epidermis ============================================
 	// Absorption coefficient of a single melanosome, mua.mel
-	static Spectrum mua_mel() {
+	static WLDValue mua_mel() {
 		return calculate([] (float wl) {
 			return 6.6e11f * powf(wl, -3.33f);
 		});
@@ -69,7 +69,7 @@ public:
 	// Volume fraction of melanosomes in epidermis
 	float f_mel;
 	// Net epidermal absorption coefficient, mua.epi
-	Spectrum mua_epi() const {
+	WLDValue mua_epi() const {
 		return f_mel * mua_mel() + (1 - f_mel) * mua_skinbaseline();
 	}
 	//// Scattering coefficient of the epidermis, mus.epi
@@ -77,67 +77,66 @@ public:
 	//// Anisotropy of the epidermis, g.epi
 	//float g_epi;
 	// Reduced scattering coefficient of the epidermis, musp.epi
-	static Spectrum musp_epi() {
+	static WLDValue musp_epi() {
 		return musp_derm();
 	}
 
 	// == Dermis ============================================
-	// Volume fraction of oxyhemoglobin, f_oxyhemoglobin
-	float f_oxyhemoglobin;
+	// Volume fraction of oxyhemoglobin, f_ohg
+	float f_ohg;
 	// Absorption coefficient of whole blood, mua.blood
 	// Data from: http://www.npsg.uwaterloo.ca/data/blood.php
-	Spectrum mua_blood() const {
-		const float loge10 = 2.303f;
+	WLDValue mua_blood() const {
+		const float ln10 = 2.303f;
 		const float molarWeight = 64500.f; // g/mole
 		const float concentration = 150.f; // g/L
-		return loge10 / molarWeight * concentration *
-			(f_oxyhemoglobin * Spectrum::FromSampled(
-			oxyhemoglobin_lambdas, oxyhemoglobin_vals, oxyhemoglobin_n) +
-			(1.f - f_oxyhemoglobin) * Spectrum::FromSampled(
-			deoxyhemoglobin_lambdas, deoxyhemoglobin_vals, deoxyhemoglobin_n));
+		return ln10 / molarWeight * concentration *
+			(f_ohg * WLDValue::FromSampled(
+			ohg_lambdas, ohg_vals, ohg_n) +
+			(1.f - f_ohg) * WLDValue::FromSampled(
+			dhg_lambdas, dhg_vals, dhg_n));
 	}
 	// Average volume fraction of blood, f.blood
 	float f_blood;
 	// Absorption coefficient of dermis perfused with blood, mua.derm
-	Spectrum mua_derm() const {
+	WLDValue mua_derm() const {
 		return f_blood * mua_blood() + (1 - f_blood) * mua_skinbaseline();
 	}
 	// (Reduced) Mie scattering coefficient of collagen fibers, musp_Mie.fibers
-	static Spectrum musp_Mie_fibers() {
+	static WLDValue musp_Mie_fibers() {
 		return calculate([] (float wl) {
 			return 2e5f * powf(wl, -1.5f);
 		});
 	}
 	// (Reduced) Rayleigh scattering coefficient of the dermis, musp_Rayleigh
-	static Spectrum musp_Rayleigh() {
+	static WLDValue musp_Rayleigh() {
 		return calculate([] (float wl) {
 			return 2e12f * pow(wl, -4.f);
 		});
 	}
 	// (Reduced) scattering coefficient of dermis, musp.derm
-	static Spectrum musp_derm() {
+	static WLDValue musp_derm() {
 		return musp_Rayleigh() + musp_Mie_fibers();
 	}
+	// Anisotropy of the epidermis, ga.epi
+	float ga_epi;
+	// Anisotropy of the epidermis, ga.derm
+	float ga_derm;
+	// Isotropic scattering coefficient of the dermis, b.derm;
+	float b_derm;
 private:
 	// Calculated SampledSpectrum from wavelength->value mapping
-	static Spectrum calculate(std::function<float(float wl)> mapping) {
-		float vals[nSamples];
-		for (int i = 0; i < nSamples; i++) {
-			vals[i] = mapping(lambdas[i]);
+	static WLDValue calculate(std::function<float(float wl)> mapping) {
+		WLDValue res;
+		for (int i = 0; i < WLD_nSamples; i++) {
+			res[i] = mapping(WLD_lambdas[i]);
 		}
-		return Spectrum::FromSampled(lambdas, vals, nSamples);
+		return res;
 	}
 };
 
-const float SkinCoefficients::lambdas[] = {
-	400, 410, 420, 430, 440, 450, 460, 470, 480, 490,
-	500, 510, 520, 530, 540, 550, 560, 570, 580, 590,
-	600, 610, 620, 630, 640, 650, 660, 670, 680, 690,
-	700
-};
 
-
-const float SkinCoefficients::oxyhemoglobin_lambdas[] = {
+const float SkinCoefficients::ohg_lambdas[] = {
 	400, 405, 410, 415, 420, 425, 430, 435, 440, 445,
 	450, 455, 460, 465, 470, 475, 480, 485, 490, 495,
 	500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
@@ -146,7 +145,7 @@ const float SkinCoefficients::oxyhemoglobin_lambdas[] = {
 	650, 655, 660, 665, 670, 675, 680, 685, 690, 695,
 	700
 };
-const float SkinCoefficients::oxyhemoglobin_vals[] = {
+const float SkinCoefficients::ohg_vals[] = {
 	266200, 331450, 466800, 523100, 480400, 351100, 246100, 149050,
 	102600, 78880, 62820, 51525, 44480, 38440, 33210, 29480, 26630,
 	24925, 23680, 22155, 20930, 20185, 20040, 20715, 24200, 30885,
@@ -155,9 +154,9 @@ const float SkinCoefficients::oxyhemoglobin_vals[] = {
 	942, 740.8, 610, 495.6, 442, 397.7, 368, 340.3, 319.6, 305.6,
 	294, 283.8, 277.6, 273.6, 276, 280.6, 290
 };
-const int SkinCoefficients::oxyhemoglobin_n = ARRAYSIZE(oxyhemoglobin_lambdas);
+const int SkinCoefficients::ohg_n = ARRAYSIZE(ohg_lambdas);
 
-const float SkinCoefficients::deoxyhemoglobin_lambdas[] = {
+const float SkinCoefficients::dhg_lambdas[] = {
 	400, 405, 410, 415, 420, 425, 430, 435, 440, 445,
 	450, 455, 460, 465, 470, 475, 480, 485, 490, 495,
 	500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
@@ -166,7 +165,7 @@ const float SkinCoefficients::deoxyhemoglobin_lambdas[] = {
 	650, 655, 660, 665, 670, 675, 680, 685, 690, 695,
 	700
 };
-const float SkinCoefficients::deoxyhemoglobin_vals[] = {
+const float SkinCoefficients::dhg_vals[] = {
 	223300, 261950, 304000, 353200, 407600, 471500, 528600, 549600,
 	413300, 259950, 103300, 33435, 23390, 18700, 16160, 14920, 14550,
 	15375, 16680, 18650, 20860, 23285, 25770, 28680, 31590, 35170,
@@ -175,13 +174,37 @@ const float SkinCoefficients::deoxyhemoglobin_vals[] = {
 	6510, 5763.5, 5149, 4666.5, 4345, 4026.5, 3750, 3481.5, 3227,
 	3011, 2795, 2591, 2408, 2224.5, 2052, 1923.5, 1794
 };
-const int SkinCoefficients::deoxyhemoglobin_n = ARRAYSIZE(deoxyhemoglobin_lambdas);
+const int SkinCoefficients::dhg_n = ARRAYSIZE(dhg_lambdas);
 
 
-LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float npu)
-	: layers(layers), nmperunit(npu)
+LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
+	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt)
+	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt)
 {
-	// Done here
+	// Calculate layer params
+	// Epidermis
+	lps[0].thickness = layers[0].thickness;
+	lps[0].mua = pcoeff->mua_epi();
+	lps[0].musp = pcoeff->musp_epi();
+	lps[0].ga = pcoeff->ga_epi;
+	lps[0].isotropicHGPF = false;
+	// Dermis
+	lps[1].thickness = layers[1].thickness;
+	lps[1].mua = pcoeff->mua_derm();
+	lps[1].musp = pcoeff->musp_derm();
+	lps[1].ga = pcoeff->ga_derm;
+	lps[1].b = pcoeff->b_derm;
+	lps[1].isotropicHGPF = true;
+	// The thing below...
+	lps[2].thickness = 1e10f;
+	lps[2].mua = 1e10f;
+	lps[2].musp = 0.f;
+	lps[2].ga = 1.f;
+	lps[2].isotropicHGPF = false;
+}
+
+LayeredSkin::~LayeredSkin() {
+	delete pcoeff;
 }
 
 vector<float_type> LayeredSkin::GetLayerThickness() const {
@@ -198,12 +221,16 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 {
 	float_type ior = layers[0].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
-	float rough = 0.4f;
+	float rough = roughness;
 	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
-	bsdf->Add(BSDF_ALLOC(arena, Microfacet)(Spectrum(1.), fresnel,
-		BSDF_ALLOC(arena, Blinn)(1.f / rough)));
-	bsdf->Add(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
-		BSDF_ALLOC(arena, Blinn)(1.f / rough), ior));
+	Spectrum R = Kr->Evaluate(dgShading);
+	Spectrum T = Kt->Evaluate(dgShading);
+	if (!R.IsBlack())
+		bsdf->Add(BSDF_ALLOC(arena, Microfacet)(R, fresnel,
+			BSDF_ALLOC(arena, Blinn)(1.f / rough)));
+	if (!T.IsBlack())
+		bsdf->Add(BSDF_ALLOC(arena, MicrofacetTransmission)(T, fresnel,
+			BSDF_ALLOC(arena, Blinn)(1.f / rough), ior));
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, Microfacet)(Spectrum(1.), fresnel,
 	//	BSDF_ALLOC(arena, Blinn)(1.f / rough))));
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
@@ -228,12 +255,29 @@ BSSRDF* LayeredSkin::GetLayeredBSSRDF(int layerIndex,
 	return NULL;
 }
 
-LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps)
+LayerParam LayeredSkin::GetLayerParam(int index) const {
+	if (index > 2)
+		index = 2;
+	return lps[index];
+}
+
+LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& mp)
 {
 	int nLayers;
 	const SkinLayer* layers = ps.FindSkinLayer("layers", &nLayers);
 	if (!layers)
 		Error("No layers param set for LayeredSkin material.");
-	float nmperunit = ps.FindOneFloat("nmperunit", 100e6);
-	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers), nmperunit);
+	float roughness = ps.FindOneFloat("roughness", 0.4f);
+	float nmperunit = ps.FindOneFloat("nmperunit", 100e6f);
+	float f_mel = ps.FindOneFloat("f_mel", 0.15f);
+	float f_blood = ps.FindOneFloat("f_blood", 0.002f);
+	float f_ohg = ps.FindOneFloat("f_ohg", 0.3f);
+	float ga_epi = ps.FindOneFloat("ga_epi", 0.9f);
+	float ga_derm = ps.FindOneFloat("ga_derm", 0.8f);
+	float b_derm = ps.FindOneFloat("b_derm", 0.4f);
+	SkinCoefficients coeff(f_mel, f_blood, f_ohg, ga_epi, ga_derm, b_derm);
+    Reference<Texture<Spectrum> > Kr = mp.GetSpectrumTexture("Kr", Spectrum(1.f));
+    Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
+	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
+		roughness, nmperunit, coeff, Kr, Kt);
 }

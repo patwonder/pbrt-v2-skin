@@ -406,7 +406,7 @@ Reference<Material> MakeMaterial(const string &name,
     else if (name == "shinymetal")
         material = CreateShinyMetalMaterial(mtl2world, mp);
 	else if (name == "layeredskin")
-		material = CreateLayeredSkinMaterial(graphicsState.materialParams);
+		material = CreateLayeredSkinMaterial(graphicsState.materialParams, mp);
     else
         Warning("Material \"%s\" unknown.", name.c_str());
     mp.ReportUnused();

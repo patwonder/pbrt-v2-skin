@@ -239,14 +239,13 @@ Spectrum MicrofacetTransmission::f(const Vector& wo, const Vector& wi) const {
 	float_type et = (entering) ? ior : 1.f / ior;
 	Vector wh = -(wo + et * wi);
 	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return Spectrum(0.f);
+	float denominator = wh.LengthSquared();
 	wh = Normalize(wh);
 	float cosThetaHI = Dot(wi, wh);
 	float cosThetaHO = Dot(wo, wh);
 	// Make sure fresnel->Evaluate gets the correct sign,
 	// as wh always points to the side with smaller ior
 	Spectrum F = fresnel->Evaluate(entering ? fabsf(cosThetaHO) : -fabsf(cosThetaHO));
-	float denominator = cosThetaHO + et * cosThetaHI;
-	denominator *= denominator;
 	return fabsf(cosThetaHI * cosThetaHO) * et * et * distribution->D(wh) *
 		G(wo, wi, wh) / (cosThetaI * cosThetaO * denominator) *
 		T * (Spectrum(1.f) - F);
@@ -258,8 +257,9 @@ float MicrofacetTransmission::G(const Vector &wo, const Vector &wi, const Vector
     float NdotWo = AbsCosTheta(wo);
     float NdotWi = AbsCosTheta(wi);
     float WOdotWh = AbsDot(wo, wh);
+	float WIdotWh = AbsDot(wi, wh);
     return min(1.f, min((2.f * NdotWh * NdotWo / WOdotWh),
-                        (2.f * NdotWh * NdotWi / WOdotWh)));
+                        (2.f * NdotWh * NdotWi / WIdotWh)));
 }
 
 
@@ -402,10 +402,17 @@ Spectrum MicrofacetTransmission::Sample_f(const Vector& wo, Vector* wi,
     float sint2 = eta * eta * sini2;
 
     // Handle total internal reflection for transmission
-    if (sint2 >= 1.) return Spectrum(0.f);
+    if (sint2 >= 1.) {
+		*pdf = 0.f;
+		return Spectrum(0.f);
+	}
     float cost = sqrtf(max(0.f, 1.f - sint2));
     float sintOverSini = eta;
     *wi = -sintOverSini * wo + (sintOverSini * cosi - cost) * wh;
+
+	// Correct pdf by transforming the Jacobian
+	float denominator = (wo + et * *wi).LengthSquared();
+	*pdf *= 4 * cosi * cosi * et * et / denominator;
 
 	if (SameHemisphere(wo, *wi)) return Spectrum(0.f);
 	return f(wo, *wi);
@@ -420,10 +427,15 @@ float MicrofacetTransmission::Pdf(const Vector& wo, const Vector& wi) const {
 	float_type et = (entering) ? ior : 1.f / ior;
 	Vector wh = -(wo + et * wi);
 	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return 0.f;
+	float denominator = wh.LengthSquared();
 	wh = Normalize(wh);
 
 	Vector wiR = -wo + 2.f * Dot(wo, wh) * wh;
-	return distribution->Pdf(wo, wiR);
+	float pdf = distribution->Pdf(wo, wiR);
+	// Correct pdf by transforming the Jacobian
+	float cosi = Dot(wo, wh);
+	pdf *= 4 * cosi * cosi * et * et / denominator;
+	return pdf;
 }
 
 

@@ -85,6 +85,14 @@ void Material::Bump(const Reference<Texture<float> > &d,
 }
 
 
+const float WLD_lambdas[] = {
+	400, 410, 420, 430, 440, 450, 460, 470, 480, 490,
+	500, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+	600, 610, 620, 630, 640, 650, 660, 670, 680, 690,
+	700
+};
+
+
 LayeredMaterialWrapper::LayeredMaterialWrapper(const Reference<LayeredMaterial>& layeredMaterial,
 	int layerIndex)
 	: layerIndex(layerIndex), layeredMaterial(layeredMaterial)
