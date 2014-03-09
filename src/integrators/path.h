@@ -52,7 +52,8 @@ public:
 private:
     // PathIntegrator Private Data
     int maxDepth;
-#define SAMPLE_DEPTH 3
+	static const int SAMPLE_DEPTH = 3;
+	static const int TERM_DEPTH = 10;
     LightSampleOffsets lightSampleOffsets[SAMPLE_DEPTH];
     int lightNumOffset[SAMPLE_DEPTH];
     BSDFSampleOffsets bsdfSampleOffsets[SAMPLE_DEPTH];

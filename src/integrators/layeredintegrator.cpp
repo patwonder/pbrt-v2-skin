@@ -114,7 +114,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
 		}
 
         // Possibly terminate the path
-        if (bounces > 3) {
+        if (bounces > TERM_DEPTH) {
             float continueProbability = min(.5f, pathThroughput.y());
             if (rng.RandomFloat() > continueProbability)
                 break;
