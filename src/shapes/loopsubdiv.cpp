@@ -156,7 +156,7 @@ inline int SDVertex::valence() {
 LoopSubdiv::LoopSubdiv(const Transform *o2w, const Transform *w2o,
                        bool ro, int nfaces, int nvertices,
                        const int *vertexIndices, const Point *P, int nl)
-    : Shape(o2w, w2o, ro) {
+    : ShrinkableShape(o2w, w2o, ro) {
     nLevels = nl;
     // Allocate _LoopSubdiv_ vertices and faces
     int i;
@@ -442,6 +442,13 @@ void LoopSubdiv::Refine(vector<Reference<Shape> > &refined) const {
             WorldToObject, ReverseOrientation, paramSet));
     delete[] verts;
     delete[] Plimit;
+}
+
+
+Reference<ShrinkableShape> LoopSubdiv::Shrink(float_type distance) const {
+	vector<Reference<Shape> > refined;
+	Refine(refined);
+	return dynamic_cast<ShrinkableShape*>(refined[0].GetPtr())->Shrink(distance);
 }
 
 

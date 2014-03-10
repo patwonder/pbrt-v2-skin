@@ -62,7 +62,7 @@ public:
 
 
 // Wavelength dependent value
-const int WLD_nSamples = 31;
+const int WLD_nSamples = 61;
 extern const float WLD_lambdas[WLD_nSamples];
 class WLDValue : public CoefficientSpectrum<WLD_nSamples> {
 public:
@@ -104,6 +104,20 @@ public:
 		}
 
 		return res;
+	}
+
+	float getValueForWL(float lambda) const {
+		if (lambda <= WLD_lambdas[0])
+			return c[0];
+		if (lambda >= WLD_lambdas[WLD_nSamples - 1])
+			return c[WLD_nSamples - 1];
+
+		int idxLambda = 1;
+		while (WLD_lambdas[idxLambda] < lambda)
+			idxLambda++;
+		return Lerp((lambda - WLD_lambdas[idxLambda - 1]) / 
+			(WLD_lambdas[idxLambda] - WLD_lambdas[idxLambda - 1]),
+			c[idxLambda - 1], c[idxLambda]);
 	}
 };
 

@@ -43,12 +43,13 @@ void LayeredIntegrator::Preprocess(const Scene *scene, const Camera *camera,
 void LayeredIntegrator::RequestSamples(Sampler *sampler, Sample *sample,
 									   const Scene *scene)
 {
-    for (int i = 0; i < SAMPLE_DEPTH; ++i) {
-        lightSampleOffsets[i] = LightSampleOffsets(1, sample);
-        lightNumOffset[i] = sample->Add1D(1);
-        bsdfSampleOffsets[i] = BSDFSampleOffsets(1, sample);
-        pathSampleOffsets[i] = BSDFSampleOffsets(1, sample);
-    }
+	for (uint32_t wlIndex = 0; wlIndex < nSpectralSamples; wlIndex++)
+		for (int i = 0; i < SAMPLE_DEPTH; ++i) {
+			lightSampleOffsets[wlIndex][i] = LightSampleOffsets(1, sample);
+			lightNumOffset[wlIndex][i] = sample->Add1D(1);
+			bsdfSampleOffsets[wlIndex][i] = BSDFSampleOffsets(1, sample);
+			pathSampleOffsets[wlIndex][i] = BSDFSampleOffsets(1, sample);
+		}
 }
 
 Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
@@ -74,19 +75,22 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
             L += pathThroughput *
                  UniformSampleOneLight(scene, renderer, arena, p, n, wo,
                      isectp->rayEpsilon, ray.time, bsdf, sample, rng,
-                     lightNumOffset[bounces], &lightSampleOffsets[bounces],
-                     &bsdfSampleOffsets[bounces]);
+                     lightNumOffset[0][bounces], &lightSampleOffsets[0][bounces],
+                     &bsdfSampleOffsets[0][bounces]);
         else
             L += pathThroughput *
                  UniformSampleOneLight(scene, renderer, arena, p, n, wo,
                      isectp->rayEpsilon, ray.time, bsdf, sample, rng);
+
+        if (bounces == maxDepth)
+            break;
 
         // Sample BSDF to get new path direction
 
         // Get _outgoingBSDFSample_ for sampling new path direction
         BSDFSample outgoingBSDFSample;
         if (bounces < SAMPLE_DEPTH)
-            outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[bounces],
+            outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[0][bounces],
                                             0);
         else
             outgoingBSDFSample = BSDFSample(rng);
@@ -99,19 +103,6 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
             break;
         specularBounce = (flags & BSDF_SPECULAR) != 0;
         pathThroughput *= f * (AbsDot(wi, n) / pdf);
-        ray = RayDifferential(p, wi, ray, 0.f);
-		if (!specularBounce && Dot(wi, isectp->dg.nn) < 0) {
-			// Ray enters the material. See if it's layered
-			const LayeredGeometricPrimitive* lprim = isectp->primitive->ToLayered();
-			if (lprim) {
-				// Modify pathThroughput & ray intersection to reflect subsurface scattering
-				RayDifferential out;
-				Intersection isect;
-				pathThroughput *= RandomWalk(lprim, ray, *isectp, rng, arena, &out, &isect);
-				ray = out;
-				localIsect = isect;
-			}
-		}
 
         // Possibly terminate the path
         if (bounces > TERM_DEPTH) {
@@ -120,10 +111,24 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
                 break;
             pathThroughput /= continueProbability;
         }
-        if (bounces == maxDepth)
-            break;
 
-        // Find next vertex of path
+        ray = RayDifferential(p, wi, ray, 0.f);
+		if (!specularBounce && Dot(ray.d, isectp->dg.nn) < 0) {
+			// Ray enters the material. See if it's layered
+			const LayeredGeometricPrimitive* lprim = isectp->primitive->ToLayered();
+			if (lprim) {
+				SampledSpectrum sL = L.ToSampledSpectrum();
+				SampledSpectrum sPathThroughput = pathThroughput.ToSampledSpectrum();
+				// Switch to spectral shading
+				for (int i = 0; i < SampledSpectrum::NumComponents(); i++) {
+					sL[i] += LiSpectral(i, sPathThroughput[i], bounces, specularBounce,
+						scene, renderer, ray, *isectp, sample, rng, arena);
+				}
+				return Spectrum::FromSampledSpectrum(sL);
+			}
+		}
+
+		// Find next vertex of path
 		if (!scene->IntersectExcept(ray, &localIsect, isectp->primitiveId)) {
             if (specularBounce)
                 for (uint32_t i = 0; i < scene->lights.size(); ++i)
@@ -136,15 +141,115 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
 	return L;
 }
 
-Spectrum LayeredIntegrator::RandomWalk(const LayeredGeometricPrimitive* lprim,
-									   const RayDifferential& ray, const Intersection& isect,
-									   RNG& rng, MemoryArena& arena,
-									   RayDifferential* outray, Intersection* outisect) const
+float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int bounces, bool specularBounce,
+									const Scene *scene,	const Renderer *renderer,
+									const RayDifferential &r, const Intersection &isect,
+									const Sample *sample, RNG &rng, MemoryArena &arena) const
 {
+	static bool t = false;
+	if (!t) {
+		t = true;
+		Warning("Spectral path tracing being used. Rendering time may increase dramatically.");
+	}
+	float L = 0.;
+	RayDifferential ray(r);
+	Intersection localIsect;
+	const Intersection *isectp = &isect;
+	while (true) {
+		if (!specularBounce && Dot(ray.d, isectp->dg.nn) < 0) {
+			// Ray enters the material. See if it's layered
+			const LayeredGeometricPrimitive* lprim = isectp->primitive->ToLayered();
+			if (lprim) {
+				// Modify pathThroughput & ray intersection to reflect subsurface scattering
+				RayDifferential out;
+				Intersection isect;
+				pathThroughput *= RandomWalk(wlIndex, lprim, ray, *isectp, rng, arena, &out, &isect);
+				ray = out;
+				localIsect = isect;
+				isectp = &localIsect;
+			}
+		}
+
+		// Find next vertex of path
+		if (!scene->IntersectExcept(ray, &localIsect, isectp->primitiveId)) {
+			if (specularBounce)
+				for (uint32_t i = 0; i < scene->lights.size(); ++i)
+					L += pathThroughput * scene->lights[i]->Le(ray)[wlIndex];
+			break;
+		}
+		pathThroughput *= renderer->Transmittance(scene, ray, NULL, rng, arena)[wlIndex];
+		isectp = &localIsect;
+
+		bounces++;
+		// End of original loop ================================
+
+		// Possibly add emitted light at path vertex
+		if (specularBounce)
+			L += pathThroughput * isectp->Le(-ray.d)[wlIndex];
+
+		// Sample illumination from lights to find path contribution
+		BSDF *bsdf = isectp->GetBSDF(ray, arena);
+		const Point &p = bsdf->dgShading.p;
+		const Normal &n = bsdf->dgShading.nn;
+		Vector wo = -ray.d;
+        if (bounces < SAMPLE_DEPTH)
+            L += pathThroughput *
+                 UniformSampleOneLight(scene, renderer, arena, p, n, wo,
+                     isectp->rayEpsilon, ray.time, bsdf, sample, rng,
+                     lightNumOffset[wlIndex][bounces], &lightSampleOffsets[wlIndex][bounces],
+                     &bsdfSampleOffsets[wlIndex][bounces])[wlIndex];
+        else
+            L += pathThroughput *
+                 UniformSampleOneLight(scene, renderer, arena, p, n, wo,
+                     isectp->rayEpsilon, ray.time, bsdf, sample, rng)[wlIndex];
+
+		if (bounces == maxDepth)
+			break;
+
+		// Sample BSDF to get new path direction
+
+		// Get _outgoingBSDFSample_ for sampling new path direction
+		BSDFSample outgoingBSDFSample;
+		if (bounces < SAMPLE_DEPTH)
+			outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[wlIndex][bounces],
+											0);
+		else
+			outgoingBSDFSample = BSDFSample(rng);
+		Vector wi;
+		float pdf;
+		BxDFType flags;
+		float f = bsdf->Sample_f(wo, &wi, outgoingBSDFSample, &pdf,
+								 BSDF_ALL, &flags)[wlIndex];
+		if (f == 0. || pdf == 0.)
+			break;
+		specularBounce = (flags & BSDF_SPECULAR) != 0;
+		pathThroughput *= f * (AbsDot(wi, n) / pdf);
+
+		// Possibly terminate the path
+		if (bounces > TERM_DEPTH) {
+			float continueProbability = min(.5f, pathThroughput);
+			if (rng.RandomFloat() > continueProbability)
+				break;
+			pathThroughput /= continueProbability;
+		}
+
+        ray = RayDifferential(p, wi, ray, 0.f);
+	}
+	return L;
+}
+
+
+float LayeredIntegrator::RandomWalk(uint32_t wlIndex, const LayeredGeometricPrimitive* lprim,
+									const RayDifferential& ray, const Intersection& isect,
+									RNG& rng, MemoryArena& arena,
+									RayDifferential* outray, Intersection* outisect) const
+{
+	float lambda = SampledSpectrum::WaveLength(wlIndex);
+
 	*outray = ray;
 	*outisect = isect;
 
-	return Spectrum(1.);
+	return 1.;
 }
 
 LayeredIntegrator *CreateLayeredSurfaceIntegrator(const ParamSet &params) {

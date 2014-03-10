@@ -44,7 +44,12 @@ public:
 	LayeredIntegrator(int md) { maxDepth = md; }
 private:
 	// LayeredIntegrator Private Methods
-	Spectrum RandomWalk(const LayeredGeometricPrimitive* lprim,
+	// Spectral shading
+	float LiSpectral(uint32_t wlIndex, float pathThroughput, int bounces, bool specularBounce,
+		const Scene *scene, const Renderer *renderer,
+		const RayDifferential &ray, const Intersection &isect,
+		const Sample *sample, RNG &rng, MemoryArena &arena) const;
+	float RandomWalk(uint32_t wlIndex, const LayeredGeometricPrimitive* lprim,
 		const RayDifferential& ray, const Intersection& isect,
 		RNG& rng, MemoryArena& arena,
 		RayDifferential* outray, Intersection* outisect) const;
@@ -52,10 +57,10 @@ private:
 	int maxDepth;
 	static const int SAMPLE_DEPTH = 3;
 	static const int TERM_DEPTH = 10;
-    LightSampleOffsets lightSampleOffsets[SAMPLE_DEPTH];
-    int lightNumOffset[SAMPLE_DEPTH];
-    BSDFSampleOffsets bsdfSampleOffsets[SAMPLE_DEPTH];
-    BSDFSampleOffsets pathSampleOffsets[SAMPLE_DEPTH];
+    LightSampleOffsets lightSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
+    int lightNumOffset[nSpectralSamples][SAMPLE_DEPTH];
+    BSDFSampleOffsets bsdfSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
+    BSDFSampleOffsets pathSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
 };
 
 LayeredIntegrator *CreateLayeredSurfaceIntegrator(const ParamSet &params);

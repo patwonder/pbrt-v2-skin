@@ -264,6 +264,8 @@ public:
     }
     SampledSpectrum(const CoefficientSpectrum<nSpectralSamples> &v)
         : CoefficientSpectrum<nSpectralSamples>(v) { }
+	const SampledSpectrum& ToSampledSpectrum() const { return *this; }
+	static const SampledSpectrum& FromSampledSpectrum(const SampledSpectrum& v) { return v; }
     static SampledSpectrum FromSampled(const float *lambda,
                                        const float *v, int n) {
         // Sort samples if unordered, use sorted for returned spectrum
@@ -370,6 +372,24 @@ public:
         XYZToRGB(xyz, rgb);
         return FromRGB(rgb, type);
     }
+
+	static int NumComponents() {
+		return nSpectralSamples;
+	}
+
+	float& operator[](uint32_t index) {
+		return c[index];
+	}
+
+	const float& operator[](uint32_t index) const {
+		return c[index];
+	}
+
+	static float WaveLength(uint32_t index) {
+		return Lerp(0.5, (float)(index * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples,
+						 (float)((index + 1) * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples);
+	}
+	
     SampledSpectrum(const RGBSpectrum &r, SpectrumType type = SPECTRUM_REFLECTANCE);
 private:
     // SampledSpectrum Private Data
@@ -395,6 +415,8 @@ public:
     RGBSpectrum(const RGBSpectrum &s, SpectrumType type = SPECTRUM_REFLECTANCE) {
         *this = s;
     }
+	SampledSpectrum ToSampledSpectrum() const { return SampledSpectrum(*this); }
+	static RGBSpectrum FromSampledSpectrum(const SampledSpectrum& v) { return v.ToRGBSpectrum(); }
     static RGBSpectrum FromRGB(const float rgb[3],
             SpectrumType type = SPECTRUM_REFLECTANCE) {
         RGBSpectrum s;

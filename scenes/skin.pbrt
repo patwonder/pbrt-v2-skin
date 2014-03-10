@@ -7,7 +7,7 @@ Camera "perspective" "float fov" [30]
 #  "float maxerror" 0.002
 #  "integer maxdepth" 100
 
-Sampler "lowdiscrepancy" "integer pixelsamples" 256
+Sampler "lowdiscrepancy" "integer pixelsamples" 16
 
 SurfaceIntegrator "layered"
   "integer maxdepth" 100
@@ -15,15 +15,15 @@ SurfaceIntegrator "layered"
 WorldBegin
 
   AttributeBegin
-#    AreaLightSource "area" "color L" [ 1 1 1 ] "integer nsamples"  [4]
-#    Translate -3.2025 -3.2025 5.3374
-#    Shape "sphere" "float radius" 1
+    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
+    Translate -3.2025 -3.2025 5.3374
+    Shape "sphere" "float radius" 0.5
   AttributeEnd
   
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1 1 1 ] "integer nsamples"  [4]
+    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
     Translate 2.7574 6.4340 0
-    Shape "sphere" "float radius" 1
+    Shape "sphere" "float radius" 0.5
   AttributeEnd
   
   AttributeBegin

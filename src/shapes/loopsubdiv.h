@@ -42,7 +42,7 @@ struct SDVertex;
 struct SDFace;
 
 // LoopSubdiv Declarations
-class LoopSubdiv : public Shape {
+class LoopSubdiv : public ShrinkableShape {
 public:
     // LoopSubdiv Public Methods
     LoopSubdiv(const Transform *o2w, const Transform *w2o, bool ro,
@@ -51,6 +51,7 @@ public:
     ~LoopSubdiv();
     bool CanIntersect() const;
     void Refine(vector<Reference<Shape> > &refined) const;
+	Reference<ShrinkableShape> Shrink(float_type distance) const override;
     BBox ObjectBound() const;
     BBox WorldBound() const;
 private:
