@@ -108,8 +108,8 @@ public:
     // LayeredGeometricPrimitive Public Methods
 	LayeredGeometricPrimitive(const Reference<Shape>& s,
 		const Reference<LayeredMaterial>& m, const AreaLight* a);
-	virtual bool IntersectInternal(const Ray& r, Intersection* isect,
-		int* layerIndex) const = 0;
+	virtual bool IntersectInternal(const Ray& r, uint32_t primitiveId,
+		Intersection* isect, int* layerIndex) const = 0;
 	virtual BSDF *GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const = 0;

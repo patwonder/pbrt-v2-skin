@@ -387,7 +387,8 @@ public:
 
 	static float WaveLength(uint32_t index) {
 		return Lerp(0.5, (float)(index * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples,
-						 (float)((index + 1) * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples);
+						 (float)((index + 1) * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples) +
+			   sampledLambdaStart;
 	}
 	
     SampledSpectrum(const RGBSpectrum &r, SpectrumType type = SPECTRUM_REFLECTANCE);

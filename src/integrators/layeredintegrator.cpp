@@ -161,11 +161,15 @@ float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int 
 			const LayeredGeometricPrimitive* lprim = isectp->primitive->ToLayered();
 			if (lprim) {
 				// Modify pathThroughput & ray intersection to reflect subsurface scattering
-				RayDifferential out;
-				Intersection isect;
-				pathThroughput *= RandomWalk(wlIndex, lprim, ray, *isectp, rng, arena, &out, &isect);
-				ray = out;
-				localIsect = isect;
+				RayDifferential outRay;
+				uint32_t outPrimitiveId;
+				pathThroughput = RandomWalk(wlIndex, pathThroughput,
+					lprim, ray, isectp->primitiveId, rng, arena, &outRay, &outPrimitiveId);
+				if (pathThroughput == 0.f)
+					break;
+
+				ray = outRay;
+				localIsect.primitiveId = outPrimitiveId;
 				isectp = &localIsect;
 			}
 		}
@@ -239,17 +243,99 @@ float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int 
 }
 
 
-float LayeredIntegrator::RandomWalk(uint32_t wlIndex, const LayeredGeometricPrimitive* lprim,
-									const RayDifferential& ray, const Intersection& isect,
+float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float pathThroughput,
+									const LayeredGeometricPrimitive* lprim,
+									const RayDifferential& r, uint32_t primitiveId,
 									RNG& rng, MemoryArena& arena,
-									RayDifferential* outray, Intersection* outisect) const
+									RayDifferential* outRay, uint32_t* outPrimitiveId) const
 {
 	float lambda = SampledSpectrum::WaveLength(wlIndex);
 
-	*outray = ray;
-	*outisect = isect;
+	int currentLayer = 0;
+	int targetLayer = 0;
+	RayDifferential ray(r);
+	float numMFPa = 0.f;
+	Intersection isect;
+	uint32_t lastPrimitiveId = primitiveId;
+	const LayeredMaterial* pmat = static_cast<const LayeredMaterial*>(lprim->GetMaterial());
 
-	return 1.;
+	while (currentLayer >= 0) {
+		// Fetch params for current layer
+		LayerParam lp = pmat->GetLayerParam(currentLayer);
+		float mua = lp.mua.getValueForWL(lambda);
+		float musp = lp.musp.getValueForWL(lambda);
+		float ga = lp.ga;
+
+		while (currentLayer == targetLayer) {
+			// Sample mfp(s) according to the exponential distribution: musp * exp(-mfp * musp)
+			float mfps = -logf(rng.RandomFloat()) / musp;
+		
+			// Hit test
+			ray.maxt = mfps;
+
+			int layerIndex;
+			if (lprim->IntersectInternal(ray, lastPrimitiveId, &isect, &layerIndex)) {
+				// hit something, sample BSDF to get outgoing direction
+				BSDF* bsdf = isect.GetBSDF(ray, arena);
+				const Point& p = bsdf->dgShading.p;
+				const Normal& n = bsdf->dgShading.nn;
+				Vector wo = -ray.d;
+				Vector wi;
+				BSDFSample outgoingBSDFSample(rng);
+				float pdf;
+				BxDFType flags;
+				float f = bsdf->Sample_f(wo, &wi, outgoingBSDFSample, &pdf,
+										 BSDF_ALL, &flags)[wlIndex];
+				if (f == 0. || pdf == 0.)
+					return 0.f;
+
+				// Absorption
+				float distance = (p - ray.o).Length();
+				pathThroughput *= exp(-mua * distance);
+				numMFPa += mua * distance;
+
+				// Determine the target traveling layer
+				targetLayer = (Dot(ray.d, isect.dg.nn) < 0.f) ? layerIndex : layerIndex - 1;
+
+				if (targetLayer < 0) {
+					break;
+				}
+
+				// Update results
+				pathThroughput *= f * (AbsDot(wi, n) / pdf);
+				ray = RayDifferential(p, wi, ray, 0.f);
+				lastPrimitiveId = isect.primitiveId;
+			} else {
+				// Absorption
+				float distance = mfps;
+				pathThroughput *= exp(-mua * distance);
+				numMFPa += mua * distance;
+
+				// Doesn't hit anything, scatter into a new direction
+				Point p = ray(mfps);
+				Vector wi = SampleHG(ray.d, ga, rng.RandomFloat(), rng.RandomFloat());
+				ray = RayDifferential(p, wi, ray, 0.f);
+
+				// Allow re-intersecting the same primitive due to scattering
+				lastPrimitiveId = *outPrimitiveId = 0;
+			}
+
+			// Possibly terminate the path
+			if (numMFPa > 3.f) {
+				float continueProbability = min(.5f, pathThroughput);
+				if (rng.RandomFloat() > continueProbability)
+					return 0.f;
+				pathThroughput /= continueProbability;
+			}
+		}
+
+		currentLayer = targetLayer;
+	}
+
+	*outRay = ray;
+	outRay->maxt = FLT_MAX;
+	*outPrimitiveId = lastPrimitiveId;
+	return pathThroughput;
 }
 
 LayeredIntegrator *CreateLayeredSurfaceIntegrator(const ParamSet &params) {

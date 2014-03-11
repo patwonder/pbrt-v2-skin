@@ -181,24 +181,25 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt)
 {
+	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
 	// Epidermis
 	lps[0].thickness = layers[0].thickness;
-	lps[0].mua = pcoeff->mua_epi();
-	lps[0].musp = pcoeff->musp_epi();
+	lps[0].mua = pcoeff->mua_epi() * (nmperunit / NM_PER_CM);
+	lps[0].musp = pcoeff->musp_epi() * (nmperunit / NM_PER_CM);
 	lps[0].ga = pcoeff->ga_epi;
 	lps[0].isotropicHGPF = false;
 	// Dermis
 	lps[1].thickness = layers[1].thickness;
-	lps[1].mua = pcoeff->mua_derm();
-	lps[1].musp = pcoeff->musp_derm();
+	lps[1].mua = pcoeff->mua_derm() * (nmperunit / NM_PER_CM);
+	lps[1].musp = pcoeff->musp_derm() * (nmperunit / NM_PER_CM);
 	lps[1].ga = pcoeff->ga_derm;
 	lps[1].b = pcoeff->b_derm;
 	lps[1].isotropicHGPF = true;
 	// The thing below...
 	lps[2].thickness = 1e10f;
 	lps[2].mua = 1e10f;
-	lps[2].musp = 0.f;
+	lps[2].musp = 1e-10f;
 	lps[2].ga = 1.f;
 	lps[2].isotropicHGPF = false;
 }
@@ -219,7 +220,21 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading,
 	MemoryArena &arena) const
 {
-	float_type ior = layers[0].ior;
+	return GetLayeredBSDF(0, dgGeom, dgShading, arena);
+}
+
+BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
+	const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading,
+	MemoryArena &arena) const
+{
+	float ior;
+	if (layerIndex == 0)
+		ior = layers[0].ior;
+	else if ((size_t)layerIndex == layers.size())
+		ior = 10000.f;
+	else
+		ior = layers[layerIndex].ior / layers[layerIndex - 1].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
 	float rough = roughness;
 	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
@@ -236,15 +251,6 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
 	//	BSDF_ALLOC(arena, Blinn)(1.f / rough), ior)));
 	return bsdf;
-}
-
-
-BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
-	const DifferentialGeometry &dgGeom,
-	const DifferentialGeometry &dgShading,
-	MemoryArena &arena) const
-{
-	return NULL;
 }
 
 BSSRDF* LayeredSkin::GetLayeredBSSRDF(int layerIndex,

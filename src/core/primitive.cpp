@@ -218,8 +218,8 @@ public:
  	const ShrinkableShape* GetShrinkableShape() const;
 	const LayeredMaterial* GetLayeredMaterial() const;
 	void Refine(vector<Reference<Primitive> > &refined) const override;
-	bool IntersectInternal(const Ray& r, Intersection* isect,
-		int* layerIndex) const override;
+	bool IntersectInternal(const Ray& r, uint32_t primitiveId,
+		Intersection* isect, int* layerIndex) const override;
 	BSDF *GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
@@ -231,6 +231,7 @@ private:
     // LayeredGeometricPrimitiveMain Private Data
 	vector<Reference<ShrinkableShape> > internalShapes;
 	Reference<Aggregate> internalAggregate;
+	vector<Reference<Primitive> > fullyRefined;
 };
 
 
@@ -240,8 +241,8 @@ public:
 	LayeredGeometricPrimitivePatch(const Reference<Shape>& s,
 		const Reference<const LayeredGeometricPrimitiveMain>& main);
     void Refine(vector<Reference<Primitive> > &refined) const override;
-	bool IntersectInternal(const Ray& r, Intersection* isect,
-		int* layerIndex) const override;
+	bool IntersectInternal(const Ray& r, uint32_t primitiveId,
+		Intersection* isect, int* layerIndex) const override;
 	BSDF *GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
@@ -267,10 +268,10 @@ LayeredGeometricPrimitiveMain::LayeredGeometricPrimitiveMain(
 {
 	vector<float_type> thicknesses = m->GetLayerThickness();
 	// Add shrinked primitives for internal intersection test
-	vector<Reference<Primitive> > internalPrimitives;
+	this->FullyRefine(fullyRefined);
+	vector<Reference<Primitive> > internalPrimitives(fullyRefined);
 	internalShapes.push_back(s);
-	internalPrimitives.push_back(new GeometricPrimitive(s,
-		new LayeredMaterialWrapper(m, 0), a));
+
 	float_type thickness = 0;
 	for (size_t i = 0; i < thicknesses.size(); i++) {
 		thickness += thicknesses[i];
@@ -285,13 +286,17 @@ LayeredGeometricPrimitiveMain::LayeredGeometricPrimitiveMain(
 }
 
 void LayeredGeometricPrimitiveMain::Refine(vector<Reference<Primitive> > &refined) const {
-    vector<Reference<Shape> > r;
-    shape->Refine(r);
-    for (uint32_t i = 0; i < r.size(); ++i) {
-        LayeredGeometricPrimitivePatch* patch =
-			new LayeredGeometricPrimitivePatch(r[i], this);
-        refined.push_back(patch);
-    }
+	if (fullyRefined.size()) {
+		refined.insert(refined.end(), fullyRefined.begin(), fullyRefined.end());
+	} else {
+		vector<Reference<Shape> > r;
+		shape->Refine(r);
+		for (uint32_t i = 0; i < r.size(); ++i) {
+			LayeredGeometricPrimitivePatch* patch =
+				new LayeredGeometricPrimitivePatch(r[i], this);
+			refined.push_back(patch);
+		}
+	}
 }
 
 const ShrinkableShape* LayeredGeometricPrimitiveMain::GetShrinkableShape() const {
@@ -303,16 +308,21 @@ const LayeredMaterial* LayeredGeometricPrimitiveMain::GetLayeredMaterial() const
 }
 
 bool LayeredGeometricPrimitiveMain::IntersectInternal(const Ray& r,
-	Intersection* isect, int* layerIndex) const
+	uint32_t primitiveId, Intersection* isect, int* layerIndex) const
 {
-	if (!internalAggregate->Intersect(r, isect))
+	if (!internalAggregate->IntersectExcept(r, isect, primitiveId))
 		return false;
 	
-	const LayeredMaterialWrapper* material =
-		static_cast<const LayeredMaterialWrapper*>(
-		static_cast<const GeometricPrimitive*>(isect->primitive)->GetMaterial());
+	if (isect->primitive->ToLayered()) {
+		// outer layer (shares LayeredGeometricPrimitivePatch s with the scene)
+		*layerIndex = 0;
+	} else {
+		const LayeredMaterialWrapper* material =
+			static_cast<const LayeredMaterialWrapper*>(
+			static_cast<const GeometricPrimitive*>(isect->primitive)->GetMaterial());
 
-	*layerIndex = material->GetLayerIndex();
+		*layerIndex = material->GetLayerIndex();
+	}
 	return true;
 }
 
@@ -353,9 +363,9 @@ void LayeredGeometricPrimitivePatch::Refine(vector<Reference<Primitive> > &refin
 }
 
 bool LayeredGeometricPrimitivePatch::IntersectInternal(const Ray& r,
-	Intersection* isect, int* layerIndex) const
+	uint32_t primitiveId, Intersection* isect, int* layerIndex) const
 {
-	return main->IntersectInternal(r, isect, layerIndex);
+	return main->IntersectInternal(r, primitiveId, isect, layerIndex);
 }
 
 BSDF* LayeredGeometricPrimitivePatch::GetLayeredBSDF(int layerIndex,
