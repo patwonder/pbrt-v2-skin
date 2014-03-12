@@ -40,26 +40,23 @@
 #ifdef PBRT_IS_WINDOWS
 #include <tchar.h>
 void enterBackgroundMode() {
-   if(!SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN))
-   {
-      DWORD dwError = GetLastError();
-      if( ERROR_PROCESS_MODE_ALREADY_BACKGROUND == dwError)
-         _tprintf(TEXT("Already in background mode\n"));
-      else _tprintf(TEXT("Failed to enter background mode (%d)\n"), dwError);
-	  return;
-   }
+	if(!SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS))
+	{
+		Warning("Failed to enter idle processing mode.");
+		return;
+	}
 
-   printf("Enter background mode.\n");
+	Info("Enter idle processing mode.");
 }
 
 void exitBackgroundMode() {
-   if(!SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END))
-   {
-      _tprintf(TEXT("Failed to end background mode (%d)\n"), GetLastError());
-	  return;
-   }
+	if(!SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
+	{
+		Warning("Failed to exit idle processing mode.");
+		return;
+	}
 
-   printf("Exit background mode.\n");
+	Info("Exit idle processing mode.");
 }
 #endif
 
@@ -84,6 +81,7 @@ int main(int argc, char *argv[]) {
                    "[--verbose] [--help] <filename.pbrt> ...\n");
             return 0;
         }
+		else if (!strcmp(argv[i], "--foreground")) options.foreground = true;
         else filenames.push_back(argv[i]);
     }
 #ifdef _DEBUG
@@ -105,7 +103,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef PBRT_IS_WINDOWS
 	// Reduce impact to foreground processes
-	enterBackgroundMode();
+	if (!options.foreground)
+		enterBackgroundMode();
+	else
+		Warning("Rendering as a foreground process. System performance might degrade.");
 #endif
     // Process scene description
     PBRT_STARTED_PARSING();
@@ -120,7 +121,8 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef PBRT_IS_WINDOWS
-	exitBackgroundMode();
+	if (!options.foreground)
+		exitBackgroundMode();
 #endif
     
     pbrtCleanup();

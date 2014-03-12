@@ -39,19 +39,25 @@
 #ifdef USE_RANDOMWALK_PROBES
 #include <fstream>
 #include <iomanip>
+#include "parallel.h"
 using namespace std;
+void volatile_memset(volatile void* dst, int32_t val, size_t size) {
+	for (size_t i = 0; i < size / sizeof(val); i++) {
+		((volatile decltype(val)*)dst)[i] = val;
+	}
+}
 #endif
 
 class RandomWalkProbes {
 public:
 	RandomWalkProbes() {
 #ifdef USE_RANDOMWALK_PROBES
-#define CLEAR_ARRAY(arr) memset(arr, 0, sizeof(arr))
+#define CLEAR_ARRAY(arr) volatile_memset(arr, 0, sizeof(arr))
 		CLEAR_ARRAY(spectralRayCount);
 		CLEAR_ARRAY(discardedRayCount);
 		CLEAR_ARRAY(contributedRayCount);
-		memset(minBounces, 0xff, sizeof(minBounces));
-		CLEAR_ARRAY(maxBounces);
+		volatile_memset(minBounces, 0x7fffffff, sizeof(minBounces));
+		volatile_memset(maxBounces, 0x80000000, sizeof(minBounces));
 		CLEAR_ARRAY(bouncesDiscarded);
 		CLEAR_ARRAY(bouncesContributed);
 		CLEAR_ARRAY(mfpDiscarded);
@@ -89,41 +95,39 @@ public:
 
 	void spectralRayTraced(int wlIndex) {
 #ifdef USE_RANDOMWALK_PROBES
-		spectralRayCount[wlIndex]++;
+		AtomicAdd(spectralRayCount + wlIndex, 1);
 #endif
 	}
 
 	void spectralRayOut(int wlIndex, int bounces, int layer, float L, float mfp) {
 #ifdef USE_RANDOMWALK_PROBES
 		if (layer < 0 || L > 0.f) {
-			contributedRayCount[wlIndex]++;
-			bouncesContributed[wlIndex] += bounces;
-			mfpContributed[wlIndex] += mfp;
+			AtomicAdd(contributedRayCount + wlIndex, 1);
+			AtomicAdd(bouncesContributed + wlIndex, bounces);
+			AtomicAdd(mfpContributed + wlIndex, mfp);
 		} else {
-			discardedRayCount[wlIndex]++;
-			bouncesDiscarded[wlIndex] += bounces;
-			mfpDiscarded[wlIndex] += mfp;
+			AtomicAdd(discardedRayCount + wlIndex, 1);
+			AtomicAdd(bouncesDiscarded + wlIndex, bounces);
+			AtomicAdd(mfpDiscarded + wlIndex, mfp);
 			int l = max(0, min(layer, 2));
-			discardedRayCountInLayers[wlIndex][l]++;
+			AtomicAdd(discardedRayCountInLayers[wlIndex] + l, 1);
 		}
-		if ((uint32_t)bounces < minBounces[wlIndex])
-			minBounces[wlIndex] = bounces;
-		if ((uint32_t)bounces > maxBounces[wlIndex])
-			maxBounces[wlIndex] = bounces;
+		AtomicMin(minBounces + wlIndex, bounces);
+		AtomicMax(maxBounces + wlIndex, bounces);
 #endif
 	}
 private:
 #ifdef USE_RANDOMWALK_PROBES
-	uint64_t spectralRayCount[nSpectralSamples];
-	uint64_t discardedRayCount[nSpectralSamples];
-	uint64_t contributedRayCount[nSpectralSamples];
+	AtomicInt64 spectralRayCount[nSpectralSamples];
+	AtomicInt64 discardedRayCount[nSpectralSamples];
+	AtomicInt64 contributedRayCount[nSpectralSamples];
 
-	uint32_t minBounces[nSpectralSamples], maxBounces[nSpectralSamples];
-	uint64_t bouncesContributed[nSpectralSamples], bouncesDiscarded[nSpectralSamples];
+	AtomicInt32 minBounces[nSpectralSamples], maxBounces[nSpectralSamples];
+	AtomicInt64 bouncesContributed[nSpectralSamples], bouncesDiscarded[nSpectralSamples];
 
-	double mfpDiscarded[nSpectralSamples], mfpContributed[nSpectralSamples];
+	volatile double mfpDiscarded[nSpectralSamples], mfpContributed[nSpectralSamples];
 
-	uint64_t discardedRayCountInLayers[nSpectralSamples][3];
+	AtomicInt64 discardedRayCountInLayers[nSpectralSamples][3];
 #endif
 };
 

@@ -204,6 +204,56 @@ inline float AtomicAdd(volatile float *val, float delta) {
 }
 
 
+inline double AtomicAdd(volatile double *val, double delta) {
+    PBRT_ATOMIC_MEMORY_OP();
+    union bits { double d; int64_t i; };
+    bits oldVal, newVal;
+    do {
+        // On IA32/x64, adding a PAUSE instruction in compare/exchange loops
+        // is recommended to improve performance.  (And it does!)
+#if (defined(__i386__) || defined(__amd64__))
+        __asm__ __volatile__ ("pause\n");
+#endif
+        oldVal.d = *val;
+        newVal.d = oldVal.d + delta;
+    } while (AtomicCompareAndSwap(((AtomicInt64 *)val),
+                                  newVal.i, oldVal.i) != oldVal.i);
+    return newVal.d;
+}
+
+
+inline int32_t AtomicMin(AtomicInt32 *val, int32_t compare) {
+    PBRT_ATOMIC_MEMORY_OP();
+	int32_t oldVal, newVal;
+	do {
+        // On IA32/x64, adding a PAUSE instruction in compare/exchange loops
+        // is recommended to improve performance.  (And it does!)
+#if (defined(__i386__) || defined(__amd64__))
+        __asm__ __volatile__ ("pause\n");
+#endif
+		oldVal = *val;
+		newVal = min(compare, oldVal);
+	} while (AtomicCompareAndSwap(val, newVal, oldVal) != oldVal);
+	return newVal;
+}
+
+
+inline int32_t AtomicMax(AtomicInt32 *val, int32_t compare) {
+    PBRT_ATOMIC_MEMORY_OP();
+	int32_t oldVal, newVal;
+	do {
+        // On IA32/x64, adding a PAUSE instruction in compare/exchange loops
+        // is recommended to improve performance.  (And it does!)
+#if (defined(__i386__) || defined(__amd64__))
+        __asm__ __volatile__ ("pause\n");
+#endif
+		oldVal = *val;
+		newVal = max(compare, oldVal);
+	} while (AtomicCompareAndSwap(val, newVal, oldVal) != oldVal);
+	return newVal;
+}
+
+
 struct MutexLock;
 class Mutex {
 public:

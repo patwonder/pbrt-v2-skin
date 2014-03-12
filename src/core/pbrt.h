@@ -125,13 +125,14 @@ class ParamSet;
 template <typename T> struct ParamSetItem;
 struct Options {
     Options() { nCores = 0;
-                quickRender = quiet = openWindow = verbose = false;
+                quickRender = quiet = openWindow = verbose = foreground = false;
                 imageFile = ""; }
     int nCores;
     bool quickRender;
     bool quiet, verbose;
     bool openWindow;
     string imageFile;
+	bool foreground;
 };
 
 
