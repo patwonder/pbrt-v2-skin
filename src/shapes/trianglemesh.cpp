@@ -139,13 +139,10 @@ Reference<ShrinkableShape> TriangleMesh::Shrink(float_type distance) const {
 	// Copy vertex positions, shrink the model if possible
 	pNewMesh->p = new Point[nverts];
 	if (n) {
-		// Compute scaled distance in world space
-		Vector unitVector(1, 0, 0);
-		float_type scaledDistance = distance * (*ObjectToWorld)(unitVector).Length();
 		// Apply shrinking for each vertex
 		for (int i = 0; i < nverts; i++) {
 			Normal worldNormal = Normalize((*ObjectToWorld)(n[i]));
-			pNewMesh->p[i] = p[i] - Vector(worldNormal) * scaledDistance;
+			pNewMesh->p[i] = p[i] - Vector(worldNormal) * distance;
 		}
 	} else {
 		memcpy(pNewMesh->p, p, nverts * sizeof(Point));

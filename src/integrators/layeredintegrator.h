@@ -49,11 +49,12 @@ private:
 		const Scene *scene, const Renderer *renderer,
 		const RayDifferential &ray, const Intersection &isect,
 		const Sample *sample, RNG &rng, MemoryArena &arena) const;
-	float RandomWalk(uint32_t wlIndex, float pathThroughput,
+	float RandomWalk(uint32_t wlIndex, float& pathThroughput,
 		const LayeredGeometricPrimitive* lprim,
+		const Scene *scene,	const Renderer *renderer,
 		const RayDifferential& ray, uint32_t primitiveId,
-		RNG& rng, MemoryArena& arena,
-		RayDifferential* outRay, uint32_t* outPrimitiveId) const;
+		const Sample* sample, RNG& rng, MemoryArena& arena,
+		RayDifferential* outRay, Intersection* outIsect) const;
 	// LayeredIntegrator Private Data
 	int maxDepth;
 	static const int SAMPLE_DEPTH = 3;

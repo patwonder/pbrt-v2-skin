@@ -133,6 +133,9 @@ void SamplerRendererTask::Run() {
             }
             }
             PBRT_FINISHED_CAMERA_RAY_INTEGRATION(&rays[i], &samples[i], &Ls[i]);
+
+			// Free _MemoryArena_ memory from computing image sample values
+			arena.FreeAll();
         }
 
         // Report sample results to _Sampler_, add contributions to image

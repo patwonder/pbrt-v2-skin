@@ -184,13 +184,13 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
 	// Epidermis
-	lps[0].thickness = layers[0].thickness;
+	lps[0].thickness = layers[0].thickness / nmperunit;
 	lps[0].mua = pcoeff->mua_epi() * (nmperunit / NM_PER_CM);
 	lps[0].musp = pcoeff->musp_epi() * (nmperunit / NM_PER_CM);
 	lps[0].ga = pcoeff->ga_epi;
 	lps[0].isotropicHGPF = false;
 	// Dermis
-	lps[1].thickness = layers[1].thickness;
+	lps[1].thickness = layers[1].thickness / nmperunit;
 	lps[1].mua = pcoeff->mua_derm() * (nmperunit / NM_PER_CM);
 	lps[1].musp = pcoeff->musp_derm() * (nmperunit / NM_PER_CM);
 	lps[1].ga = pcoeff->ga_derm;
@@ -211,7 +211,7 @@ LayeredSkin::~LayeredSkin() {
 vector<float_type> LayeredSkin::GetLayerThickness() const {
 	vector<float_type> ret;
 	for (const auto& layer : layers) {
-		ret.push_back(layer.thickness);
+		ret.push_back(layer.thickness / nmperunit);
 	}
 	return ret;
 }
@@ -220,21 +220,7 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading,
 	MemoryArena &arena) const
 {
-	return GetLayeredBSDF(0, dgGeom, dgShading, arena);
-}
-
-BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
-	const DifferentialGeometry &dgGeom,
-	const DifferentialGeometry &dgShading,
-	MemoryArena &arena) const
-{
-	float ior;
-	if (layerIndex == 0)
-		ior = layers[0].ior;
-	else if ((size_t)layerIndex == layers.size())
-		ior = 10000.f;
-	else
-		ior = layers[layerIndex].ior / layers[layerIndex - 1].ior;
+	float ior = layers[0].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
 	float rough = roughness;
 	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
@@ -250,6 +236,27 @@ BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
 	//	BSDF_ALLOC(arena, Blinn)(1.f / rough))));
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
 	//	BSDF_ALLOC(arena, Blinn)(1.f / rough), ior)));
+	return bsdf;
+}
+
+BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
+	const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading,
+	MemoryArena &arena) const
+{
+	if (layerIndex == 0)
+		return GetBSDF(dgGeom, dgShading, arena);
+
+	float ior;
+	if ((size_t)layerIndex == layers.size())
+		ior = 10000.f;
+	else
+		ior = layers[layerIndex].ior / layers[layerIndex - 1].ior;
+	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
+	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
+	bsdf->Add(BSDF_ALLOC(arena, SpecularReflection)(Spectrum(1.f), fresnel));
+	if ((size_t)layerIndex != layers.size())
+		bsdf->Add(BSDF_ALLOC(arena, SpecularTransmission)(Spectrum(1.f), 1.f, ior));
 	return bsdf;
 }
 

@@ -69,3 +69,129 @@ void FreeAligned(void *ptr) {
 }
 
 
+#include <unordered_map>
+
+
+class SelfishAllocator {
+public:
+	SelfishAllocator(uint32_t sz)
+		: blockSize(sz) { }
+	void* AllocBlock(uint32_t minSize = 0) {
+		void* block;
+		if (bucket.size() && minSize <= blockSize) {
+			block = bucket.back();
+			bucket.pop_back();
+		} else {
+			block = AllocAligned(max(minSize, blockSize));
+		}
+		return block;
+	}
+	void FreeBlock(void* block) {
+		// Selfish Allocator never returns memory to OS
+		// It eats the block itself
+		bucket.push_back(block);
+	}
+	~SelfishAllocator() {
+		// Actually, not that selfish - -
+		for (void* block : bucket)
+			FreeAligned(block);
+	}
+private:
+	uint32_t blockSize;
+	vector<void*> bucket;
+};
+
+
+// Good name!
+class SelfishAllocatorAllocator {
+public:
+	SelfishAllocator& getAllocator(uint32_t blockSize) {
+		SelfishAllocator* pAllocator;
+		auto& iter = mapSelfishAllocators.find(blockSize);
+		if (iter == mapSelfishAllocators.end()) {
+			pAllocator = new SelfishAllocator(blockSize);
+			mapSelfishAllocators[blockSize] = pAllocator;
+		} else {
+			pAllocator = iter->second;
+		}
+		return *pAllocator;
+	}
+	~SelfishAllocatorAllocator() {
+		for (auto& pair : mapSelfishAllocators)
+			delete pair.second;
+	}
+private:
+	std::unordered_map<uint32_t, SelfishAllocator*> mapSelfishAllocators;
+};
+
+
+__declspec(thread) static SelfishAllocatorAllocator* pAA = NULL;
+
+
+void InitTLSAllocator() {
+	pAA = new SelfishAllocatorAllocator();
+}
+
+
+void CleanupTLSAllocator() {
+	delete pAA;
+	pAA = NULL;
+}
+
+
+static SelfishAllocator& GetAllocatorForBlockSize(uint32_t blockSize) {
+	if (!pAA) // Main thread
+		InitTLSAllocator();
+	return pAA->getAllocator(blockSize);
+}
+
+
+MemoryArena::MemoryArena(uint32_t bs)
+	: allocator(GetAllocatorForBlockSize(bs))
+{
+	blockSize = bs;
+	curBlockPos = 0;
+	currentBlock = (char*)allocator.AllocBlock();
+}
+
+
+MemoryArena::~MemoryArena() {
+	allocator.FreeBlock(currentBlock);
+	for (uint32_t i = 0; i < usedBlocks.size(); ++i)
+		allocator.FreeBlock(usedBlocks[i]);
+	for (uint32_t i = 0; i < availableBlocks.size(); ++i)
+		allocator.FreeBlock(availableBlocks[i]);
+}
+
+
+void* MemoryArena::Alloc(uint32_t sz) {
+	// Round up _sz_ to minimum machine alignment
+	sz = ((sz + 15) & (~15));
+	if (curBlockPos + sz > blockSize) {
+		// Get new block of memory for _MemoryArena_
+		usedBlocks.push_back(currentBlock);
+		if (availableBlocks.size() && sz <= blockSize) {
+			currentBlock = availableBlocks.back();
+			availableBlocks.pop_back();
+		}
+		else
+			currentBlock = (char*)allocator.AllocBlock(sz);
+		curBlockPos = 0;
+	}
+	void *ret = currentBlock + curBlockPos;
+	curBlockPos += sz;
+	return ret;
+}
+
+
+void MemoryArena::FreeAll() {
+	curBlockPos = 0;
+	while (usedBlocks.size()) {
+#ifndef NDEBUG
+		memset(usedBlocks.back(), 0xfa, blockSize);
+#endif
+		availableBlocks.push_back(usedBlocks.back());
+		usedBlocks.pop_back();
+	}
+}
+

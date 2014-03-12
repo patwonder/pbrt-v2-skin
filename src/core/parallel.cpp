@@ -829,6 +829,7 @@ static DWORD WINAPI taskEntry(LPVOID arg) {
 #else
 static void *taskEntry(void *arg) {
 #endif
+	InitTLSAllocator();
     while (true) {
         workerSemaphore->Wait();
         // Try to get task from task queue
@@ -850,6 +851,7 @@ static void *taskEntry(void *arg) {
             tasksRunningCondition->Signal();
         tasksRunningCondition->Unlock();
     }
+	CleanupTLSAllocator();
     // Cleanup from task thread and exit
 #if !defined(PBRT_IS_WINDOWS)
     pthread_exit(NULL);

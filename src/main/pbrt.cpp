@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
     }
 #ifdef _DEBUG
 	// Use single thread for debugging
-	options.nCores = 1;
-	Warning("Using 1 working thread for debugging sessions.");
+	//options.nCores = 1;
+	//Warning("Using 1 working thread for debugging sessions.");
 #endif
 
     // Print welcome banner
