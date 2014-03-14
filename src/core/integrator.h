@@ -94,4 +94,20 @@ Spectrum SpecularTransmit(const RayDifferential &ray, BSDF *bsdf, RNG &rng,
     const Sample *sample, MemoryArena &arena);
 Distribution1D *ComputeLightSamplingCDF(const Scene *scene);
 
+// Irradiance estimation, for surface points
+Spectrum IrradianceSampleAllLights(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
+	float time, const Sample* sample, RNG& rng,
+	const LightSampleOffsets* lightSampleOffsets = NULL,
+	const BSDFSampleOffsets* bsdfSampleOffsets = NULL);
+Spectrum IrradianceSampleOneLight(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
+	float time, const Sample* sample, RNG& rng, int lightNumOffset = -1,
+	const LightSampleOffsets* lightSampleOffsets = NULL,
+	const BSDFSampleOffsets* bsdfSampleOffset = NULL);
+Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Light* light, const Point& p, const Normal& n,
+	float rayEpsilon, float time, RNG& rng, const LightSample& lightSample,
+	const BSDFSample& bsdfSample);
+
 #endif // PBRT_CORE_INTEGRATOR_H

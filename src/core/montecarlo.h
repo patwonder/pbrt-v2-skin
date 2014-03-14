@@ -131,6 +131,14 @@ inline Vector CosineSampleHemisphere(float u1, float u2) {
     ret.z = sqrtf(max(0.f, 1.f - ret.x*ret.x - ret.y*ret.y));
     return ret;
 }
+inline Vector CosineSampleHemisphere(const Vector& n, float u1, float u2) {
+    Vector ret;
+    ConcentricSampleDisk(u1, u2, &ret.x, &ret.y);
+    ret.z = sqrtf(max(0.f, 1.f - ret.x*ret.x - ret.y*ret.y));
+	Vector v1, v2;
+	CoordinateSystem(n, &v1, &v2);
+	return ret.x * v1 + ret.y * v2 + ret.z * n;
+}
 
 
 inline float CosineHemispherePdf(float costheta, float phi) {

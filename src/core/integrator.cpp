@@ -268,3 +268,127 @@ Distribution1D *ComputeLightSamplingCDF(const Scene *scene) {
 }
 
 
+Spectrum IrradianceSampleAllLights(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
+	float time, const Sample* sample, RNG& rng,
+	const LightSampleOffsets* lightSampleOffsets, const BSDFSampleOffsets* bsdfSampleOffsets)
+{
+	Spectrum L(0.);
+	for (uint32_t i = 0; i < scene->lights.size(); ++i) {
+		Light *light = scene->lights[i];
+		int nSamples = lightSampleOffsets ?
+			lightSampleOffsets[i].nSamples : 1;
+		// Estimate direct irradiance from _light_ samples
+		Spectrum Ld(0.);
+		for (int j = 0; j < nSamples; ++j) {
+			// Find light and BSDF sample values for direct lighting estimate
+			LightSample lightSample;
+			BSDFSample bsdfSample;
+			if (lightSampleOffsets != NULL && bsdfSampleOffsets != NULL) {
+				lightSample = LightSample(sample, lightSampleOffsets[i], j);
+				bsdfSample = BSDFSample(sample, bsdfSampleOffsets[i], j);
+			}
+			else {
+				lightSample = LightSample(rng);
+				bsdfSample = BSDFSample(rng);
+			}
+			Ld += EstimateDirectIrradiance(scene, renderer, arena, light, p, n,
+				rayEpsilon, time, rng, lightSample, bsdfSample);
+		}
+		L += Ld / nSamples;
+	}
+	return L;
+}
+
+Spectrum IrradianceSampleOneLight(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
+	float time, const Sample* sample, RNG& rng, int lightNumOffset,
+	const LightSampleOffsets* lightSampleOffset, const BSDFSampleOffsets* bsdfSampleOffset)
+{
+	// Randomly choose a single light to sample, _light_
+	int nLights = int(scene->lights.size());
+	if (nLights == 0) return Spectrum(0.);
+	int lightNum;
+	if (lightNumOffset != -1)
+		lightNum = Floor2Int(sample->oneD[lightNumOffset][0] * nLights);
+	else
+		lightNum = Floor2Int(rng.RandomFloat() * nLights);
+	lightNum = min(lightNum, nLights-1);
+	Light *light = scene->lights[lightNum];
+
+	// Initialize light and bsdf samples for single light sample
+	LightSample lightSample;
+	BSDFSample bsdfSample;
+	if (lightSampleOffset != NULL && bsdfSampleOffset != NULL) {
+		lightSample = LightSample(sample, *lightSampleOffset, 0);
+		bsdfSample = BSDFSample(sample, *bsdfSampleOffset, 0);
+	}
+	else {
+		lightSample = LightSample(rng);
+		bsdfSample = BSDFSample(rng);
+	}
+	return (float)nLights *
+		EstimateDirectIrradiance(scene, renderer, arena, light, p, n,
+		rayEpsilon, time, rng, lightSample, bsdfSample);
+}
+
+Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
+	MemoryArena& arena, const Light* light, const Point& p, const Normal& n,
+	float rayEpsilon, float time, RNG& rng, const LightSample& lightSample,
+	const BSDFSample& bsdfSample)
+{
+    Spectrum Ld(0.);
+    // Sample light source with multiple importance sampling
+	Vector wi;
+	float lightPdf, bsdfPdf;
+	VisibilityTester visibility;
+	Spectrum Li = light->Sample_L(p, rayEpsilon, lightSample, time,
+								  &wi, &lightPdf, &visibility);
+	if (lightPdf > 0. && !Li.IsBlack()) {
+		// Sampling Lambertian BRDF, note that f should be rho(hd), not conventional brdf
+		Spectrum f = 1.f;
+		if (f.IsBlack() && visibility.Unoccluded(scene)) {
+			// Add light's contribution to reflected radiance
+			Li *= visibility.Transmittance(scene, renderer, NULL, rng, arena);
+			if (light->IsDeltaLight())
+				Ld += f * Li * (AbsDot(wi, n) / lightPdf);
+			else {
+				float costheta = AbsDot(wi, n);
+				bsdfPdf = CosineHemispherePdf(costheta, 0.f);
+				float weight = PowerHeuristic(1, lightPdf, 1, bsdfPdf);
+				Ld += f * Li * (costheta * weight / lightPdf);
+			}
+		}
+	}
+
+	// Sample Lambertian BSDF with multiple important sampling
+	if (!light->IsDeltaLight()) {
+		Spectrum f = 1.f;
+		wi = CosineSampleHemisphere(Vector(n), bsdfSample.uDir[0], bsdfSample.uDir[1]);
+		float costheta = AbsDot(wi, n);
+		bsdfPdf = CosineHemispherePdf(costheta, 0.f);
+
+		if (bsdfPdf > 0.) {
+			float weight = 1.f;
+			lightPdf = light->Pdf(p, wi);
+			if (lightPdf == 0.f)
+				return Ld;
+			weight = PowerHeuristic(1, bsdfPdf, 1, lightPdf);
+
+			// Add light contribution from BSDF sampling
+			Intersection lightIsect;
+			Spectrum Li(0.f);
+			RayDifferential ray(p, wi, rayEpsilon, INFINITY, time);
+			if (scene->Intersect(ray, &lightIsect)) {
+				if (lightIsect.primitive->GetAreaLight() == light)
+					Li = lightIsect.Le(-wi);
+			}
+			else
+				Li = light->Le(ray);
+			if (!Li.IsBlack()) {
+				Li *= renderer->Transmittance(scene, ray, NULL, rng, arena);
+				Ld += f * Li * costheta * weight / bsdfPdf;
+			}
+		}
+	}
+}
