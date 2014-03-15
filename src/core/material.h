@@ -55,7 +55,15 @@ public:
                               MemoryArena &arena) const {
         return NULL;
     }
-    virtual ~Material();
+	virtual MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading, MemoryArena &arena) const
+	{
+		return NULL;
+	}
+	virtual bool HasSubsurfaceScattering() const {
+		return false;
+	}
+	virtual ~Material();
     static void Bump(const Reference<Texture<float> > &d, const DifferentialGeometry &dgGeom,
         const DifferentialGeometry &dgShading, DifferentialGeometry *dgBump);
 };

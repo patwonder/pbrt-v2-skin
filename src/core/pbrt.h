@@ -171,6 +171,7 @@ class Material;
 template <typename T> class Texture;
 class VolumeRegion;
 class BSSRDF;
+class MultipoleBSSRDF;
 class Light;
 struct VisibilityTester;
 class AreaLight;

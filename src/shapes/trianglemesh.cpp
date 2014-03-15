@@ -38,6 +38,7 @@
 #include "paramset.h"
 #include "montecarlo.h"
 
+
 // TriangleMesh Method Definitions
 TriangleMesh::TriangleMesh(const Transform *o2w, const Transform *w2o,
         bool ro, int nt, int nv, const int *vi, const Point *P,
@@ -150,6 +151,170 @@ Reference<ShrinkableShape> TriangleMesh::Shrink(float_type distance) const {
 
 	return pNewMesh;
 }
+
+
+struct BarycentricCoordinate {
+	BarycentricCoordinate() {};
+	BarycentricCoordinate(float b0, float b1, float b2)
+		: b0(b0), b1(b1), b2(b2) {}
+	float b0, b1, b2;
+	Point Evaluate(const Point& v0, const Point& v1, const Point& v2) const {
+		return b0 * v0 + b1 * v1 + b2 * v2;
+	}
+	Normal Evaluate(const Normal& n0, const Normal& n1, const Normal& n2) const {
+		return Normalize(b0 * n0 + b1 * n1 + b2 * n2);
+	}
+	BarycentricCoordinate Evaluate(const BarycentricCoordinate& b0, const BarycentricCoordinate& b1, const BarycentricCoordinate& b2) const {
+		return BarycentricCoordinate(
+			this->b0 * b0.b0 + this->b1 * b1.b0 + this->b2 * b2.b0,
+			this->b0 * b0.b1 + this->b1 * b1.b1 + this->b2 * b2.b1,
+			this->b0 * b0.b2 + this->b1 * b1.b2 + this->b2 * b2.b2
+		);
+	}
+	static BarycentricCoordinate Lerp(float value, const BarycentricCoordinate& b0, const BarycentricCoordinate& b1) {
+		return BarycentricCoordinate(
+			::Lerp(value, b0.b0, b1.b0),
+			::Lerp(value, b0.b1, b1.b1),
+			::Lerp(value, b0.b2, b1.b2)
+		);
+	}
+	static const BarycentricCoordinate baryCentric;
+};
+
+const BarycentricCoordinate BarycentricCoordinate::baryCentric(1.f / 3.f, 1.f / 3.f, 1.f / 3.f);
+
+void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points) const {
+	// Assume tessellator splits a triangle into tf^2 pieces,
+	// That's roughtly 1 point per 1/2*(l/tf)^2 area (assume right triangles)
+	// Our goal is to achieve 1 point per pi * (minDist/2)^2 area
+	// hence tf ~= l / (sqrt(pi * 2) * minDist / 2)
+    //          ~= l / minDist * 0.8
+	// Actually, precision is not quite needed here, a rough tf will do pretty well.
+	for (int itri = 0; itri < ntris; itri++) {
+		// Compute tessellation factors
+		int vi0 = vertexIndex[itri * 3];
+		int vi1 = vertexIndex[itri * 3 + 1];
+		int vi2 = vertexIndex[itri * 3 + 2];
+		const Point& v0 = p[vi0];
+		const Point& v1 = p[vi1];
+		const Point& v2 = p[vi2];
+		const Normal& n0 = (*ObjectToWorld)(n[vi0]);
+		const Normal& n1 = (*ObjectToWorld)(n[vi1]);
+		const Normal& n2 = (*ObjectToWorld)(n[vi2]);
+		float le0 = (v1 - v2).Length();
+		float le1 = (v2 - v0).Length();
+		float le2 = (v0 - v1).Length();
+		float tfe0 = le0 / minDist * 0.8f;
+		float tfe1 = le1 / minDist * 0.8f;
+		float tfe2 = le2 / minDist * 0.8f;
+		float tfc = floorf((tfe0 + tfe1 + tfe2) / 3.f + .5f);
+		tfe0 = floorf(tfe0 + .5f);
+		tfe1 = floorf(tfe1 + .5f);
+		tfe2 = floorf(tfe2 + .5f);
+		// Let tessellator do the work
+		tessellator(tfe0, tfe1, tfe2, tfc, [&] (BarycentricCoordinate bv0, BarycentricCoordinate bv1, BarycentricCoordinate bv2) {
+			// Compute information about barycentric point
+			BarycentricCoordinate bc = BarycentricCoordinate::baryCentric.Evaluate(bv0, bv1, bv2);
+			SurfacePoint sp;
+			sp.p = bc.Evaluate(v0, v1, v2);
+			sp.n = bc.Evaluate(n0, n1, n2);
+			sp.area = M_PI * (minDist / 2.f) * (minDist / 2.f);
+			sp.rayEpsilon = minDist / 100.f;
+			// Add barycentric point of the subdivided triangle to the collection of surface points
+			points.push_back(sp);
+		});
+	}
+}
+
+
+void TriangleMesh::tessellator(float tfe0, float tfe1, float tfe2, float tfc,
+		const std::function<void (BarycentricCoordinate bv0,
+		BarycentricCoordinate bv1, BarycentricCoordinate bv2)>& domainShader)
+{
+	typedef BarycentricCoordinate BC;
+
+	// http://fgiesen.wordpress.com/2011/09/06/a-trip-through-the-graphics-pipeline-2011-part-12/
+	int itfe0 = max(Ceil2Int(tfe0), 1),
+		itfe1 = max(Ceil2Int(tfe1), 1),
+		itfe2 = max(Ceil2Int(tfe2), 1),
+		itfc = max(Ceil2Int(tfc), 1);
+	// Should at least tessellate a little in the center if edges need tessellation
+	if (itfe0 > 1 || itfe1 > 1 || itfe2 > 1)
+		itfc = max(itfc, 2);
+
+	BC b0(1.f, 0.f, 0.f), b1(0.f, 1.f, 0.f), b2(0.f, 0.f, 1.f), bc(BC::baryCentric);
+	// Generate inside tessellated triangles
+	int rings = (itfc + 1) / 2;
+	for (int r = 0; r < rings - 1; r++) {
+		// Central edge factor
+		int edgeInner = itfc - (rings - r) * 2;
+		if (edgeInner >= 0) {
+			int edgeOuter = edgeInner + 2;
+			BC b0Inner = BC::Lerp((float)r / rings, bc, b0);
+			BC b1Inner = BC::Lerp((float)r / rings, bc, b1);
+			BC b2Inner = BC::Lerp((float)r / rings, bc, b2);
+			BC b0Outer = BC::Lerp((float)(r + 1) / rings, bc, b0);
+			BC b1Outer = BC::Lerp((float)(r + 1) / rings, bc, b1);
+			BC b2Outer = BC::Lerp((float)(r + 1) / rings, bc, b2);
+			matching(b0Inner, b1Inner, edgeInner, b0Outer, b1Outer, edgeOuter, domainShader);
+			matching(b1Inner, b2Inner, edgeInner, b1Outer, b2Outer, edgeOuter, domainShader);
+			matching(b2Inner, b0Inner, edgeInner, b2Outer, b0Outer, edgeOuter, domainShader);
+		} else {
+			// Generate a single triangle at center
+			BC b0Outer = BC::Lerp((float)(r + 1) / rings, bc, b0);
+			BC b1Outer = BC::Lerp((float)(r + 1) / rings, bc, b1);
+			BC b2Outer = BC::Lerp((float)(r + 1) / rings, bc, b2);
+			domainShader(b0Outer, b1Outer, b2Outer);
+		}
+	}
+	// Generate the outermost ring of triangles
+	int edgeInner = itfc - 2;
+	if (edgeInner >= 0) {
+		BC b0Inner = BC::Lerp((float)(rings - 1) / rings, bc, b0);
+		BC b1Inner = BC::Lerp((float)(rings - 1) / rings, bc, b1);
+		BC b2Inner = BC::Lerp((float)(rings - 1) / rings, bc, b2);
+		matching(b0Inner, b1Inner, edgeInner, b0, b1, itfe2, domainShader);
+		matching(b1Inner, b2Inner, edgeInner, b1, b2, itfe0, domainShader);
+		matching(b2Inner, b0Inner, edgeInner, b2, b0, itfe1, domainShader);
+	} else {
+		// Send the original triangle back - no tessellation needed here
+		domainShader(b0, b1, b2);
+	}
+}
+
+
+void TriangleMesh::matching(BarycentricCoordinate b0Inner, BarycentricCoordinate b1Inner, int segsInner,
+	BarycentricCoordinate b0Outer, BarycentricCoordinate b1Outer, int segsOuter,
+	const std::function<void (BarycentricCoordinate bv0, BarycentricCoordinate bv1,
+	BarycentricCoordinate bv2)>& domainShader)
+{
+	typedef BarycentricCoordinate BC;
+
+	int innerPos = 0, outerPos = 0;
+	while (innerPos < segsInner && outerPos < segsOuter) {
+		BC bInner = BC::Lerp((float)(innerPos) / segsInner, b0Inner, b1Inner);
+		BC bOuter = BC::Lerp((float)(outerPos) / segsOuter, b0Outer, b1Outer);
+		// Choose inner/outer edge based on "Least Slope Criteria"
+		float slopeInner = (innerPos < segsInner) ? 
+			fabsf((float)(innerPos + 1) + 1.f - (float)outerPos / segsOuter * (segsInner + 2)) :
+			INFINITY;
+		float slopeOuter = (outerPos < segsOuter) ?
+			fabsf((float)innerPos + 1.f - (float)(outerPos + 1) / segsOuter * (segsInner + 2)) :
+			INFINITY;
+		if (slopeInner < slopeOuter) {
+			// Advance inner edge
+			BC bInnerNew = BC::Lerp((float)(innerPos + 1) / segsInner, b0Inner, b1Inner);
+			domainShader(bInnerNew, bInner, bOuter);
+			innerPos++;
+		} else {
+			// Advance outer edge
+			BC bOuterNew = BC::Lerp((float)(outerPos + 1) / segsOuter, b0Outer, b1Outer);
+			domainShader(bInner, bOuter, bOuterNew);
+			outerPos++;
+		}
+	}
+}
+
 
 BBox Triangle::ObjectBound() const {
     // Get triangle vertices in _p1_, _p2_, and _p3_

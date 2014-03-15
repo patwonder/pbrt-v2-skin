@@ -540,6 +540,21 @@ private:
 };
 
 
+// Multipole BSSRDF Declarations
+class MultipoleBSSRDF {
+public:
+	// MultipoleBSSRDF Public Methods
+    MultipoleBSSRDF(const Spectrum &sa, const Spectrum &sps, float et)
+        : e(et), sig_a(sa), sigp_s(sps) { }
+    float eta() const { return e; }
+    Spectrum sigma_a() const { return sig_a; }
+    Spectrum sigma_prime_s() const { return sigp_s; }
+private:
+    // MultipoleBSSRDF Private Data
+    float e;
+    Spectrum sig_a, sigp_s;
+};
+
 
 // BSDF Inline Method Definitions
 inline void BSDF::Add(BxDF *b) {

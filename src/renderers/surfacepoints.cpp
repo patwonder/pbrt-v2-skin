@@ -271,11 +271,77 @@ void SurfacePointTask::Run() {
 }
 
 
+// TessellateSurfacePointsRenderer Method Definitions
+Spectrum TessellateSurfacePointsRenderer::Li(const Scene *scene,
+    const RayDifferential &ray, const Sample *sample, RNG &rng, MemoryArena &arena,
+    Intersection *isect, Spectrum *T) const {
+    return 0.f;
+}
+
+
+Spectrum TessellateSurfacePointsRenderer::Transmittance(const Scene *scene, const RayDifferential &ray,
+    const Sample *sample, RNG &rng, MemoryArena &arena) const {
+    return 0.f;
+}
+
+
+void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
+	points.clear();
+	for (const auto& prim : originalPrimitives) {
+		try {
+			GeometricPrimitive* gp = dynamic_cast<GeometricPrimitive*>(prim.GetPtr());
+			if (!gp)
+				throw std::bad_cast();
+			const Material* mat = gp->GetMaterial();
+			if (mat && mat->HasSubsurfaceScattering()) {
+				try {
+					const Shape* shp = gp->GetShape();
+					const Tessellatable* tessellatable = dynamic_cast<const Tessellatable*>(shp);
+					if (!tessellatable)
+						throw std::bad_cast();
+					tessellatable->TessellateSurfacePoints(minDist, points);
+				} catch (std::bad_cast()) {
+				}
+			}
+		} catch (std::bad_cast) {
+
+		}
+	}
+
+    if (filename != "") {
+		Info("Obtained %d surface points, writing to file \"%s\"", points.size(), filename.c_str());
+
+		// Write surface points to file
+		FILE *f = fopen(filename.c_str(), "w");
+		if (!f) {
+			Error("Unable to open output file \"%s\" (%s)", filename.c_str(),
+				strerror(errno));
+			return;
+		}
+
+		fwrite(&points[0], sizeof(SurfacePoint), points.size(), f);
+		fclose(f);
+	} else {
+		Info("Obtained %d surface points. (Not writing to file)", points.size());
+	}
+}
+
+
 void FindPoissonPointDistribution(const Point &pCamera, float time,
         float minDist, const Scene *scene, vector<SurfacePoint> *points) {
     SurfacePointsRenderer sp(minDist, pCamera, time, "");
     sp.Render(scene);
     points->swap(sp.points);
+}
+
+
+void GetSurfacePointsThroughTessellation(float time, float minDist,
+	const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
+	vector<SurfacePoint> *points)
+{
+	TessellateSurfacePointsRenderer tsp(minDist, time, "", originalPrimitives);
+	tsp.Render(scene);
+	points->swap(tsp.points);
 }
 
 
@@ -288,3 +354,11 @@ SurfacePointsRenderer *CreateSurfacePointsRenderer(const ParamSet &params,
 }
 
 
+TessellateSurfacePointsRenderer* CreateTessellateSurfacePointsRenderer(const ParamSet& params,
+	float time, const vector<Reference<Primitive> >* originalPrimitives)
+{
+    float minDist = params.FindOneFloat("minsampledistance", .25f);
+    string filename = params.FindOneFilename("filename", "");
+    if (PbrtOptions.quickRender) { minDist *= 4.f; }
+	return new TessellateSurfacePointsRenderer(minDist, time, filename, originalPrimitives);
+}

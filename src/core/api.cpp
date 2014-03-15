@@ -58,6 +58,7 @@
 #include "integrators/ambientocclusion.h"
 #include "integrators/diffuseprt.h"
 #include "integrators/dipolesubsurface.h"
+#include "integrators/multipolesubsurface.h"
 #include "integrators/directlighting.h"
 #include "integrators/emission.h"
 #include "integrators/glossyprt.h"
@@ -553,6 +554,9 @@ SurfaceIntegrator *MakeSurfaceIntegrator(const string &name,
         si = CreateIGISurfaceIntegrator(paramSet);
     else if (name == "dipolesubsurface")
         si = CreateDipoleSubsurfaceIntegrator(paramSet);
+	else if (name == "multipolesubsurface")
+		si = CreateMultipoleSubsurfaceIntegrator(paramSet,
+		&renderOptions->primitives);
     else if (name == "ambientocclusion")
         si = CreateAmbientOcclusionIntegrator(paramSet);
     else if (name == "useprobes")
@@ -1205,8 +1209,7 @@ Scene *RenderOptions::MakeScene() {
     if (!accelerator)
         Severe("Unable to create \"bvh\" accelerator.");
     Scene *scene = new Scene(accelerator, lights, volumeRegion);
-    // Erase primitives, lights, and volume regions from _RenderOptions_
-    primitives.erase(primitives.begin(), primitives.end());
+    // Erase lights, and volume regions from _RenderOptions_
     lights.erase(lights.begin(), lights.end());
     volumeRegions.erase(volumeRegions.begin(), volumeRegions.end());
     return scene;
@@ -1249,6 +1252,11 @@ Renderer *RenderOptions::MakeRenderer() const {
         renderer = CreateSurfacePointsRenderer(RendererParams, pCamera, camera->shutterOpen);
         RendererParams.ReportUnused();
     }
+	else if (RendererName == "tessellatesurfacepoints") {
+		renderer = CreateTessellateSurfacePointsRenderer(RendererParams, camera->shutterOpen,
+			&renderOptions->primitives);
+		RendererParams.ReportUnused();
+	}
     else {
         if (RendererName != "sampler")
             Warning("Renderer type \"%s\" unknown.  Using \"sampler\".",

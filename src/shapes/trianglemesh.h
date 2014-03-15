@@ -38,11 +38,15 @@
 
 // shapes/trianglemesh.h*
 #include "shape.h"
+#include "renderers/surfacepoints.h"
 #include <map>
+#include <functional>
 using std::map;
 
+struct BarycentricCoordinate;
+
 // TriangleMesh Declarations
-class TriangleMesh : public ShrinkableShape {
+class TriangleMesh : public ShrinkableShape, public Tessellatable {
 public:
     // TriangleMesh Public Methods
     TriangleMesh(const Transform *o2w, const Transform *w2o, bool ro,
@@ -55,6 +59,7 @@ public:
     bool CanIntersect() const { return false; }
     void Refine(vector<Reference<Shape> > &refined) const;
 	Reference<ShrinkableShape> Shrink(float_type distance) const override;
+	void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points) const override;
     friend class Triangle;
     template <typename T> friend class VertexTexture;
 protected:
@@ -70,6 +75,14 @@ private:
 	// TriangleMesh Private Methods
 	// Just obtain a copy of the base class subobject
 	TriangleMesh(const TriangleMesh&);
+	// Fixed-function tessellator similar to DX11's
+	static void tessellator(float tfe0, float tfe1, float tfe2, float tfc,
+		const std::function<void (BarycentricCoordinate bv0,
+		BarycentricCoordinate bv1, BarycentricCoordinate bv2)>& domainShader);
+	static void matching(BarycentricCoordinate b0Inner, BarycentricCoordinate b1Inner, int segsInner,
+		BarycentricCoordinate b0Outer, BarycentricCoordinate b1Outer, int segsOuter,
+		const std::function<void (BarycentricCoordinate bv0, BarycentricCoordinate bv1,
+		BarycentricCoordinate bv2)>& domainShader);
 };
 
 

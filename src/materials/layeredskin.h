@@ -47,6 +47,12 @@ public:
 	BSDF* GetBSDF(const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
 		MemoryArena &arena) const override;
+	MultipoleBSSRDF* GetMultipoleBSSRDF(
+		const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const override;
+	bool HasSubsurfaceScattering() const { return true; }
+
 	BSDF* GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,

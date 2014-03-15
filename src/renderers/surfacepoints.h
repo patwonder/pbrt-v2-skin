@@ -53,6 +53,14 @@ struct SurfacePoint {
 };
 
 
+class Tessellatable {
+public:
+	// Tessellatable Interface Methods
+	virtual void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points) const = 0;
+	virtual ~Tessellatable() {}
+};
+
+
 class SurfacePointsRenderer : public Renderer {
 public:
     // SurfacePointsRenderer Public Methods
@@ -76,9 +84,37 @@ private:
 };
 
 
+class TessellateSurfacePointsRenderer : public Renderer {
+public:
+	// TessellateSurfacePointsRenderer Public Methods
+	TessellateSurfacePointsRenderer(float md, float t, const string &fn,
+		const vector<Reference<Primitive> >* ops)
+		: minDist(md), time(t), filename(fn), originalPrimitives(*ops) { }
+	void Render(const Scene *scene);
+	Spectrum Li(const Scene *scene, const RayDifferential &ray,
+		const Sample *sample, RNG &rng, MemoryArena &arena,
+		Intersection *isect, Spectrum *T) const;
+	Spectrum Transmittance(const Scene *scene, const RayDifferential &ray,
+		const Sample *sample, RNG &rng, MemoryArena &arena) const;
+private:
+	// TessellateSurfacePointsRenderer Private Data
+	float minDist, time;
+	string filename;
+	friend void GetSurfacePointsThroughTessellation(float time, float minDist,
+		const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
+		vector<SurfacePoint> *points);
+	vector<SurfacePoint> points;
+	const vector<Reference<Primitive> >& originalPrimitives;
+};
+
 void FindPoissonPointDistribution(const Point &pCamera, float time, float minDist,
     const Scene *scene, vector<SurfacePoint> *points);
+void GetSurfacePointsThroughTessellation(float time, float minDist,
+	const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
+	vector<SurfacePoint> *points);
 SurfacePointsRenderer *CreateSurfacePointsRenderer(const ParamSet &params,
     const Point &pCamera, float time);
+TessellateSurfacePointsRenderer* CreateTessellateSurfacePointsRenderer(const ParamSet& params,
+	float time, const vector<Reference<Primitive> >* originalPrimitives);
 
 #endif // PBRT_RENDERERS_SURFACEPOINTS_H

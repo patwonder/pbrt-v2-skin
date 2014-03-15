@@ -921,6 +921,15 @@
     <ClInclude Include="..\integrators\layeredintegrator.h">
       <Filter>Header Files\integrators</Filter>
     </ClInclude>
+    <ClInclude Include="..\integrators\multipolesubsurface.h">
+      <Filter>Header Files\integrators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\integrators\diffusionutil.h">
+      <Filter>Header Files\integrators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\integrators\irradiancepoint.h">
+      <Filter>Header Files\integrators</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1695,6 +1704,12 @@
       <Filter>Source Files\materials</Filter>
     </ClCompile>
     <ClCompile Include="..\integrators\layeredintegrator.cpp">
+      <Filter>Source Files\integrators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\integrators\diffusionutil.cpp">
+      <Filter>Source Files\integrators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\integrators\multipolesubsurface.cpp">
       <Filter>Source Files\integrators</Filter>
     </ClCompile>
   </ItemGroup>

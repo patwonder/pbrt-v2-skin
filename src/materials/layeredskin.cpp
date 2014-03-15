@@ -239,6 +239,14 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	return bsdf;
 }
 
+
+MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading, MemoryArena &arena) const
+{
+	return NULL;
+}
+
+
 BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
 	const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading,

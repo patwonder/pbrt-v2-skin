@@ -222,10 +222,13 @@
     <ClInclude Include="..\integrators\glossyprt.h" />
     <ClInclude Include="..\integrators\igi.h" />
     <ClInclude Include="..\integrators\irradiancecache.h" />
+    <ClInclude Include="..\integrators\irradiancepoint.h" />
     <ClInclude Include="..\integrators\layeredintegrator.h" />
+    <ClInclude Include="..\integrators\multipolesubsurface.h" />
     <ClInclude Include="..\integrators\path.h" />
     <ClInclude Include="..\integrators\photonmap.h" />
     <ClInclude Include="..\integrators\single.h" />
+    <ClInclude Include="..\integrators\diffusionutil.h" />
     <ClInclude Include="..\integrators\useprobes.h" />
     <ClInclude Include="..\integrators\whitted.h" />
     <ClInclude Include="..\lights\diffuse.h" />
@@ -1179,6 +1182,7 @@
     <ClCompile Include="..\filters\triangle.cpp" />
     <ClCompile Include="..\integrators\ambientocclusion.cpp" />
     <ClCompile Include="..\integrators\diffuseprt.cpp" />
+    <ClCompile Include="..\integrators\diffusionutil.cpp" />
     <ClCompile Include="..\integrators\dipolesubsurface.cpp" />
     <ClCompile Include="..\integrators\directlighting.cpp" />
     <ClCompile Include="..\integrators\emission.cpp" />
@@ -1186,6 +1190,7 @@
     <ClCompile Include="..\integrators\igi.cpp" />
     <ClCompile Include="..\integrators\irradiancecache.cpp" />
     <ClCompile Include="..\integrators\layeredintegrator.cpp" />
+    <ClCompile Include="..\integrators\multipolesubsurface.cpp" />
     <ClCompile Include="..\integrators\path.cpp" />
     <ClCompile Include="..\integrators\photonmap.cpp" />
     <ClCompile Include="..\integrators\single.cpp" />

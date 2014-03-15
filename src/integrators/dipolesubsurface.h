@@ -41,20 +41,8 @@
 #include "integrator.h"
 #include "kdtree.h"
 #include "renderers/surfacepoints.h"
+#include "irradiancepoint.h"
 struct SubsurfaceOctreeNode;
-
-// DipoleSubsurfaceIntegrator Helper Declarations
-struct IrradiancePoint {
-    IrradiancePoint() { }
-    IrradiancePoint(const SurfacePoint &sp, const Spectrum &ee)
-        : p(sp.p), n(sp.n), E(ee), area(sp.area),
-          rayEpsilon(sp.rayEpsilon) { }
-    Point p;
-    Normal n;
-    Spectrum E;
-    float area, rayEpsilon;
-};
-
 
 
 // DipoleSubsurfaceIntegrator Declarations
