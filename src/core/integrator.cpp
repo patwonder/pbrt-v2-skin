@@ -270,7 +270,7 @@ Distribution1D *ComputeLightSamplingCDF(const Scene *scene) {
 
 Spectrum IrradianceSampleAllLights(const Scene* scene, const Renderer* renderer,
 	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
-	float time, const Sample* sample, RNG& rng,
+	float time, const Fresnel* fresnel, const Sample* sample, RNG& rng,
 	const LightSampleOffsets* lightSampleOffsets, const BSDFSampleOffsets* bsdfSampleOffsets)
 {
 	Spectrum L(0.);
@@ -293,7 +293,7 @@ Spectrum IrradianceSampleAllLights(const Scene* scene, const Renderer* renderer,
 				bsdfSample = BSDFSample(rng);
 			}
 			Ld += EstimateDirectIrradiance(scene, renderer, arena, light, p, n,
-				rayEpsilon, time, rng, lightSample, bsdfSample);
+				rayEpsilon, time, fresnel, rng, lightSample, bsdfSample);
 		}
 		L += Ld / nSamples;
 	}
@@ -302,7 +302,7 @@ Spectrum IrradianceSampleAllLights(const Scene* scene, const Renderer* renderer,
 
 Spectrum IrradianceSampleOneLight(const Scene* scene, const Renderer* renderer,
 	MemoryArena& arena, const Point& p, const Normal& n, float rayEpsilon,
-	float time, const Sample* sample, RNG& rng, int lightNumOffset,
+	float time, const Fresnel* fresnel, const Sample* sample, RNG& rng, int lightNumOffset,
 	const LightSampleOffsets* lightSampleOffset, const BSDFSampleOffsets* bsdfSampleOffset)
 {
 	// Randomly choose a single light to sample, _light_
@@ -329,13 +329,13 @@ Spectrum IrradianceSampleOneLight(const Scene* scene, const Renderer* renderer,
 	}
 	return (float)nLights *
 		EstimateDirectIrradiance(scene, renderer, arena, light, p, n,
-		rayEpsilon, time, rng, lightSample, bsdfSample);
+		rayEpsilon, time, fresnel, rng, lightSample, bsdfSample);
 }
 
 Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
 	MemoryArena& arena, const Light* light, const Point& p, const Normal& n,
-	float rayEpsilon, float time, RNG& rng, const LightSample& lightSample,
-	const BSDFSample& bsdfSample)
+	float rayEpsilon, float time, const Fresnel* fresnel, RNG& rng,
+	const LightSample& lightSample, const BSDFSample& bsdfSample)
 {
     Spectrum Ld(0.);
     // Sample light source with multiple importance sampling
@@ -356,7 +356,8 @@ Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
 				float costheta = AbsDot(wi, n);
 				bsdfPdf = CosineHemispherePdf(costheta, 0.f);
 				float weight = PowerHeuristic(1, lightPdf, 1, bsdfPdf);
-				Ld += f * Li * (costheta * weight / lightPdf);
+				Spectrum ft = fresnel ? (Spectrum(1.f) - fresnel->Evaluate(costheta)) : Spectrum(1.f);
+				Ld += ft * f * Li * (costheta * weight / lightPdf);
 			}
 		}
 	}
@@ -387,7 +388,8 @@ Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
 				Li = light->Le(ray);
 			if (!Li.IsBlack()) {
 				Li *= renderer->Transmittance(scene, ray, NULL, rng, arena);
-				Ld += f * Li * costheta * weight / bsdfPdf;
+				Spectrum ft = fresnel ? (Spectrum(1.f) - fresnel->Evaluate(costheta)) : Spectrum(1.f);
+				Ld += ft * f * Li * (costheta * weight / bsdfPdf);
 			}
 		}
 	}
