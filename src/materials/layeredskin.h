@@ -47,6 +47,9 @@ public:
 	BSDF* GetBSDF(const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
 		MemoryArena &arena) const override;
+	BSSRDF* GetBSSRDF(const DifferentialGeometry &dgGeom,
+		const DifferentialGeometry &dgShading,
+		MemoryArena &arena) const override;
 	MultipoleBSSRDF* GetMultipoleBSSRDF(
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,

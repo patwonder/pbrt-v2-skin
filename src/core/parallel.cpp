@@ -214,7 +214,7 @@ void Mutex::Destroy(Mutex *m) {
 
 
 Mutex::Mutex() {
-    InitializeCriticalSection(&criticalSection);
+    InitializeCriticalSectionAndSpinCount(&criticalSection, 4096);
 }
 
 

@@ -39,5 +39,26 @@
 // core/floatfile.h*
 #include "pbrt.h"
 bool ReadFloatFile(const char *filename, vector<float> *values);
+template<class T>
+bool ReadBinaryFile(const char *filename, vector<T> *values);
 
+template<class T>
+bool ReadBinaryFile(const char *filename, vector<T> *values) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        Error("Unable to open file \"%s\"", filename);
+        return false;
+    }
+
+	fseek(f, 0, SEEK_END);
+	long size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	size_t numElements = size / sizeof(T);
+	values->resize(numElements);
+	fread(&(*values)[0], sizeof(T), numElements, f);
+
+	fclose(f);
+	return true;
+}
 #endif // PBRT_CORE_FLOATFILE_H

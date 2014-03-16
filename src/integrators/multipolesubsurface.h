@@ -52,6 +52,12 @@ public:
 		minSampleDist = mindist;
 		filename = fn;
 		octree = NULL;
+		lightSampleOffsets = NULL;
+		bsdfSampleOffsets = NULL;
+	}
+	~MultipoleSubsurfaceIntegrator() {
+		delete [] lightSampleOffsets;
+		delete [] bsdfSampleOffsets;
 	}
 private:
 	// MultipoleSubsurfaceIntegrator Private Data

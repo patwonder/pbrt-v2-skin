@@ -222,7 +222,11 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& 
 			SurfacePoint sp;
 			sp.p = bc.Evaluate(v0, v1, v2);
 			sp.n = bc.Evaluate(n0, n1, n2);
-			sp.area = M_PI * (minDist / 2.f) * (minDist / 2.f);
+			// Compute triangle area
+			Point sv0 = bv0.Evaluate(v0, v1, v2);
+			Point sv1 = bv1.Evaluate(v0, v1, v2);
+			Point sv2 = bv2.Evaluate(v0, v1, v2);
+			sp.area = Cross(sv1 - sv0, sv2 - sv0).Length();
 			sp.rayEpsilon = minDist / 100.f;
 			// Add barycentric point of the subdivided triangle to the collection of surface points
 			points.push_back(sp);

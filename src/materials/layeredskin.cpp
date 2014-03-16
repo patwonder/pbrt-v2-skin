@@ -240,6 +240,16 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 }
 
 
+BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
+	const DifferentialGeometry &dgShading, MemoryArena &arena) const
+{
+	// Trick the tracing SurfacePointsRenderer to think I'm translucent!
+	const LayerParam& lp = lps[1];
+	return BSDF_ALLOC(arena, BSSRDF)(lp.mua.toSpectrum(),
+		lp.musp.toSpectrum(), layers[1].ior);
+}
+
+
 MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading, MemoryArena &arena) const
 {
