@@ -59,7 +59,9 @@ public:
     bool CanIntersect() const { return false; }
     void Refine(vector<Reference<Shape> > &refined) const;
 	Reference<ShrinkableShape> Shrink(float_type distance) const override;
-	void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points) const override;
+	void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points,
+		ProgressReporter* pr = NULL) const override;
+	int GetTessellationWork() const override;
     friend class Triangle;
     template <typename T> friend class VertexTexture;
 protected:

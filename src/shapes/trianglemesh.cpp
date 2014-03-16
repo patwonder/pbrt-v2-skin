@@ -37,6 +37,7 @@
 #include "textures/constant.h"
 #include "paramset.h"
 #include "montecarlo.h"
+#include "progressreporter.h"
 
 
 // TriangleMesh Method Definitions
@@ -183,13 +184,16 @@ struct BarycentricCoordinate {
 
 const BarycentricCoordinate BarycentricCoordinate::baryCentric(1.f / 3.f, 1.f / 3.f, 1.f / 3.f);
 
-void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points) const {
+void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points,
+	ProgressReporter* pr) const
+{
 	// Assume tessellator splits a triangle into tf^2 pieces,
 	// That's roughtly 1 point per 1/2*(l/tf)^2 area (assume right triangles)
 	// Our goal is to achieve 1 point per pi * (minDist/2)^2 area
 	// hence tf ~= l / (sqrt(pi * 2) * minDist / 2)
     //          ~= l / minDist * 0.8
 	// Actually, precision is not quite needed here, a rough tf will do pretty well.
+	int block = max(ntris / 100, 100);
 	for (int itri = 0; itri < ntris; itri++) {
 		// Compute tessellation factors
 		int vi0 = vertexIndex[itri * 3];
@@ -223,7 +227,16 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& 
 			// Add barycentric point of the subdivided triangle to the collection of surface points
 			points.push_back(sp);
 		});
+		if (pr && (itri + 1) % block == 0)
+			pr->Update(block);
 	}
+	if (pr)
+		pr->Update(ntris % block);
+}
+
+
+int TriangleMesh::GetTessellationWork() const {
+	return ntris;
 }
 
 

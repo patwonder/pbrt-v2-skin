@@ -287,6 +287,8 @@ Spectrum TessellateSurfacePointsRenderer::Transmittance(const Scene *scene, cons
 
 void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 	points.clear();
+	std::vector<const Tessellatable*> tessellatables;
+	int totalWork = 0;
 	for (const auto& prim : originalPrimitives) {
 		try {
 			GeometricPrimitive* gp = dynamic_cast<GeometricPrimitive*>(prim.GetPtr());
@@ -299,7 +301,8 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 					const Tessellatable* tessellatable = dynamic_cast<const Tessellatable*>(shp);
 					if (!tessellatable)
 						throw std::bad_cast();
-					tessellatable->TessellateSurfacePoints(minDist, points);
+					tessellatables.push_back(tessellatable);
+					totalWork += tessellatable->GetTessellationWork();
 				} catch (std::bad_cast()) {
 				}
 			}
@@ -307,6 +310,12 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 
 		}
 	}
+
+	ProgressReporter pr(totalWork, "Surface Points (T)");
+	for (const Tessellatable* tessellatable : tessellatables) {
+		tessellatable->TessellateSurfacePoints(minDist, points, &pr);
+	}
+	pr.Done();
 
     if (filename != "") {
 		Info("Obtained %d surface points, writing to file \"%s\"", points.size(), filename.c_str());

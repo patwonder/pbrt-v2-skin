@@ -7,10 +7,14 @@ Camera "perspective" "float fov" [30]
 #  "float maxerror" 0.002
 #  "integer maxdepth" 100
 
-Sampler "lowdiscrepancy" "integer pixelsamples" 2
+Sampler "lowdiscrepancy" "integer pixelsamples" 16
 
 SurfaceIntegrator "layered"
   "integer maxdepth" 100
+
+Renderer "tessellatesurfacepoints"
+  "float minsampledistance" 0.002
+  "string filename" "skin-surfacepoints.bin"
 
 WorldBegin
 
