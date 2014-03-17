@@ -22,8 +22,16 @@ src/pbrt.vs*/*.opensdf
 src/pbrt.vs*/ipch
 src/pbrt.vs*/*.suo
 src/pbrt.vs*/*.user
+src/multipole/*.sdf
+src/multipole/*.opensdf
+src/multipole/ipch
+src/multipole/*.suo
+src/multipole/*.user
 
 # VS Build folders
 tmp/
 bin/
 lib/
+
+# Scene files
+/scenes/

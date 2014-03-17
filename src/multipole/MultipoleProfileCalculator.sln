@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultipoleProfileCalculator", "MultipoleProfileCalculator\MultipoleProfileCalculator.vcxproj", "{17E42CC6-DE33-4559-B260-33FCCAD144E8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{429D3678-D40C-4AA4-A9A7-16750E23D818} = {429D3678-D40C-4AA4-A9A7-16750E23D818}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libkissfft", "libkissfft\libkissfft.vcxproj", "{429D3678-D40C-4AA4-A9A7-16750E23D818}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{0E13636A-06D3-48D5-A6E8-8732878E833A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{17E42CC6-DE33-4559-B260-33FCCAD144E8} = {17E42CC6-DE33-4559-B260-33FCCAD144E8}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{17E42CC6-DE33-4559-B260-33FCCAD144E8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{17E42CC6-DE33-4559-B260-33FCCAD144E8}.Debug|Win32.Build.0 = Debug|Win32
+		{17E42CC6-DE33-4559-B260-33FCCAD144E8}.Release|Win32.ActiveCfg = Release|Win32
+		{17E42CC6-DE33-4559-B260-33FCCAD144E8}.Release|Win32.Build.0 = Release|Win32
+		{429D3678-D40C-4AA4-A9A7-16750E23D818}.Debug|Win32.ActiveCfg = Debug|Win32
+		{429D3678-D40C-4AA4-A9A7-16750E23D818}.Debug|Win32.Build.0 = Debug|Win32
+		{429D3678-D40C-4AA4-A9A7-16750E23D818}.Release|Win32.ActiveCfg = Release|Win32
+		{429D3678-D40C-4AA4-A9A7-16750E23D818}.Release|Win32.Build.0 = Release|Win32
+		{0E13636A-06D3-48D5-A6E8-8732878E833A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0E13636A-06D3-48D5-A6E8-8732878E833A}.Debug|Win32.Build.0 = Debug|Win32
+		{0E13636A-06D3-48D5-A6E8-8732878E833A}.Release|Win32.ActiveCfg = Release|Win32
+		{0E13636A-06D3-48D5-A6E8-8732878E833A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
