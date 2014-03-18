@@ -1,0 +1,40 @@
+Film "image" "integer xresolution" [640] "integer yresolution" [480]
+    "string filename" "tissue.exr"
+LookAt 0 -7 0  0 0 0  0 0 1
+Camera "perspective" "float fov" [30]
+
+Sampler "lowdiscrepancy" "integer pixelsamples" 1
+
+#SurfaceIntegrator "layered"
+#  "integer maxdepth" 100
+
+SurfaceIntegrator "multipolesubsurface"
+  "integer maxdepth" 5
+  "float maxerror" 1
+  "float minsampledistance" 0.005
+
+WorldBegin
+
+LightSource "spot" "point from" [0 -10 0]
+                   "point to" [0 0 0]
+                   "float coneangle" 0.5
+                   "float conedeltaangle" 0.001
+                   "color I" [10000 10000 10000]
+
+Material "layeredskin" "float roughness" 0.25
+                       "float nmperunit" 5e6
+                       "color Kr" [1 1 1]
+                       "color Kt" [0 0 0]
+                       "skinlayer layers" [ 100000 1.4 2000000 1.45]
+                       "float f_mel" 0.06
+                       "float f_blood" 0.002
+                       "float f_ohg" 0.3
+                       "float ga_epi" 0.9
+                       "float ga_derm" 0.6
+                       "float b_derm" 0.4
+Shape "trianglemesh" "point P" [ -5 0 -5 5 0 -5 5 0 5 -5 0 5 ]
+                     "float uv" [ 5 5 0 5 0 0 5 0 ]
+                     "normal N" [ 0 -1 0 0 -1 0 0 -1 0 0 -1 0 ]
+                     "integer indices" [ 0 1 2 2 3 0 ]
+
+WorldEnd

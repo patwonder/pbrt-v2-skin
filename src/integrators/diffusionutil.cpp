@@ -35,6 +35,10 @@
 
 Spectrum SubsurfaceOctreeNode::Mo(const BBox &nodeBound, const Point &pt,
         const DiffusionReflectance &Rd, float maxError) {
+	// No irradiance in subtree
+	if (E.IsBlack())
+		return Spectrum(0.f);
+
     // Compute $M_\roman{o}$ at node if error is low enough
     float dw = sumArea / DistanceSquared(pt, p);
     if (dw < maxError && !nodeBound.Inside(pt))
@@ -50,7 +54,8 @@ Spectrum SubsurfaceOctreeNode::Mo(const BBox &nodeBound, const Point &pt,
         for (int i = 0; i < 8; ++i) {
             if (!ips[i]) break;
             PBRT_SUBSURFACE_ADDED_POINT_CONTRIBUTION(const_cast<IrradiancePoint *>(ips[i]));
-            Mo += Rd(DistanceSquared(pt, ips[i]->p)) * ips[i]->E * ips[i]->area;
+			if (!ips[i]->E.IsBlack())
+				Mo += Rd(DistanceSquared(pt, ips[i]->p)) * ips[i]->E * ips[i]->area;
         }
     }
     else {
