@@ -61,12 +61,11 @@ inline kiss_fft_cpx& operator/=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 }
 
 struct MatrixProfile {
-	MatrixProfile(uint32 nRows, uint32 nCols)
-		: reflectance(nRows, nCols), transmittance(nRows, nCols) { }
+	MatrixProfile(uint32 length)
+		: reflectance(length, length), transmittance(length, length) { }
 	Matrix<float> reflectance;
 	Matrix<float> transmittance;
-	uint32 GetNumRows() { return reflectance.GetNumRows(); }
-	uint32 GetNumCols() { return reflectance.GetNumCols(); }
+	uint32 GetLength() { return reflectance.GetNumRows(); }
 	void Clear() { reflectance.Clear(); transmittance.Clear(); }
 };
 
@@ -101,31 +100,39 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 {
 	profile.Clear();
 
-	uint32 numRows = profile.GetNumRows(), numCols = profile.GetNumCols();
-	uint32 centerRow = (numRows - 1) / 2, centerCol = (numCols - 1) / 2;
-	uint32 extentRow = centerRow, extentCol = centerCol;
+	uint32 length = profile.GetLength();
+	uint32 center = (length - 1) / 2;
+	uint32 extent = center;
 	const uint32 numDipolePairs = 15;
 	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++) {
 		DipoleCalculator dc(iorUpper, iorLower, spec.thickness, spec.mua, spec.musp, pair);
-		for (uint32 sampleRow = 0; sampleRow <= extentRow; sampleRow++) {
-			for (uint32 sampleCol = 0; sampleCol <= extentCol; sampleCol++) {
+		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
 				float r2 = (sampleRow * sampleRow + sampleCol * sampleCol) * (stepSize * stepSize);
 				float rd = dc.Rd(r2), td = dc.Td(r2);
-				profile.reflectance[centerRow + sampleRow][centerCol + sampleCol] += rd;
-				profile.transmittance[centerRow + sampleRow][centerCol + sampleCol] += td;
+				profile.reflectance[center + sampleRow][center + sampleCol] += rd;
+				profile.transmittance[center + sampleRow][center + sampleCol] += td;
 			}
 		}
 	}
-	for (uint32 sampleRow = 0; sampleRow <= extentRow; sampleRow++) {
-		for (uint32 sampleCol = 0; sampleCol <= extentCol; sampleCol++) {
-			float rd = profile.reflectance[centerRow + sampleRow][centerCol + sampleCol];
-			profile.reflectance[centerRow - sampleRow][centerCol + sampleCol] = rd;
-			profile.reflectance[centerRow + sampleRow][centerCol - sampleCol] = rd;
-			profile.reflectance[centerRow - sampleRow][centerCol - sampleCol] = rd;
-			float td = profile.transmittance[centerRow + sampleRow][centerCol + sampleCol];
-			profile.transmittance[centerRow - sampleRow][centerCol + sampleCol] = td;
-			profile.transmittance[centerRow + sampleRow][centerCol - sampleCol] = td;
-			profile.transmittance[centerRow - sampleRow][centerCol - sampleCol] = td;
+	for (uint32 sampleRow = 1; sampleRow <= extent; sampleRow++) {
+		for (uint32 sampleCol = 0; sampleCol < sampleRow; sampleCol++) {
+			float rd = profile.reflectance[center + sampleCol][center + sampleRow];
+			profile.reflectance[center + sampleRow][center + sampleCol] = rd;
+			float td = profile.transmittance[center + sampleCol][center + sampleRow];
+			profile.transmittance[center + sampleRow][center + sampleCol] = td;
+		}
+	}
+	for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+		for (uint32 sampleCol = 0; sampleCol <= extent; sampleCol++) {
+			float rd = profile.reflectance[center + sampleRow][center + sampleCol];
+			profile.reflectance[center - sampleRow][center + sampleCol] = rd;
+			profile.reflectance[center + sampleRow][center - sampleCol] = rd;
+			profile.reflectance[center - sampleRow][center - sampleCol] = rd;
+			float td = profile.transmittance[center + sampleRow][center + sampleCol];
+			profile.transmittance[center - sampleRow][center + sampleCol] = td;
+			profile.transmittance[center + sampleRow][center - sampleCol] = td;
+			profile.transmittance[center - sampleRow][center - sampleCol] = td;
 		}
 	}
 }
@@ -145,14 +152,14 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	uint32 length = RoundUpPow2(pOptions->desiredLength);
 	float stepSize = pOptions->desiredStepSize;
 
-	MatrixProfile mp0(length * 2, length * 2);
+	MatrixProfile mp0(length * 2);
 	float iorLower = numLayers > 1 ? pLayerSpecs[0].ior / pLayerSpecs[1].ior : pLayerSpecs[0].ior;
 	ComputeLayerProfile(pLayerSpecs[0], pLayerSpecs[0].ior, iorLower, stepSize, mp0);
 	for (uint32 i = 1; i < numLayers; i++) {
 		iorLower = numLayers > i ? pLayerSpecs[i].ior / pLayerSpecs[i + 1].ior : pLayerSpecs[i].ior;
-		MatrixProfile mp1(length * 2, length * 2);
+		MatrixProfile mp1(length * 2);
 		ComputeLayerProfile(pLayerSpecs[i], pLayerSpecs[i].ior / pLayerSpecs[i - 1].ior, iorLower, stepSize, mp1);
-		MatrixProfile combined(length * 2, length * 2);
+		MatrixProfile combined(length * 2);
 		CombineLayerProfiles(mp0, mp1, combined);
 		mp0.reflectance = std::move(combined.reflectance);
 		mp0.transmittance = std::move(combined.transmittance);
