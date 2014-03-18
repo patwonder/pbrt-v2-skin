@@ -32,6 +32,9 @@ src/multipole/*.user
 tmp/
 bin/
 lib/
+[Dd]ebug/
+[Rr]elease/
+
 
 # Scene files
 /scenes/

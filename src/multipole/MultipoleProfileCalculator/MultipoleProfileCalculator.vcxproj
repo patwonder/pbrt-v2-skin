@@ -70,11 +70,11 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)tmp\$(Configuration)\$(PlatformName)\$(ProjectName)\</IntDir>
-    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(SolutionDir)external\gsl\lib\$(PlatformName)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)libkissfft\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(SolutionDir)external\gsl\lib\$(PlatformName)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)libkissfft\;$(IncludePath)</IncludePath>
     <LinkIncremental>true</LinkIncremental>
     <IntDir>$(SolutionDir)tmp\$(Configuration)\$(PlatformName)\$(ProjectName)\</IntDir>
@@ -84,11 +84,11 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)tmp\$(Configuration)\$(PlatformName)\$(ProjectName)\</IntDir>
-    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(SolutionDir)external\gsl\lib\$(PlatformName)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)libkissfft\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)lib\$(Configuration)\$(PlatformName)\;$(SolutionDir)external\gsl\lib\$(PlatformName)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)libkissfft\;$(IncludePath)</IncludePath>
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(SolutionDir)tmp\$(Configuration)\$(PlatformName)\$(ProjectName)\</IntDir>
@@ -155,11 +155,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DipoleCalculator.h" />
     <ClInclude Include="MultipoleProfileCalculator.h" />
+    <ClInclude Include="numutil.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="mpc-types.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DipoleCalculator.cpp" />
     <ClCompile Include="dllmain.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CompileAsManaged>

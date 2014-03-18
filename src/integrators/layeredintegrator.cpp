@@ -68,6 +68,16 @@ public:
 
 	~RandomWalkProbes() {
 #ifdef USE_RANDOMWALK_PROBES
+		bool hasProbes = false;
+		for (int i = 0; i < nSpectralSamples; i++) {
+			if (spectralRayCount[i]) {
+				hasProbes = true;
+				break;
+			}
+		}
+		if (!hasProbes)
+			return;
+
 		ofstream out(L"randomwalk-probes.txt", ios::out | ios::app);
 		time_t tm = time(NULL);
 		out << ctime(&tm) << endl;

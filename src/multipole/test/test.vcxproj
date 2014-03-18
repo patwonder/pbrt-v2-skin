@@ -108,7 +108,7 @@
       <AdditionalDependencies>MultipoleProfileCalculator.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.dll" "$(OutDir)" /y</Command>
+      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.*" "$(OutDir)" /y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -125,7 +125,7 @@
       <AdditionalDependencies>MultipoleProfileCalculator.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.dll" "$(OutDir)" /y</Command>
+      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.*" "$(OutDir)" /y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -146,7 +146,7 @@
       <AdditionalDependencies>MultipoleProfileCalculator.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.dll" "$(OutDir)" /y</Command>
+      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.*" "$(OutDir)" /y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -167,7 +167,7 @@
       <AdditionalDependencies>MultipoleProfileCalculator.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.dll" "$(OutDir)" /y</Command>
+      <Command>copy "$(SolutionDir)lib\$(Configuration)\$(PlatformName)\MultipoleProfileCalculator.*" "$(OutDir)" /y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
