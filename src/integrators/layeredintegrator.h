@@ -59,10 +59,10 @@ private:
 	int maxDepth;
 	static const int SAMPLE_DEPTH = 3;
 	static const int TERM_DEPTH = 10;
-    LightSampleOffsets lightSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
-    int lightNumOffset[nSpectralSamples][SAMPLE_DEPTH];
-    BSDFSampleOffsets bsdfSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
-    BSDFSampleOffsets pathSampleOffsets[nSpectralSamples][SAMPLE_DEPTH];
+    LightSampleOffsets lightSampleOffsets[SAMPLE_DEPTH];
+    int lightNumOffset[SAMPLE_DEPTH];
+    BSDFSampleOffsets bsdfSampleOffsets[SAMPLE_DEPTH];
+    BSDFSampleOffsets pathSampleOffsets[SAMPLE_DEPTH];
 };
 
 LayeredIntegrator *CreateLayeredSurfaceIntegrator(const ParamSet &params);

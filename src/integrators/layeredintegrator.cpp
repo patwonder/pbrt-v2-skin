@@ -154,13 +154,12 @@ void LayeredIntegrator::Preprocess(const Scene *scene, const Camera *camera,
 void LayeredIntegrator::RequestSamples(Sampler *sampler, Sample *sample,
 									   const Scene *scene)
 {
-	for (uint32_t wlIndex = 0; wlIndex < nSpectralSamples; wlIndex++)
-		for (int i = 0; i < SAMPLE_DEPTH; ++i) {
-			lightSampleOffsets[wlIndex][i] = LightSampleOffsets(1, sample);
-			lightNumOffset[wlIndex][i] = sample->Add1D(1);
-			bsdfSampleOffsets[wlIndex][i] = BSDFSampleOffsets(1, sample);
-			pathSampleOffsets[wlIndex][i] = BSDFSampleOffsets(1, sample);
-		}
+	for (int i = 0; i < SAMPLE_DEPTH; ++i) {
+		lightSampleOffsets[i] = LightSampleOffsets(1, sample);
+		lightNumOffset[i] = sample->Add1D(1);
+		bsdfSampleOffsets[i] = BSDFSampleOffsets(1, sample);
+		pathSampleOffsets[i] = BSDFSampleOffsets(1, sample);
+	}
 }
 
 Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
@@ -186,8 +185,8 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
             L += pathThroughput *
                  UniformSampleOneLight(scene, renderer, arena, p, n, wo,
                      isectp->rayEpsilon, ray.time, bsdf, sample, rng,
-                     lightNumOffset[0][bounces], &lightSampleOffsets[0][bounces],
-                     &bsdfSampleOffsets[0][bounces]);
+                     lightNumOffset[bounces], &lightSampleOffsets[bounces],
+                     &bsdfSampleOffsets[bounces]);
         else
             L += pathThroughput *
                  UniformSampleOneLight(scene, renderer, arena, p, n, wo,
@@ -201,7 +200,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
         // Get _outgoingBSDFSample_ for sampling new path direction
         BSDFSample outgoingBSDFSample;
         if (bounces < SAMPLE_DEPTH)
-            outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[0][bounces],
+            outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[bounces],
                                             0);
         else
             outgoingBSDFSample = BSDFSample(rng);
@@ -311,16 +310,9 @@ float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int 
 		const Point &p = bsdf->dgShading.p;
 		const Normal &n = bsdf->dgShading.nn;
 		Vector wo = -ray.d;
-        if (bounces < SAMPLE_DEPTH)
-            L += pathThroughput *
-                 UniformSampleOneLight(scene, renderer, arena, p, n, wo,
-                     isectp->rayEpsilon, ray.time, bsdf, sample, rng,
-                     lightNumOffset[wlIndex][bounces], &lightSampleOffsets[wlIndex][bounces],
-                     &bsdfSampleOffsets[wlIndex][bounces])[wlIndex];
-        else
-            L += pathThroughput *
-                 UniformSampleOneLight(scene, renderer, arena, p, n, wo,
-                     isectp->rayEpsilon, ray.time, bsdf, sample, rng)[wlIndex];
+        L += pathThroughput *
+			UniformSampleOneLight(scene, renderer, arena, p, n, wo,
+			isectp->rayEpsilon, ray.time, bsdf, sample, rng)[wlIndex];
 
 		if (bounces == maxDepth)
 			break;
@@ -328,12 +320,7 @@ float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int 
 		// Sample BSDF to get new path direction
 
 		// Get _outgoingBSDFSample_ for sampling new path direction
-		BSDFSample outgoingBSDFSample;
-		if (bounces < SAMPLE_DEPTH)
-			outgoingBSDFSample = BSDFSample(sample, pathSampleOffsets[wlIndex][bounces],
-											0);
-		else
-			outgoingBSDFSample = BSDFSample(rng);
+		BSDFSample outgoingBSDFSample(rng);
 		Vector wi;
 		float pdf;
 		BxDFType flags;
@@ -443,7 +430,8 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 
 				// Doesn't hit anything, scatter into a new direction
 				Point p = ray(mfps);
-				Vector wi = SampleHG(ray.d, ga, rng.RandomFloat(), rng.RandomFloat());
+				// Using reduced scattering coefficient - scattering appears to be isotropic
+				Vector wi = UniformSampleSphere(rng.RandomFloat(), rng.RandomFloat());
 				ray = RayDifferential(p, wi, ray, 0.f);
 
 				// Allow re-intersecting the same primitive due to scattering
@@ -452,8 +440,8 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 
 			// Possibly terminate the path
 			bounces++;
-			if (numMFPa > 3.f || bounces >= 5) {
-				float continueProbability = min(.5f, pathThroughput * 10.f);
+			if (numMFPa > 10.f || bounces >= 100.f) {
+				float continueProbability = min(.5f, pathThroughput * 100.f);
 				if (rng.RandomFloat() > continueProbability) {
 					probes.spectralRayOut(wlIndex, bounces, currentLayer, L, numMFPa);
 					pathThroughput = 0.f;
