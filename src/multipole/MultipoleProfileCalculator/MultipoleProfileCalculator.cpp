@@ -45,16 +45,16 @@ inline kiss_fft_cpx& operator+=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 }
 
 inline kiss_fft_cpx& operator*=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
-	float r = cpx.r * other.r - cpx.i * other.i;
-	float i = cpx.r * other.i + cpx.i * other.r;
+	kiss_fft_scalar r = cpx.r * other.r - cpx.i * other.i;
+	kiss_fft_scalar i = cpx.r * other.i + cpx.i * other.r;
 	cpx.r = r; cpx.i = i;
 	return cpx;
 }
 
 inline kiss_fft_cpx& operator/=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
-	float divisor = other.r * other.r + other.i * other.i;
-	float acbd = cpx.r * other.r + cpx.i * other.i;
-	float bcad = cpx.i * other.r - cpx.r * other.i;
+	kiss_fft_scalar divisor = other.r * other.r + other.i * other.i;
+	kiss_fft_scalar acbd = cpx.r * other.r + cpx.i * other.i;
+	kiss_fft_scalar bcad = cpx.i * other.r - cpx.r * other.i;
 	cpx.r = acbd / divisor;
 	cpx.i = bcad / divisor;
 	return cpx;
@@ -63,14 +63,14 @@ inline kiss_fft_cpx& operator/=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 struct MatrixProfile {
 	MatrixProfile(uint32 length)
 		: reflectance(length, length), transmittance(length, length) { }
-	Matrix<float> reflectance;
-	Matrix<float> transmittance;
+	Matrix<kiss_fft_scalar> reflectance;
+	Matrix<kiss_fft_scalar> transmittance;
 	uint32 GetLength() { return reflectance.GetNumRows(); }
 	void Clear() { reflectance.Clear(); transmittance.Clear(); }
 };
 
 
-void FFT(const Matrix<float>& profile, Matrix<kiss_fft_cpx>& out) {
+void FFT(const Matrix<kiss_fft_scalar>& profile, Matrix<kiss_fft_cpx>& out) {
 	int dims[2] = { profile.GetNumRows(), profile.GetNumCols() };
 	kiss_fftndr_cfg cfg = kiss_fftndr_alloc(dims, 2, 0, NULL, NULL);
 	kiss_fftndr(cfg, profile.GetData(), out.GetData());
@@ -78,7 +78,7 @@ void FFT(const Matrix<float>& profile, Matrix<kiss_fft_cpx>& out) {
 }
 
 
-void IFFT(const Matrix<kiss_fft_cpx>& profile, Matrix<float>& out) {
+void IFFT(const Matrix<kiss_fft_cpx>& profile, Matrix<kiss_fft_scalar>& out) {
 	int dims[2] = { profile.GetNumRows(), profile.GetNumCols() };
 	kiss_fftndr_cfg cfg = kiss_fftndr_alloc(dims, 2, 1, NULL, NULL);
 	kiss_fftndri(cfg, profile.GetData(), out.GetData());
@@ -101,38 +101,42 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	profile.Clear();
 
 	uint32 length = profile.GetLength();
-	uint32 center = (length - 1) / 2;
+	uint32 center = length / 2;
 	uint32 extent = center;
-	const uint32 numDipolePairs = 15;
+	const uint32 numDipolePairs = 5;
+	kiss_fft_scalar normalizeFactor = stepSize * stepSize;
 	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++) {
 		DipoleCalculator dc(iorUpper, iorLower, spec.thickness, spec.mua, spec.musp, pair);
-		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
-			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
-				float r2 = (sampleRow * sampleRow + sampleCol * sampleCol) * (stepSize * stepSize);
-				float rd = dc.Rd(r2), td = dc.Td(r2);
+		for (uint32 sampleRow = 0; sampleRow < extent; sampleRow++) {
+			for (uint32 sampleCol = sampleRow; sampleCol < extent; sampleCol++) {
+				float drow2 = (sampleRow + 0.5f) * (sampleRow + 0.5f);
+				float dcol2 = (sampleCol + 0.5f) * (sampleCol + 0.5f);
+				float r2 = (drow2 + dcol2) * (stepSize * stepSize);
+				kiss_fft_scalar rd = dc.Rd(r2) * normalizeFactor;
+				kiss_fft_scalar td = dc.Td(r2) * normalizeFactor;
 				profile.reflectance[center + sampleRow][center + sampleCol] += rd;
 				profile.transmittance[center + sampleRow][center + sampleCol] += td;
 			}
 		}
 	}
-	for (uint32 sampleRow = 1; sampleRow <= extent; sampleRow++) {
+	for (uint32 sampleRow = 1; sampleRow < extent; sampleRow++) {
 		for (uint32 sampleCol = 0; sampleCol < sampleRow; sampleCol++) {
-			float rd = profile.reflectance[center + sampleCol][center + sampleRow];
+			kiss_fft_scalar rd = profile.reflectance[center + sampleCol][center + sampleRow];
 			profile.reflectance[center + sampleRow][center + sampleCol] = rd;
-			float td = profile.transmittance[center + sampleCol][center + sampleRow];
+			kiss_fft_scalar td = profile.transmittance[center + sampleCol][center + sampleRow];
 			profile.transmittance[center + sampleRow][center + sampleCol] = td;
 		}
 	}
-	for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
-		for (uint32 sampleCol = 0; sampleCol <= extent; sampleCol++) {
-			float rd = profile.reflectance[center + sampleRow][center + sampleCol];
-			profile.reflectance[center - sampleRow][center + sampleCol] = rd;
-			profile.reflectance[center + sampleRow][center - sampleCol] = rd;
-			profile.reflectance[center - sampleRow][center - sampleCol] = rd;
-			float td = profile.transmittance[center + sampleRow][center + sampleCol];
-			profile.transmittance[center - sampleRow][center + sampleCol] = td;
-			profile.transmittance[center + sampleRow][center - sampleCol] = td;
-			profile.transmittance[center - sampleRow][center - sampleCol] = td;
+	for (uint32 sampleRow = 0; sampleRow < extent; sampleRow++) {
+		for (uint32 sampleCol = 0; sampleCol < extent; sampleCol++) {
+			kiss_fft_scalar rd = profile.reflectance[center + sampleRow][center + sampleCol];
+			profile.reflectance[center - sampleRow - 1][center + sampleCol    ] = rd;
+			profile.reflectance[center + sampleRow    ][center - sampleCol - 1] = rd;
+			profile.reflectance[center - sampleRow - 1][center - sampleCol - 1] = rd;
+			kiss_fft_scalar td = profile.transmittance[center + sampleRow][center + sampleCol];
+			profile.transmittance[center - sampleRow - 1][center + sampleCol    ] = td;
+			profile.transmittance[center + sampleRow    ][center - sampleCol - 1] = td;
+			profile.transmittance[center - sampleRow - 1][center - sampleCol - 1] = td;
 		}
 	}
 }
@@ -141,6 +145,9 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 void CombineLayerProfiles(const MatrixProfile& layer1, const MatrixProfile& layer2,
 	MatrixProfile& combined)
 {
+	// T12 = T1*T2/(1-R2*R1)
+	// R12 = R1+T1*R2*T1/(1-R2*R1)
+
 }
 
 
@@ -173,11 +180,12 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	pOut->pReflectance = new float[length];
 	pOut->pTransmittance = new float[pOut->length];
 
-	uint32 center = length - 1;
+	uint32 center = length;
 	uint32 extent = center;
-	for (uint32 i = 0; i <= extent; i++) {
-		pOut->pReflectance[i] = mp0.reflectance[center][center + i];
-		pOut->pTransmittance[i] = mp0.transmittance[center][center + i];
+	float denormalizeFactor = 1.f / (stepSize * stepSize);
+	for (uint32 i = 0; i < extent; i++) {
+		pOut->pReflectance[i] = (float)mp0.reflectance[center][center + i] * denormalizeFactor;
+		pOut->pTransmittance[i] = (float)mp0.transmittance[center][center + i] * denormalizeFactor;
 	}
 }
 

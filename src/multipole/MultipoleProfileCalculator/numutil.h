@@ -41,7 +41,8 @@ inline T clamp(T value, T low, T high) {
 	return value;
 }
 
-static const float INV_FOURPI = 0.07957747f;
+static const float PI = 3.141592654f;
+static const float INV_FOURPI = 0.25f / PI;
 
 template <class Type>
 class Matrix {
