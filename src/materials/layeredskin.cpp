@@ -253,7 +253,9 @@ BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
 MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading, MemoryArena &arena) const
 {
-	return NULL;
+	const LayerParam& lp = lps[0];
+	return BSDF_ALLOC(arena, MultipoleBSSRDF)(lp.mua.toSpectrum(),
+		lp.musp.toSpectrum(), layers[0].ior);
 }
 
 

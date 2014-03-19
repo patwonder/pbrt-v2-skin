@@ -51,6 +51,7 @@ struct Intersection {
     }
     BSDF *GetBSDF(const RayDifferential &ray, MemoryArena &arena) const;
     BSSRDF *GetBSSRDF(const RayDifferential &ray, MemoryArena &arena) const;
+	MultipoleBSSRDF* GetMultipoleBSSRDF(const RayDifferential &ray, MemoryArena &arena) const;
     Spectrum Le(const Vector &wo) const;
 
     // Intersection Public Data

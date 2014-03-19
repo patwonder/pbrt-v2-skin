@@ -92,6 +92,14 @@ BSSRDF *Aggregate::GetBSSRDF(const DifferentialGeometry &,
 }
 
 
+MultipoleBSSRDF* Aggregate::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+    Severe("Aggregate::GetMultipoleBSSRDF() method"
+        "called; should have gone to GeometricPrimitive");
+    return NULL;
+}
+
 
 // TransformedPrimitive Method Definitions
 bool TransformedPrimitive::Intersect(const Ray &r,
@@ -197,6 +205,15 @@ BSSRDF *GeometricPrimitive::GetBSSRDF(const DifferentialGeometry &dg,
     DifferentialGeometry dgs;
     shape->GetShadingGeometry(ObjectToWorld, dg, &dgs);
     return material->GetBSSRDF(dg, dgs, arena);
+}
+
+
+MultipoleBSSRDF* GeometricPrimitive::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+	const Transform &ObjectToWorld, MemoryArena &arena) const
+{
+    DifferentialGeometry dgs;
+    shape->GetShadingGeometry(ObjectToWorld, dg, &dgs);
+    return material->GetMultipoleBSSRDF(dg, dgs, arena);
 }
 
 

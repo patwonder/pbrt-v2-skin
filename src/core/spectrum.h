@@ -392,6 +392,7 @@ public:
 	}
 	
     SampledSpectrum(const RGBSpectrum &r, SpectrumType type = SPECTRUM_REFLECTANCE);
+	string ToString() const;
 private:
     // SampledSpectrum Private Data
     static SampledSpectrum X, Y, Z;
@@ -472,6 +473,7 @@ public:
         xyz[2] /= yint;
         return FromXYZ(xyz);
     }
+	string ToString() const;
 };
 
 

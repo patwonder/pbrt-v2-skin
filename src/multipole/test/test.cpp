@@ -12,7 +12,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	MPC_LayerSpec specs[1];
 	specs[0].mua = 13.8629f;
 	specs[0].musp = 19.4879f;
-	specs[0].thickness = 0.06f;
+	specs[0].thickness = 0.6f;
 	//specs[0].mua = .5f;
 	//specs[0].musp = .5f;
 	//specs[0].thickness = 2.f;
@@ -21,7 +21,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	MPC_Options options;
 	options.desiredLength = 64;
 	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
-	options.desiredStepSize = 16.f * mfp0 / (float)options.desiredLength;
+	options.desiredStepSize = 4.f * mfp0 / (float)options.desiredLength;
 	
 	MPC_Output* pOutput;
 	MPC_ComputeDiffusionProfile(1, specs, &options, &pOutput);
@@ -31,13 +31,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	float integralR = 0;
 	for (uint32 i = 0; i < pOutput->length; i++) {
 		cout << " " << pOutput->pReflectance[i];
-		integralR += 2.f * pOutput->stepSize * i * pOutput->pReflectance[i] * pOutput->stepSize;
+		integralR += 2.f * 3.141592654f * pOutput->stepSize * i * pOutput->pReflectance[i] * pOutput->stepSize;
 	}
 	cout << endl << "Transmittance:";
 	float integralT = 0;
 	for (uint32 i = 0; i < pOutput->length; i++) {
 		cout << " " << pOutput->pTransmittance[i];
-		integralT += 2.f * pOutput->stepSize * i * pOutput->pTransmittance[i] * pOutput->stepSize;
+		integralT += 2.f * 3.141592654f * pOutput->stepSize * i * pOutput->pTransmittance[i] * pOutput->stepSize;
 	}
 	cout << endl;
 	cout << "Reflectance Integral: " << integralR << endl;

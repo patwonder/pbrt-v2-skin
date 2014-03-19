@@ -33,6 +33,8 @@
 // core/spectrum.cpp*
 #include "stdafx.h"
 #include "spectrum.h"
+#include <sstream>
+#include <iomanip>
 
 // Spectrum Method Definitions
 bool SpectrumSamplesSorted(const float *lambda, const float *vals, int n) {
@@ -904,3 +906,25 @@ const float RGBIllum2SpectBlue[nRGB2SpectSamples] =  {
     1.5535067531939065e-01,   1.4878477178237029e-01,
     1.6624255403475907e-01,   1.6997613960634927e-01,
     1.5769743995852967e-01,   1.9069090525482305e-01 };
+
+using namespace std;
+
+string SampledSpectrum::ToString() const {
+	stringstream ss;
+	ss << "SampledSpectrum{ ";
+	for (int i = 0; i < NumComponents(); i++) {
+		float wl = WaveLength(i);
+		ss << wl << ": " << c[i];
+		if (i < NumComponents() - 1)
+			ss << ", ";
+	}
+	ss << " }";
+	return ss.str();
+}
+
+string RGBSpectrum::ToString() const {
+	stringstream ss;
+	ss << "RGBSpectrum{ R: " << c[0] << ", G: " << c[1] << ", B: " << c[2] << " }";
+	return ss.str();
+}
+

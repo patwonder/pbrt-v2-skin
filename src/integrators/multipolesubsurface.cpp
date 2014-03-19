@@ -191,6 +191,7 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
 	const RayDifferential &ray, const Intersection &isect,
 	const Sample *sample, RNG &rng, MemoryArena &arena) const
 {
+	static bool trcalculated = false;
     Spectrum L(0.);
     Vector wo = -ray.d;
     // Compute emitted light if ray hit an area light source
@@ -200,8 +201,8 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
     BSDF *bsdf = isect.GetBSDF(ray, arena);
     const Point &p = bsdf->dgShading.p;
     const Normal &n = bsdf->dgShading.nn;
-    // Evaluate BSSRDF and possibly compute subsurface scattering
-    BSSRDF *bssrdf = isect.GetBSSRDF(ray, arena);
+    // Evaluate MultipoleBSSRDF and possibly compute subsurface scattering
+    MultipoleBSSRDF *bssrdf = isect.GetMultipoleBSSRDF(ray, arena);
     if (bssrdf && octree) {
         Spectrum sigma_a  = bssrdf->sigma_a();
         Spectrum sigmap_s = bssrdf->sigma_prime_s();
@@ -210,6 +211,11 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
             // Use hierarchical integration to evaluate reflection from dipole model
             PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
             DiffusionReflectance Rd(sigma_a, sigmap_s, bssrdf->eta());
+			if (!trcalculated) {
+				trcalculated = true;
+				Spectrum tr = Rd.TotalReflectance();
+				Info("Total Reflectance: %s\n", tr.ToString().c_str());
+			}
             Spectrum Mo = octree->Mo(octreeBounds, p, Rd, maxError);
             FresnelDielectric fresnel(1.f, bssrdf->eta());
             Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));

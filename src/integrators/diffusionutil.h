@@ -56,6 +56,26 @@ struct DiffusionReflectance {
               Exp(-sigma_tr * dneg)) / (dneg * dneg * dneg));
         return Rd.Clamp();
     }
+    Spectrum operator()(Spectrum d2) const {
+        Spectrum dpos = Sqrt(d2 + zpos * zpos);
+        Spectrum dneg = Sqrt(d2 + zneg * zneg);
+        Spectrum Rd = (alphap / (4.f * M_PI)) *
+            ((zpos * (dpos * sigma_tr + Spectrum(1.f)) *
+              Exp(-sigma_tr * dpos)) / (dpos * dpos * dpos) -
+             (zneg * (dneg * sigma_tr + Spectrum(1.f)) *
+              Exp(-sigma_tr * dneg)) / (dneg * dneg * dneg));
+        return Rd.Clamp();
+    }
+	Spectrum TotalReflectance() const {
+		Spectrum mfp = Spectrum(1.f) / sigmap_t;
+		Spectrum integral = 0.f;
+		Spectrum stepSize = (4.f * mfp) * (4.f * mfp) / 1024.f;
+		for (int i = 0; i < 1024; i++) {
+			Spectrum d2 = stepSize * i;
+			integral += (*this)(d2);
+		}
+		return integral * stepSize * M_PI;
+	}
 
     // DiffusionReflectance Data
     Spectrum zpos, zneg, sigmap_t, sigma_tr, alphap;
