@@ -197,9 +197,9 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	lps[1].b = pcoeff->b_derm;
 	lps[1].isotropicHGPF = true;
 	// The thing below...
-	lps[2].thickness = 1e10f;
-	lps[2].mua = 1e10f;
-	lps[2].musp = 1e-10f;
+	lps[2].thickness = 2e6f / nmperunit; // 2mm
+	lps[2].mua = lps[1].mua * 3.f;
+	lps[2].musp = lps[1].musp * 0.333f;
 	lps[2].ga = 1.f;
 	lps[2].isotropicHGPF = false;
 }
@@ -253,9 +253,9 @@ BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
 MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading, MemoryArena &arena) const
 {
-	const LayerParam& lp = lps[0];
+	const LayerParam& lp = lps[1];
 	return BSDF_ALLOC(arena, MultipoleBSSRDF)(lp.mua.toSpectrum(),
-		lp.musp.toSpectrum(), layers[0].ior);
+		lp.musp.toSpectrum(), layers[1].ior);
 }
 
 
@@ -269,7 +269,7 @@ BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
 
 	float ior;
 	if ((size_t)layerIndex == layers.size())
-		ior = 10000.f;
+		ior = 1.5f;
 	else
 		ior = layers[layerIndex].ior / layers[layerIndex - 1].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);

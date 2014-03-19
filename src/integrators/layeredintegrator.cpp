@@ -441,7 +441,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 			// Possibly terminate the path
 			bounces++;
 			if (numMFPa > 10.f || bounces >= 100.f) {
-				float continueProbability = min(.5f, pathThroughput * 100.f);
+				float continueProbability = min(.9f, pathThroughput * 100.f);
 				if (rng.RandomFloat() > continueProbability) {
 					probes.spectralRayOut(wlIndex, bounces, currentLayer, L, numMFPa);
 					pathThroughput = 0.f;
