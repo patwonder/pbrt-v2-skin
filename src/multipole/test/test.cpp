@@ -7,24 +7,12 @@
 
 using namespace std;
 
-int _tmain(int argc, _TCHAR* argv[])
-{
-	MPC_LayerSpec specs[1];
-	//specs[0].mua = 13.8629f;
-	//specs[0].musp = 19.4879f;
-	specs[0].mua = 0;
-	specs[0].musp = 1;
-	specs[0].thickness = 1 / (specs[0].mua + specs[0].musp);
-	specs[0].ior = 1.0f;
-	specs[0].g_HG = 0.90f;
-	MPC_Options options;
-	options.desiredLength = 1024;
-	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
-	options.desiredStepSize = 16.f * mfp0 / (float)options.desiredLength;
-	
+void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
+	const MPC_Options* pOptions) {
 	MPC_Output* pOutput;
-	MPC_ComputeDiffusionProfile(1, specs, &options, &pOutput);
+	MPC_ComputeDiffusionProfile(numLayers, pLayerSpecs, pOptions, &pOutput);
 	
+	// The integrals does not include delta distributions
 	cout << "Reflectance:";
 	float integralR = 0.f;
 	float prevDistance = 0.f;
@@ -51,6 +39,35 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout << "Reflectance Integral: " << integralR << endl;
 	cout << "Transmittance Integral: " << integralT << endl;
 	MPC_FreeOutput(pOutput);
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	MPC_LayerSpec specs[2];
+	specs[0].mua = 13.8629f;
+	specs[0].musp = 19.4879f;
+	specs[0].thickness = 0.07f;
+	specs[0].ior = 1.4f;
+	specs[0].g_HG = 0.90f;
+	specs[1].mua = 1.6f;
+	specs[1].musp = 19.4879f;
+	specs[1].thickness = 0.2f;
+	specs[1].ior = 1.45f;
+	specs[1].g_HG = 0.80f;
+	MPC_Options options;
+	options.desiredLength = 512;
+	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
+	float mfp1 = 1.f / (specs[1].mua + specs[1].musp);
+	options.desiredStepSize = 8.f * (mfp0 + mfp1) / (float)options.desiredLength;
+	
+	cout << "First layer: " << endl;
+	computeConfiguration(1, &specs[0], &options);
+	cout << endl << "Second Layer: " << endl;
+	computeConfiguration(1, &specs[1], &options);
+	cout << endl << "Combined Layer: " << endl;
+	computeConfiguration(2, &specs[0], &options);
+
+	system("PAUSE");
 
 	return 0;
 }

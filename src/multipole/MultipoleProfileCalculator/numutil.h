@@ -44,7 +44,20 @@ inline T clamp(T value, T low, T high) {
 static const float PI = 3.141592654f;
 static const float INV_FOURPI = 0.25f / PI;
 
-template <class Type>
+template<class Type>
+class MTX_Traits {
+public:
+	static const Type zero;
+	static const Type one;
+};
+
+template<class Type>
+const Type MTX_Traits<Type>::zero = 0;
+template<class Type>
+const Type MTX_Traits<Type>::one = 1;
+
+
+template <class Type, class Type_traits=MTX_Traits<Type> >
 class Matrix {
 public:
 	Matrix(uint32 rows, uint32 cols) {
@@ -101,9 +114,20 @@ public:
 		for (uint32 i = 0; i < nRows * nCols; i++) {
 			data[i] += other.data[i];
 		}
+		return *this;
 	}
-	Matrix operator+(const Matrix& other) {
+	const Matrix operator+(const Matrix& other) const {
 		return Matrix(*this) += other;
+	}
+	Matrix& operator-=(const Matrix& other) {
+		assert(nRows == other.nRows && nCols == other.nCols);
+		for (uint32 i = 0; i < nRows * nCols; i++) {
+			data[i] -= other.data[i];
+		}
+		return *this;
+	}
+	const Matrix operator-(const Matrix& other) const {
+		return Matrix(*this) -= other;
 	}
 	// Component-wise multiplication
 	Matrix& operator*=(const Matrix& other) {
@@ -111,9 +135,19 @@ public:
 		for (uint32 i = 0; i < nRows * nCols; i++) {
 			data[i] *= other.data[i];
 		}
+		return *this;
 	}
-	Matrix operator*(const Matrix& other) {
+	const Matrix operator*(const Matrix& other) const {
 		return Matrix(*this) *= other;
+	}
+	Matrix& operator*=(Type mul) {
+		for (uint32 i = 0; i < nRows * nCols; i++) {
+			data[i] *= mul;
+		}
+		return *this;
+	}
+	const Matrix operator*(Type mul) const {
+		return Matrix(*this) *= mul;
 	}
 	// Component-wise division
 	Matrix& operator/=(const Matrix& other) {
@@ -121,30 +155,81 @@ public:
 		for (uint32 i = 0; i < nRows * nCols; i++) {
 			data[i] /= other.data[i];
 		}
+		return *this;
 	}
-	Matrix operator/(const Matrix& other) {
+	const Matrix operator/(const Matrix& other) const {
 		return Matrix(*this) /= other;
 	}
-
-	Matrix ChangeSize(uint32 newRows, uint32 newCols, uint32 baseRow, uint32 baseCol, uint32 startRow, uint32 startCol) {
-		Matrix ret(newRows, newCols);
-		uint32 minRows = min(newRows - baseRow, nRows), minCols = min(newCols - baseCol, nCols);
-		for (uint32 i = 0; i < newRows * newCols; i++)
-			ret.data[i] = Type();
-		for (uint32 i = startRow; i < minRows; i++) {
-			for (uint32 j = startCol; j < minCols; j++) {
-				ret[baseRow + i][baseCol + j] = (*this)[i][j];
-			}
+	Matrix& operator/=(Type div) {
+		for (uint32 i = 0; i < nRows * nCols; i++) {
+			data[i] /= div;
 		}
+		return *this;
+	}
+	const Matrix operator/(Type div) const {
+		return Matrix(*this) /= div;
+	}
+	Matrix& OneMinusSelf() {
+		for (uint32 i = 0; i < nRows * nCols; i++) {
+			data[i] = Type_traits::one - data[i];
+		}
+		return *this;
 	}
 
+	Matrix ChangeSize(uint32 newRows, uint32 newCols, uint32 baseRow, uint32 baseCol, uint32 startRow, uint32 startCol) const {
+		Matrix ret(newRows, newCols);
+		uint32 minRows = min(newRows - baseRow, nRows - startRow), minCols = min(newCols - baseCol, nCols - startCol);
+		ret.Clear();
+		for (uint32 i = 0; i < minRows; i++) {
+			for (uint32 j = 0; j < minCols; j++) {
+				ret[baseRow + i][baseCol + j] = (*this)[startRow + i][startCol + j];
+			}
+		}
+		return ret;
+	}
+	Matrix& ChangeSizeFrom(const Matrix& from, uint32 baseRow, uint32 baseCol, uint32 startRow, uint32 startCol) {
+		Clear();
+		uint32 minRows = min(from.nRows - startRow, nRows - baseRow), minCols = min(from.nCols - startCol, nCols - baseCol);
+		for (uint32 i = 0; i < minRows; i++) {
+			for (uint32 j = 0; j < minCols; j++) {
+				(*this)[baseRow + i][baseCol + j] = from[startRow + i][startCol + j];
+			}
+		}
+		return *this;
+	}
+	Matrix ScaleAndShift(uint32 newRows, uint32 newCols, uint32 shRow, uint32 shCol) const {
+		Matrix ret(newRows, newCols);
+		uint32 minRows = min(nRows, newRows), minCols = min(nCols, newCols);
+		ret.Clear();
+		for (uint32 i = 0; i < minRows; i++) {
+			uint32 ii = newRows - shRow + i; if (ii >= newRows) ii -= newRows;
+			for (uint32 j = 0; j < minCols; j++) {
+				uint32 jj = newCols - shCol + j; if (jj >= newCols) jj -= newCols;
+				ret[ii][jj] = (*this)[i][j];
+			}
+		}
+		return ret;
+	}
+	Matrix ScaleAndShiftReversed(uint32 newRows, uint32 newCols, uint32 shRow, uint32 shCol) const {
+		Matrix ret(newRows, newCols);
+		uint32 minRows = min(nRows, newRows), minCols = min(nCols, newCols);
+		ret.Clear();
+		for (uint32 i = 0; i < minRows; i++) {
+			uint32 ii = nRows - shRow + i; if (ii >= nRows) ii -= nRows;
+			for (uint32 j = 0; j < minCols; j++) {
+				uint32 jj = nRows - shCol + j; if (jj >= nCols) jj -= nCols;
+				ret[i][j] = (*this)[ii][jj];
+			}
+		}
+		return ret;
+	}
 	Type* GetData() { return data; }
 	const Type* GetData() const { return data; }
 	uint32 GetNumRows() const { return nRows; }
 	uint32 GetNumCols() const { return nCols; }
 	void Clear() {
 		for (uint32 i = 0; i < nRows * nCols; i++)
-			data[i] = Type();
+			data[i] = Type_traits::zero;
 	}
 private:
 	Type* data;

@@ -44,6 +44,12 @@ inline kiss_fft_cpx& operator+=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 	return cpx;
 }
 
+inline kiss_fft_cpx& operator-=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
+	cpx.r -= other.r;
+	cpx.i -= other.i;
+	return cpx;
+}
+
 inline kiss_fft_cpx& operator*=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 	kiss_fft_scalar r = cpx.r * other.r - cpx.i * other.i;
 	kiss_fft_scalar i = cpx.r * other.i + cpx.i * other.r;
@@ -60,12 +66,52 @@ inline kiss_fft_cpx& operator/=(kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
 	return cpx;
 }
 
+inline const kiss_fft_cpx operator-(const kiss_fft_cpx& cpx) {
+	kiss_fft_cpx res;
+	res.r = -cpx.r;
+	res.i = -cpx.i;
+	return res;
+}
+
+inline const kiss_fft_cpx operator+(const kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
+	return kiss_fft_cpx(cpx) += other;
+}
+
+inline const kiss_fft_cpx operator-(const kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
+	return kiss_fft_cpx(cpx) -= other;
+}
+
+inline const kiss_fft_cpx operator*(const kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
+	return kiss_fft_cpx(cpx) *= other;
+}
+
+inline const kiss_fft_cpx operator/(const kiss_fft_cpx& cpx, const kiss_fft_cpx& other) {
+	return kiss_fft_cpx(cpx) /= other;
+}
+
+kiss_fft_cpx makecpx(kiss_fft_scalar r, kiss_fft_scalar i = 0) {
+	kiss_fft_cpx ret;
+	ret.r = r;
+	ret.i = i;
+	return ret;
+}
+
+template <>
+class MTX_Traits<kiss_fft_cpx> {
+public:
+	static const kiss_fft_cpx one;
+	static const kiss_fft_cpx zero;
+};
+
+const kiss_fft_cpx MTX_Traits<kiss_fft_cpx>::one = makecpx(1);
+const kiss_fft_cpx MTX_Traits<kiss_fft_cpx>::zero = makecpx(0);
+
 struct MatrixProfile {
 	MatrixProfile(uint32 length)
 		: reflectance(length, length), transmittance(length, length) { }
 	Matrix<kiss_fft_scalar> reflectance;
 	Matrix<kiss_fft_scalar> transmittance;
-	uint32 GetLength() { return reflectance.GetNumRows(); }
+	uint32 GetLength() const { return reflectance.GetNumRows(); }
 	void Clear() { reflectance.Clear(); transmittance.Clear(); }
 };
 
@@ -79,10 +125,11 @@ void FFT(const Matrix<kiss_fft_scalar>& profile, Matrix<kiss_fft_cpx>& out) {
 
 
 void IFFT(const Matrix<kiss_fft_cpx>& profile, Matrix<kiss_fft_scalar>& out) {
-	int dims[2] = { profile.GetNumRows(), profile.GetNumCols() };
+	int dims[2] = { out.GetNumRows(), out.GetNumCols() };
 	kiss_fftndr_cfg cfg = kiss_fftndr_alloc(dims, 2, 1, NULL, NULL);
 	kiss_fftndri(cfg, profile.GetData(), out.GetData());
 	kiss_fft_free(cfg);
+	out *= (kiss_fft_scalar)1 / (dims[0] * dims[1]);
 }
 
 
@@ -166,12 +213,70 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 }
 
 
+Matrix<kiss_fft_cpx> ToFrequencyDomain(const Matrix<kiss_fft_scalar>& profile) {
+	uint32 length = profile.GetNumRows();
+	uint32 cl = length * 2; // convolution length
+	uint32 center = (length - 1) / 2;
+	Matrix<kiss_fft_cpx> out(cl, cl / 2 + 1);
+	FFT(profile.ScaleAndShift(cl, cl, center, center), out);
+	return out;
+}
+
+
+Matrix<kiss_fft_scalar> ToTimeDomain(const Matrix<kiss_fft_cpx>& freq) {
+	uint32 cl = freq.GetNumRows(); // convolution length
+	uint32 length = cl / 2;
+	uint32 center = (length - 1) / 2;
+	Matrix<kiss_fft_scalar> cOut(cl, cl);
+	IFFT(freq, cOut);
+	return cOut.ScaleAndShiftReversed(length, length, center, center);
+}
+
+
+Matrix<kiss_fft_scalar>& Convolution(Matrix<kiss_fft_scalar>& out, const Matrix<kiss_fft_scalar>& profile) {
+	uint32 length = out.GetNumRows();
+	uint32 cl = length * 2; // convolution length
+
+	Matrix<kiss_fft_scalar> cOut = out.ChangeSize(cl, cl, 0, 0, 0, 0);
+	Matrix<kiss_fft_scalar> cPro = profile.ChangeSize(cl, cl, 0, 0, 0, 0);
+	Matrix<kiss_fft_cpx> fout(cl, cl / 2 + 1); FFT(cOut, fout);
+	Matrix<kiss_fft_cpx> fpro(cl, cl / 2 + 1); FFT(cPro, fpro);
+	fout *= fpro;
+	IFFT(fout, cOut);
+	uint32 center = (length - 1) / 2;
+	out.ChangeSizeFrom(cOut, 0, 0, center, center);
+
+	return out;
+}
+
+
 void CombineLayerProfiles(const MatrixProfile& layer1, const MatrixProfile& layer2,
 	MatrixProfile& combined)
 {
 	// T12 = T1*T2/(1-R2*R1)
 	// R12 = R1+T1*R2*T1/(1-R2*R1)
+	Matrix<kiss_fft_cpx> fR1 = ToFrequencyDomain(layer1.reflectance);
+	Matrix<kiss_fft_cpx> fR2 = ToFrequencyDomain(layer2.reflectance);
+	Matrix<kiss_fft_cpx> fT1 = ToFrequencyDomain(layer1.transmittance);
+	Matrix<kiss_fft_cpx> fT2 = ToFrequencyDomain(layer2.transmittance);
 
+	Matrix<kiss_fft_cpx> fOneR2R1 = fR2;
+	fOneR2R1 *= fR1;
+	fOneR2R1.OneMinusSelf();
+
+	Matrix<kiss_fft_cpx> fR12 = fT1;
+	fR12 *= fR2;
+	fR12 *= fT1;
+	fR12 /= fOneR2R1;
+	fR12 += fR1;
+
+	combined.reflectance = ToTimeDomain(fR12);
+
+	Matrix<kiss_fft_cpx> fT12 = fT1;
+	fT12 *= fT2;
+	fT12 /= fOneR2R1;
+
+	combined.transmittance = ToTimeDomain(fT12);
 }
 
 
@@ -187,7 +292,7 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	float iorLower = numLayers > 1 ? pLayerSpecs[0].ior / pLayerSpecs[1].ior : pLayerSpecs[0].ior;
 	ComputeLayerProfile(pLayerSpecs[0], pLayerSpecs[0].ior, iorLower, stepSize, mp0);
 	for (uint32 i = 1; i < numLayers; i++) {
-		iorLower = numLayers > i ? pLayerSpecs[i].ior / pLayerSpecs[i + 1].ior : pLayerSpecs[i].ior;
+		iorLower = numLayers > (i + 1) ? pLayerSpecs[i].ior / pLayerSpecs[i + 1].ior : pLayerSpecs[i].ior;
 		MatrixProfile mp1(length * 2);
 		ComputeLayerProfile(pLayerSpecs[i], pLayerSpecs[i].ior / pLayerSpecs[i - 1].ior, iorLower, stepSize, mp1);
 		MatrixProfile combined(length * 2);
