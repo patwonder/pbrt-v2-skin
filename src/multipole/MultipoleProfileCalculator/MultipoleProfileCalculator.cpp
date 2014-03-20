@@ -100,26 +100,50 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 {
 	profile.Clear();
 
+	float thickness = spec.thickness;
+	kiss_fft_scalar mfp2 = 2. / (spec.mua + spec.musp);
+	// For slabs thicker than 2mfps, multipole approximation is quite accurate.
+	// For slabs thinner than that, light becomes less diffuse in the slab.
+	// Thus we lerp the reflectance to 0 and transmittance to delta distribution
+	// for slabs thinner than 2mfps.
+	kiss_fft_scalar lerp = (thickness < mfp2) ? thickness / mfp2 : 1.;
+	thickness = max(thickness, (float)mfp2);
+
 	uint32 length = profile.GetLength();
-	uint32 center = length / 2;
+	uint32 center = (length - 1) / 2;
 	uint32 extent = center;
-	const uint32 numDipolePairs = 5;
+	// Using 11 dipole pairs is enough for all normal circumstances,
+	// even in the extreme configuration that scattering/absorption ratio is 99.
+	// (Planar integral within 20 mfps yields less than 0.01% error)
+	const uint32 numDipolePairs = 11;
 	kiss_fft_scalar normalizeFactor = stepSize * stepSize;
 	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++) {
-		DipoleCalculator dc(iorUpper, iorLower, spec.thickness, spec.mua, spec.musp, pair);
-		for (uint32 sampleRow = 0; sampleRow < extent; sampleRow++) {
-			for (uint32 sampleCol = sampleRow; sampleCol < extent; sampleCol++) {
-				float drow2 = (sampleRow + 0.5f) * (sampleRow + 0.5f);
-				float dcol2 = (sampleCol + 0.5f) * (sampleCol + 0.5f);
-				float r2 = (drow2 + dcol2) * (stepSize * stepSize);
-				kiss_fft_scalar rd = dc.Rd(r2) * normalizeFactor;
-				kiss_fft_scalar td = dc.Td(r2) * normalizeFactor;
+		DipoleCalculator dc(iorUpper, iorLower, thickness, spec.mua, spec.musp, pair);
+		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
+				kiss_fft_scalar drow2 = sampleRow * sampleRow;
+				kiss_fft_scalar dcol2 = sampleCol * sampleCol;
+				kiss_fft_scalar r2 = (drow2 + dcol2) * (stepSize * stepSize);
+				kiss_fft_scalar rd = dc.Rd((float)r2) * normalizeFactor;
+				kiss_fft_scalar td = dc.Td((float)r2) * normalizeFactor;
 				profile.reflectance[center + sampleRow][center + sampleCol] += rd;
 				profile.transmittance[center + sampleRow][center + sampleCol] += td;
 			}
 		}
 	}
-	for (uint32 sampleRow = 1; sampleRow < extent; sampleRow++) {
+	if (lerp < 1.) {
+		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
+				profile.reflectance[center + sampleRow][center + sampleCol] *= lerp;
+				profile.transmittance[center + sampleRow][center + sampleCol] *= lerp;
+			}
+		}
+		// Lerp to (approximately) delta distribution
+		// This is for discrete convolution to work properly in 2D
+		profile.transmittance[center][center] += 1. - lerp;
+	}
+	// Fill the rest of the matrix through symmetricity
+	for (uint32 sampleRow = 1; sampleRow <= extent; sampleRow++) {
 		for (uint32 sampleCol = 0; sampleCol < sampleRow; sampleCol++) {
 			kiss_fft_scalar rd = profile.reflectance[center + sampleCol][center + sampleRow];
 			profile.reflectance[center + sampleRow][center + sampleCol] = rd;
@@ -127,16 +151,16 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 			profile.transmittance[center + sampleRow][center + sampleCol] = td;
 		}
 	}
-	for (uint32 sampleRow = 0; sampleRow < extent; sampleRow++) {
-		for (uint32 sampleCol = 0; sampleCol < extent; sampleCol++) {
+	for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+		for (uint32 sampleCol = 0; sampleCol <= extent; sampleCol++) {
 			kiss_fft_scalar rd = profile.reflectance[center + sampleRow][center + sampleCol];
-			profile.reflectance[center - sampleRow - 1][center + sampleCol    ] = rd;
-			profile.reflectance[center + sampleRow    ][center - sampleCol - 1] = rd;
-			profile.reflectance[center - sampleRow - 1][center - sampleCol - 1] = rd;
+			profile.reflectance[center - sampleRow][center + sampleCol] = rd;
+			profile.reflectance[center + sampleRow][center - sampleCol] = rd;
+			profile.reflectance[center - sampleRow][center - sampleCol] = rd;
 			kiss_fft_scalar td = profile.transmittance[center + sampleRow][center + sampleCol];
-			profile.transmittance[center - sampleRow - 1][center + sampleCol    ] = td;
-			profile.transmittance[center + sampleRow    ][center - sampleCol - 1] = td;
-			profile.transmittance[center - sampleRow - 1][center - sampleCol - 1] = td;
+			profile.transmittance[center - sampleRow][center + sampleCol] = td;
+			profile.transmittance[center + sampleRow][center - sampleCol] = td;
+			profile.transmittance[center - sampleRow][center - sampleCol] = td;
 		}
 	}
 }
@@ -174,22 +198,24 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 
 	MPC_Output* pOut = *oppOutput = new MPC_Output;
 
-	pOut->stepSize = stepSize;
 	pOut->length = length;
-
+	
+	pOut->pDistance = new float[length];
 	pOut->pReflectance = new float[length];
 	pOut->pTransmittance = new float[pOut->length];
 
-	uint32 center = length;
+	uint32 center = length - 1;
 	uint32 extent = center;
 	float denormalizeFactor = 1.f / (stepSize * stepSize);
-	for (uint32 i = 0; i < extent; i++) {
+	for (uint32 i = 0; i <= extent; i++) {
+		pOut->pDistance[i] = i * stepSize;
 		pOut->pReflectance[i] = (float)mp0.reflectance[center][center + i] * denormalizeFactor;
 		pOut->pTransmittance[i] = (float)mp0.transmittance[center][center + i] * denormalizeFactor;
 	}
 }
 
 MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
+	delete [] pOutput->pDistance;
 	delete [] pOutput->pReflectance;
 	delete [] pOutput->pTransmittance;
 	delete pOutput;

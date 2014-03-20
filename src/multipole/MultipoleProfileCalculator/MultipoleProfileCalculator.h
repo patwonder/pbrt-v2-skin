@@ -59,11 +59,10 @@ typedef struct MPC_Options {
 } MPC_Options;
 
 typedef struct MPC_Output {
-	// distance between adjacent samples
-	float stepSize;
-	// number of samples in one direction
+	// number of samples
 	uint32 length;
 	// Profile data
+	float* pDistance;
 	float* pReflectance;
 	float* pTransmittance;
 } MPC_Output;
