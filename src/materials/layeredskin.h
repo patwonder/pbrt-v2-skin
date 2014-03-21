@@ -40,7 +40,8 @@ public:
     // LayeredSkin Public Methods
 	LayeredSkin(const vector<SkinLayer>& layers, float roughness,
 		float_type nmperunit, const SkinCoefficients& coeff,
-		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt);
+		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
+		Reference<Texture<float> > bumpMap);
 	~LayeredSkin();
 
 	vector<float_type> GetLayerThickness() const override;
@@ -54,7 +55,10 @@ public:
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
 		MemoryArena &arena) const override;
-	bool HasSubsurfaceScattering() const { return true; }
+	bool HasSubsurfaceScattering() const override { return true; }
+	BumpMapping GetBumpMapping() const override {
+		return BumpMapping(bumpMap);
+	}
 
 	BSDF* GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dgGeom,
@@ -74,6 +78,7 @@ private:
 	LayerParam lps[3];
 	Reference<Texture<Spectrum> > Kr;
 	Reference<Texture<Spectrum> > Kt;
+	Reference<Texture<float> > bumpMap;
 };
 
 // Creator function

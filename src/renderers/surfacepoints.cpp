@@ -287,7 +287,7 @@ Spectrum TessellateSurfacePointsRenderer::Transmittance(const Scene *scene, cons
 
 void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 	points.clear();
-	std::vector<const Tessellatable*> tessellatables;
+	std::vector<std::pair<const Tessellatable*, const Material*> > tessellatables;
 	int totalWork = 0;
 	for (const auto& prim : originalPrimitives) {
 		try {
@@ -301,7 +301,7 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 					const Tessellatable* tessellatable = dynamic_cast<const Tessellatable*>(shp);
 					if (!tessellatable)
 						throw std::bad_cast();
-					tessellatables.push_back(tessellatable);
+					tessellatables.push_back(std::make_pair(tessellatable, mat));
 					totalWork += tessellatable->GetTessellationWork();
 				} catch (std::bad_cast()) {
 				}
@@ -312,8 +312,10 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 	}
 
 	ProgressReporter pr(totalWork, "Surface Points (T)");
-	for (const Tessellatable* tessellatable : tessellatables) {
-		tessellatable->TessellateSurfacePoints(minDist, points, &pr);
+	for (auto tessellatablePair : tessellatables) {
+		const Tessellatable* tessellatable = tessellatablePair.first;
+		const Material* mat = tessellatablePair.second;
+		tessellatable->TessellateSurfacePoints(minDist, mat->GetBumpMapping(), points, &pr);
 	}
 	pr.Done();
 

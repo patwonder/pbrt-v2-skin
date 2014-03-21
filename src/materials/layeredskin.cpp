@@ -178,8 +178,10 @@ const int SkinCoefficients::dhg_n = ARRAYSIZE(dhg_lambdas);
 
 
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
-	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt)
-	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt)
+	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
+	Reference<Texture<float> > bumpMap)
+	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
+	bumpMap(bumpMap)
 {
 	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
@@ -220,12 +222,18 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading,
 	MemoryArena &arena) const
 {
+	DifferentialGeometry dgs;
+	if (bumpMap)
+		Bump(bumpMap, dgGeom, dgShading, &dgs);
+	else
+		dgs = dgShading;
+
 	float ior = layers[0].ior;
-	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
+	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgs, dgGeom.nn, ior);
 	float rough = roughness;
 	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
-	Spectrum R = Kr->Evaluate(dgShading);
-	Spectrum T = Kt->Evaluate(dgShading);
+	Spectrum R = Kr->Evaluate(dgs);
+	Spectrum T = Kt->Evaluate(dgs);
 	if (!R.IsBlack())
 		bsdf->Add(BSDF_ALLOC(arena, Microfacet)(R, fresnel,
 			BSDF_ALLOC(arena, Blinn)(1.f / rough)));
@@ -311,6 +319,7 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	SkinCoefficients coeff(f_mel, f_blood, f_ohg, ga_epi, ga_derm, b_derm);
     Reference<Texture<Spectrum> > Kr = mp.GetSpectrumTexture("Kr", Spectrum(1.f));
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
+    Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
-		roughness, nmperunit, coeff, Kr, Kt);
+		roughness, nmperunit, coeff, Kr, Kt, bumpMap);
 }

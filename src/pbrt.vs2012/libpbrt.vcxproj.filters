@@ -1720,5 +1720,8 @@
     <None Include="..\core\pbrtparse.yy">
       <Filter>Source Files\core</Filter>
     </None>
+    <None Include="..\shapes\trianglemesh.inl">
+      <Filter>Source Files\shapes</Filter>
+    </None>
   </ItemGroup>
 </Project>

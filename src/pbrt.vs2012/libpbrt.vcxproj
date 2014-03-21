@@ -1257,6 +1257,7 @@
   <ItemGroup>
     <None Include="..\core\pbrtlex.ll" />
     <None Include="..\core\pbrtparse.yy" />
+    <None Include="..\shapes\trianglemesh.inl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2E030F4C-B2AE-476C-8E40-A326B3840F6C}</ProjectGuid>

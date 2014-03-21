@@ -56,8 +56,8 @@ struct SurfacePoint {
 class Tessellatable {
 public:
 	// Tessellatable Interface Methods
-	virtual void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points,
-		ProgressReporter* pr = NULL) const = 0;
+	virtual void TessellateSurfacePoints(float minDist, const BumpMapping& bump,
+		vector<SurfacePoint>& points, ProgressReporter* pr = NULL) const = 0;
 	virtual int GetTessellationWork() const = 0;
 	virtual ~Tessellatable() {}
 };

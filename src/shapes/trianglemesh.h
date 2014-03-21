@@ -44,6 +44,7 @@
 using std::map;
 
 struct BarycentricCoordinate;
+class BumpMapping;
 
 // TriangleMesh Declarations
 class TriangleMesh : public ShrinkableShape, public Tessellatable {
@@ -59,10 +60,11 @@ public:
     bool CanIntersect() const { return false; }
     void Refine(vector<Reference<Shape> > &refined) const;
 	Reference<ShrinkableShape> Shrink(float_type distance) const override;
-	void TessellateSurfacePoints(float minDist, vector<SurfacePoint>& points,
-		ProgressReporter* pr = NULL) const override;
+	void TessellateSurfacePoints(float minDist, const BumpMapping& bump,
+		vector<SurfacePoint>& points, ProgressReporter* pr = NULL) const override;
 	int GetTessellationWork() const override;
-    friend class Triangle;
+	template<class MeshReferenceType>
+	friend class TriangleBase;
     template <typename T> friend class VertexTexture;
 protected:
     // TriangleMesh Protected Data
@@ -88,11 +90,12 @@ private:
 };
 
 
-class Triangle : public Shape {
+template<class MeshReferenceType>
+class TriangleBase : public Shape {
 public:
     // Triangle Public Methods
-    Triangle(const Transform *o2w, const Transform *w2o, bool ro,
-             TriangleMesh *m, int n)
+    TriangleBase(const Transform *o2w, const Transform *w2o, bool ro,
+                 const TriangleMesh *m, int n)
         : Shape(o2w, w2o, ro) {
         mesh = m;
         v = &mesh->vertexIndex[3*n];
@@ -122,12 +125,20 @@ public:
     virtual void GetShadingGeometry(const Transform &obj2world,
             const DifferentialGeometry &dg,
             DifferentialGeometry *dgShading) const;
+	void GetDifferentialGeometries(const BarycentricCoordinate& bc,
+		DifferentialGeometry* dgGeom, DifferentialGeometry* dgShading) const;
     Point Sample(float u1, float u2, Normal *Ns) const;
 private:
     // Triangle Private Data
-    Reference<TriangleMesh> mesh;
+    MeshReferenceType mesh;
     int *v;
 };
+
+
+typedef TriangleBase<Reference<const TriangleMesh> > Triangle;
+typedef TriangleBase<const TriangleMesh*> TempTriangle;
+
+#include "trianglemesh.inl"
 
 
 TriangleMesh *CreateTriangleMeshShape(const Transform *o2w, const Transform *w2o,

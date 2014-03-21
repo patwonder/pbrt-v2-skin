@@ -43,6 +43,19 @@
 #include <vector>
 using std::vector;
 
+
+class BumpMapping {
+public:
+	// BumpMapping Public Methods
+	BumpMapping(const Reference<Texture<float> >& bm) : bumpMap(bm) {}
+	void Bump(const DifferentialGeometry& dgGeom, const DifferentialGeometry& dgShading,
+		DifferentialGeometry* dgBump) const;
+private:
+	// BumpMapping Private Data
+	Reference<Texture<float> > bumpMap;
+};
+
+
 // Material Declarations
 class Material : public ReferenceCounted {
 public:
@@ -63,6 +76,10 @@ public:
 	virtual bool HasSubsurfaceScattering() const {
 		return false;
 	}
+	virtual BumpMapping GetBumpMapping() const {
+		return BumpMapping(NULL);
+	}
+
 	virtual ~Material();
     static void Bump(const Reference<Texture<float> > &d, const DifferentialGeometry &dgGeom,
         const DifferentialGeometry &dgShading, DifferentialGeometry *dgBump);

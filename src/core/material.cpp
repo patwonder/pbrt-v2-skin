@@ -85,6 +85,16 @@ void Material::Bump(const Reference<Texture<float> > &d,
 }
 
 
+void BumpMapping::Bump(const DifferentialGeometry& dgGeom, const DifferentialGeometry& dgShading,
+	DifferentialGeometry* dgBump) const
+{
+	if (bumpMap)
+		Material::Bump(bumpMap, dgGeom, dgShading, dgBump);
+	else
+		*dgBump = dgShading;
+}
+
+
 const float WLD_lambdas[] = {
 	400, 405, 410, 415, 420, 425, 430, 435, 440, 445,
 	450, 455, 460, 465, 470, 475, 480, 485, 490, 495,
