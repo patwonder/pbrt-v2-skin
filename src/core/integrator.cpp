@@ -393,4 +393,5 @@ Spectrum EstimateDirectIrradiance(const Scene* scene, const Renderer* renderer,
 			}
 		}
 	}
+	return Ld;
 }

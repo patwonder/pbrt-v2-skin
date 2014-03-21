@@ -227,7 +227,7 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, vector<SurfacePoint>& 
 			Point sv1 = bv1.Evaluate(v0, v1, v2);
 			Point sv2 = bv2.Evaluate(v0, v1, v2);
 			sp.area = .5f * Cross(sv1 - sv0, sv2 - sv0).Length();
-			sp.rayEpsilon = minDist / 100.f;
+			sp.rayEpsilon = minDist / 10.f;
 			// Add barycentric point of the subdivided triangle to the collection of surface points
 			points.push_back(sp);
 		});
@@ -308,9 +308,9 @@ void TriangleMesh::matching(BarycentricCoordinate b0Inner, BarycentricCoordinate
 	typedef BarycentricCoordinate BC;
 
 	int innerPos = 0, outerPos = 0;
-	while (innerPos < segsInner && outerPos < segsOuter) {
-		BC bInner = BC::Lerp((float)(innerPos) / segsInner, b0Inner, b1Inner);
-		BC bOuter = BC::Lerp((float)(outerPos) / segsOuter, b0Outer, b1Outer);
+	while (innerPos < segsInner || outerPos < segsOuter) {
+		BC bInner = segsInner ? BC::Lerp((float)(innerPos) / segsInner, b0Inner, b1Inner) : b0Inner;
+		BC bOuter = BC::Lerp((float)(outerPos) / segsOuter, b0Outer, b1Outer); // segsOuter should always > 0
 		// Choose inner/outer edge based on "Least Slope Criteria"
 		float slopeInner = (innerPos < segsInner) ? 
 			fabsf((float)(innerPos + 1) + 1.f - (float)outerPos / segsOuter * (segsInner + 2)) :
