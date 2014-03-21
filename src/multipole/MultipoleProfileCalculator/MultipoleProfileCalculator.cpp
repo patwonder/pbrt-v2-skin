@@ -35,6 +35,7 @@
 #include "DipoleCalculator.h"
 #include "numutil.h"
 #include "tools/kiss_fftndr.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -280,6 +281,13 @@ void CombineLayerProfiles(const MatrixProfile& layer1, const MatrixProfile& laye
 }
 
 
+struct OutEntry {
+	float distance;
+	float reflectance;
+	float transmittance;
+};
+
+
 MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	const MPC_Options* pOptions, MPC_Output** oppOutput)
 {
@@ -301,21 +309,35 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 		mp0.transmittance = std::move(combined.transmittance);
 	}
 
-	MPC_Output* pOut = *oppOutput = new MPC_Output;
-
-	pOut->length = length;
-	
-	pOut->pDistance = new float[length];
-	pOut->pReflectance = new float[length];
-	pOut->pTransmittance = new float[pOut->length];
-
+	vector<OutEntry> entries;
 	uint32 center = length - 1;
 	uint32 extent = center;
 	float denormalizeFactor = 1.f / (stepSize * stepSize);
 	for (uint32 i = 0; i <= extent; i++) {
-		pOut->pDistance[i] = i * stepSize;
-		pOut->pReflectance[i] = (float)mp0.reflectance[center][center + i] * denormalizeFactor;
-		pOut->pTransmittance[i] = (float)mp0.transmittance[center][center + i] * denormalizeFactor;
+		for (uint32 j = i; i * i + j * j <= extent * extent; j++) {
+			OutEntry entry;
+			entry.distance = sqrt((float)(i * i + j * j)) * stepSize;
+			entry.reflectance = (float)mp0.reflectance[center + i][center + j] * denormalizeFactor;
+			entry.transmittance = (float)mp0.transmittance[center + i][center + j] * denormalizeFactor;
+			entries.push_back(entry);
+		}
+	}
+
+	sort(entries.begin(), entries.end(), [](const OutEntry& e1, const OutEntry& e2) {
+		return e1.distance < e2.distance;
+	});
+
+	MPC_Output* pOut = *oppOutput = new MPC_Output;
+
+	pOut->length = (uint32)entries.size();
+	pOut->pDistance = new float[pOut->length];
+	pOut->pReflectance = new float[pOut->length];
+	pOut->pTransmittance = new float[pOut->length];
+
+	for (size_t i = 0; i < entries.size(); i++) {
+		pOut->pDistance[i] = entries[i].distance;
+		pOut->pReflectance[i] = entries[i].reflectance;
+		pOut->pTransmittance[i] = entries[i].transmittance;
 	}
 }
 

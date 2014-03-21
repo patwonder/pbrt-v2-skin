@@ -13,7 +13,7 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	MPC_ComputeDiffusionProfile(numLayers, pLayerSpecs, pOptions, &pOutput);
 	
 	// The integrals does not include delta distributions
-	cout << "Reflectance:";
+	cout << "Reflectance(" << pOutput->length << "):";
 	float integralR = 0.f;
 	float prevDistance = 0.f;
 	for (uint32 i = 0; i < pOutput->length; i++) {
@@ -24,7 +24,7 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	}
 	if (pOutput->length > 32)
 		cout << " ...";
-	cout << endl << "Transmittance:";
+	cout << endl << "Transmittance(" << pOutput->length << "):";
 	float integralT = 0;
 	prevDistance = 0.f;
 	for (uint32 i = 0; i < pOutput->length; i++) {
@@ -46,7 +46,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	MPC_LayerSpec specs[2];
 	specs[0].mua = 13.8629f;
 	specs[0].musp = 19.4879f;
-	specs[0].thickness = 0.07f;
+	specs[0].thickness = 0.025f;
 	specs[0].ior = 1.4f;
 	specs[0].g_HG = 0.90f;
 	specs[1].mua = 1.6f;
