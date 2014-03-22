@@ -33,6 +33,8 @@
 
 #include "multipole.h"
 #include "multipole/MultipoleProfileCalculator/MultipoleProfileCalculator.h"
+#include "parallel.h"
+#include "progressreporter.h"
 
 struct MultipoleProfileDataEntry {
 	float distanceSquared;
@@ -131,15 +133,34 @@ Spectrum MultipoleBSSRDF::totalTransmittance() const {
 }
 
 
-void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData** oppData)
-{
-	if (!oppData) {
-		Error("Cannot output multipole profile.");
+class MultipoleProfileTask : public Task {
+public:
+	MultipoleProfileTask(int spectralChannel, int layers, const SampledSpectrum mua[],
+		const SampledSpectrum musp[], float et[], float thickness[],
+		MultipoleProfileData* pData, ProgressReporter& pr) : reporter(pr)
+	{
+		sc = spectralChannel;
+		this->layers = layers;
+		this->mua = mua;
+		this->musp = musp;
+		this->et = et;
+		this->thickness = thickness;
+		this->pData = pData;
 	}
 
-	MultipoleProfileData* pData = *oppData = new MultipoleProfileData;
+	void Run() override;
+private:
+	int sc;
+	int layers;
+	const SampledSpectrum* mua;
+	const SampledSpectrum* musp;
+	float* et;
+	float* thickness;
+	MultipoleProfileData* pData;
+	ProgressReporter& reporter;
+};
 
+void MultipoleProfileTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[layers];
 	MPC_Options options;
 	options.desiredLength = 512;
@@ -151,40 +172,64 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 	}
 	SampledSpectrum mfp = mfpTotal / (float)layers;
 	
-	for (int i = 0; i < nSpectralSamples; i++) {
-		// Fill in layer information
-		for (int layer = 0; layer < layers; layer++) {
-			MPC_LayerSpec& ls = pLayerSpecs[layer];
-			ls.g_HG = 0.f;
-			ls.ior = et[layer];
-			ls.mua = mua[layer][i];
-			ls.musp = musp[layer][i];
-			ls.thickness = thickness[layer];
-		}
-		// Compute desired step size
-		options.desiredStepSize = 16.f * mfp[i] / (float)options.desiredLength;
+	// Fill in layer information
+	for (int layer = 0; layer < layers; layer++) {
+		MPC_LayerSpec& ls = pLayerSpecs[layer];
+		ls.g_HG = 0.f;
+		ls.ior = et[layer];
+		ls.mua = mua[layer][sc];
+		ls.musp = musp[layer][sc];
+		ls.thickness = thickness[layer];
+	}
+	// Compute desired step size
+	options.desiredStepSize = 16.f * mfp[sc] / (float)options.desiredLength;
 
-		// Do the computation
-		MPC_Output* pOutput;
-		MPC_ComputeDiffusionProfile(layers, pLayerSpecs, &options, &pOutput);
+	// Do the computation
+	MPC_Output* pOutput;
+	MPC_ComputeDiffusionProfile(layers, pLayerSpecs, &options, &pOutput);
 
-		// Collect result
-		Profile& profile = pData->spectralProfile[i];
-		profile.clear();
-		profile.reserve(pOutput->length);
+	// Collect result
+	Profile& profile = pData->spectralProfile[sc];
+	profile.clear();
+	profile.reserve(pOutput->length);
 
-		for (uint32 ri = 0; ri < pOutput->length; ri++) {
-			MultipoleProfileDataEntry entry;
-			entry.distanceSquared = pOutput->pDistanceSquared[ri];
-			entry.reflectance = pOutput->pReflectance[ri];
-			entry.transmittance = pOutput->pTransmittance[ri];
-			profile.push_back(entry);
-		}
-
-		MPC_FreeOutput(pOutput);
+	for (uint32 ri = 0; ri < pOutput->length; ri++) {
+		MultipoleProfileDataEntry entry;
+		entry.distanceSquared = pOutput->pDistanceSquared[ri];
+		entry.reflectance = pOutput->pReflectance[ri];
+		entry.transmittance = pOutput->pTransmittance[ri];
+		profile.push_back(entry);
 	}
 
+	MPC_FreeOutput(pOutput);
 	delete [] pLayerSpecs;
+
+	reporter.Update();
+}
+
+
+void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
+	MultipoleProfileData** oppData)
+{
+	if (!oppData) {
+		Error("Cannot output multipole profile.");
+	}
+
+	MultipoleProfileData* pData = *oppData = new MultipoleProfileData;
+
+	int nTasks = nSpectralSamples;
+    ProgressReporter reporter(nTasks, "Profile");
+	vector<Task*> profileTasks;
+	profileTasks.reserve(nTasks);
+	for (int i = 0; i < nTasks; ++i) {
+		profileTasks.push_back(new MultipoleProfileTask(i, layers, mua,
+			musp, et, thickness, pData, reporter));
+	}
+	EnqueueTasks(profileTasks);
+	WaitForAllTasks();
+	for (Task* task : profileTasks)
+		delete task;
+	reporter.Done();
 }
 
 void ReleaseMultipoleProfile(MultipoleProfileData* pData) {
