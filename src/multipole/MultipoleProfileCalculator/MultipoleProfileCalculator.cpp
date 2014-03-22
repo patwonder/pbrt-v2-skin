@@ -154,7 +154,8 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	// For slabs thinner than that, light becomes less diffuse in the slab.
 	// Thus we lerp the reflectance to 0 and transmittance to delta distribution
 	// for slabs thinner than 2mfps.
-	kiss_fft_scalar lerp = (thickness < mfp2) ? thickness / mfp2 : 1.;
+	kiss_fft_scalar lerp = (thickness < mfp2) ?
+		(1. - exp(-thickness * 2. / mfp2)) / (1. - exp(-2.)) : 1.;
 	thickness = max(thickness, (float)mfp2);
 
 	uint32 length = profile.GetLength();
