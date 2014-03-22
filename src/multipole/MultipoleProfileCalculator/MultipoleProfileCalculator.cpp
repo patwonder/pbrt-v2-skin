@@ -283,7 +283,7 @@ void CombineLayerProfiles(const MatrixProfile& layer1, const MatrixProfile& laye
 
 
 struct OutEntry {
-	float distance;
+	float distanceSquared;
 	float reflectance;
 	float transmittance;
 };
@@ -317,7 +317,7 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	for (uint32 i = 0; i <= extent; i++) {
 		for (uint32 j = i; i * i + j * j <= extent * extent; j++) {
 			OutEntry entry;
-			entry.distance = sqrt((float)(i * i + j * j)) * stepSize;
+			entry.distanceSquared = (float)(i * i + j * j) * stepSize * stepSize;
 			entry.reflectance = (float)mp0.reflectance[center + i][center + j] * denormalizeFactor;
 			entry.transmittance = (float)mp0.transmittance[center + i][center + j] * denormalizeFactor;
 			entries.push_back(entry);
@@ -325,25 +325,25 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	}
 
 	sort(entries.begin(), entries.end(), [](const OutEntry& e1, const OutEntry& e2) {
-		return e1.distance < e2.distance;
+		return e1.distanceSquared < e2.distanceSquared;
 	});
 
 	MPC_Output* pOut = *oppOutput = new MPC_Output;
 
 	pOut->length = (uint32)entries.size();
-	pOut->pDistance = new float[pOut->length];
+	pOut->pDistanceSquared = new float[pOut->length];
 	pOut->pReflectance = new float[pOut->length];
 	pOut->pTransmittance = new float[pOut->length];
 
 	for (size_t i = 0; i < entries.size(); i++) {
-		pOut->pDistance[i] = entries[i].distance;
+		pOut->pDistanceSquared[i] = entries[i].distanceSquared;
 		pOut->pReflectance[i] = entries[i].reflectance;
 		pOut->pTransmittance[i] = entries[i].transmittance;
 	}
 }
 
 MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
-	delete [] pOutput->pDistance;
+	delete [] pOutput->pDistanceSquared;
 	delete [] pOutput->pReflectance;
 	delete [] pOutput->pTransmittance;
 	delete pOutput;

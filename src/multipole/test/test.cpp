@@ -12,26 +12,27 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	MPC_Output* pOutput;
 	MPC_ComputeDiffusionProfile(numLayers, pLayerSpecs, pOptions, &pOutput);
 	
+	// Computes the integral {r,0,+inf}2*pi*r*Rd(r)dr = {r^2,0,+inf}pi*Rd(r)d(r^2) as total reflectance
 	// The integrals does not include delta distributions
 	cout << "Reflectance(" << pOutput->length << "):";
 	float integralR = 0.f;
-	float prevDistance = 0.f;
+	float prevDistanceSquared = 0.f;
 	for (uint32 i = 0; i < pOutput->length; i++) {
 		if (i < 32)
 			cout << " " << pOutput->pReflectance[i];
-		integralR += 2.f * 3.141592654f * pOutput->pDistance[i] * pOutput->pReflectance[i] * (pOutput->pDistance[i] - prevDistance);
-		prevDistance = pOutput->pDistance[i];
+		integralR += 3.141592654f * pOutput->pReflectance[i] * (pOutput->pDistanceSquared[i] - prevDistanceSquared);
+		prevDistanceSquared = pOutput->pDistanceSquared[i];
 	}
 	if (pOutput->length > 32)
 		cout << " ...";
 	cout << endl << "Transmittance(" << pOutput->length << "):";
 	float integralT = 0;
-	prevDistance = 0.f;
+	prevDistanceSquared = 0.f;
 	for (uint32 i = 0; i < pOutput->length; i++) {
 		if (i < 32)
 			cout << " " << pOutput->pTransmittance[i];
-		integralT += 2.f * 3.141592654f * pOutput->pDistance[i] * pOutput->pTransmittance[i] * (pOutput->pDistance[i] - prevDistance);
-		prevDistance = pOutput->pDistance[i];
+		integralT += 3.141592654f * pOutput->pTransmittance[i] * (pOutput->pDistanceSquared[i] - prevDistanceSquared);
+		prevDistanceSquared = pOutput->pDistanceSquared[i];
 	}
 	if (pOutput->length > 32)
 		cout << " ...";

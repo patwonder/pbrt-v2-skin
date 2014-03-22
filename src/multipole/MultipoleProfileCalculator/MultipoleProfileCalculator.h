@@ -62,7 +62,7 @@ typedef struct MPC_Output {
 	// number of samples
 	uint32 length;
 	// Profile data
-	float* pDistance;
+	float* pDistanceSquared;
 	float* pReflectance;
 	float* pTransmittance;
 } MPC_Output;
