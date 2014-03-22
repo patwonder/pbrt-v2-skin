@@ -68,7 +68,7 @@ public:
                               MemoryArena &arena) const {
         return NULL;
     }
-	virtual MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
+	virtual const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading, MemoryArena &arena) const
 	{
 		return NULL;
@@ -95,6 +95,9 @@ public:
 
 	Spectrum toSpectrum() const {
 		return Spectrum::FromSampled(WLD_lambdas, c, WLD_nSamples);
+	}
+	SampledSpectrum toSampledSpectrum() const {
+		return SampledSpectrum::FromSampled(WLD_lambdas, c, WLD_nSamples);
 	}
 	float& operator[](uint32_t index) {
 		return c[index];

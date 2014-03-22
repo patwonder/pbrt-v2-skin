@@ -34,13 +34,17 @@
 #include "layeredintegrator.h"
 #include "paramset.h"
 
+#ifdef PBRT_HAS_64_BIT_ATOMICS
 #define USE_RANDOMWALK_PROBES
+#endif
 
 #ifdef USE_RANDOMWALK_PROBES
 #include <fstream>
 #include <iomanip>
 #include "parallel.h"
 using namespace std;
+
+
 void volatile_memset(volatile void* dst, int32_t val, size_t size) {
 	for (size_t i = 0; i < size / sizeof(val); i++) {
 		((volatile decltype(val)*)dst)[i] = val;

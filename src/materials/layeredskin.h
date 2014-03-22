@@ -51,7 +51,7 @@ public:
 	BSSRDF* GetBSSRDF(const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
 		MemoryArena &arena) const override;
-	MultipoleBSSRDF* GetMultipoleBSSRDF(
+	const MultipoleBSSRDF* GetMultipoleBSSRDF(
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
 		MemoryArena &arena) const override;
@@ -79,6 +79,8 @@ private:
 	Reference<Texture<Spectrum> > Kr;
 	Reference<Texture<Spectrum> > Kt;
 	Reference<Texture<float> > bumpMap;
+	MultipoleBSSRDF* preparedBSSRDF;
+	MultipoleProfileData* profileData;
 };
 
 // Creator function

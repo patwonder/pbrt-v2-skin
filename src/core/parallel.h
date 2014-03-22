@@ -203,7 +203,7 @@ inline float AtomicAdd(volatile float *val, float delta) {
     return newVal.f;
 }
 
-
+#ifdef PBRT_HAS_64_BIT_ATOMICS
 inline double AtomicAdd(volatile double *val, double delta) {
     PBRT_ATOMIC_MEMORY_OP();
     union bits { double d; int64_t i; };
@@ -220,6 +220,7 @@ inline double AtomicAdd(volatile double *val, double delta) {
                                   newVal.i, oldVal.i) != oldVal.i);
     return newVal.d;
 }
+#endif // PBRT_HAS_64_BIT_ATOMICS
 
 
 inline int32_t AtomicMin(AtomicInt32 *val, int32_t compare) {

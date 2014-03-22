@@ -57,12 +57,12 @@ BSSRDF *Intersection::GetBSSRDF(const RayDifferential &ray,
     return bssrdf;
 }
 
-MultipoleBSSRDF* Intersection::GetMultipoleBSSRDF(const RayDifferential &ray,
+const MultipoleBSSRDF* Intersection::GetMultipoleBSSRDF(const RayDifferential &ray,
 	MemoryArena &arena) const
 {
     PBRT_STARTED_BSSRDF_SHADING(const_cast<RayDifferential *>(&ray));
     dg.ComputeDifferentials(ray);
-    MultipoleBSSRDF *bssrdf = primitive->GetMultipoleBSSRDF(dg, ObjectToWorld, arena);
+    const MultipoleBSSRDF *bssrdf = primitive->GetMultipoleBSSRDF(dg, ObjectToWorld, arena);
     PBRT_FINISHED_BSSRDF_SHADING(const_cast<RayDifferential *>(&ray), bssrdf);
 	return bssrdf;
 }

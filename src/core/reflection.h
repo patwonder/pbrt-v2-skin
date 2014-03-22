@@ -480,8 +480,8 @@ private:
 class Beckmann : public MicrofacetDistribution {
 public:
     Beckmann(float rms) {
-		if (rms < 1e-3)
-			rms = 1e-3;
+		if (rms < 1e-3f)
+			rms = 1e-3f;
 		rms2 = rms * rms;
 		rcpRMS2 = 1 / rms2;
 	}
@@ -564,20 +564,46 @@ private:
     Spectrum sig_a, sigp_s;
 };
 
+struct MultipoleProfileData;
 
 // Multipole BSSRDF Declarations
 class MultipoleBSSRDF {
 public:
 	// MultipoleBSSRDF Public Methods
-    MultipoleBSSRDF(const Spectrum &sa, const Spectrum &sps, float et)
-        : e(et), sig_a(sa), sigp_s(sps) { }
-    float eta() const { return e; }
-    Spectrum sigma_a() const { return sig_a; }
-    Spectrum sigma_prime_s() const { return sigp_s; }
+    MultipoleBSSRDF(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
+		const MultipoleProfileData* pData) {
+		if (layers > MAX_LAYERS)
+			layers = MAX_LAYERS;
+		nLayers = layers;
+		for (int i = 0; i < layers; i++) {
+			sig_a[i] = mua[i];
+			sigp_s[i] = musp[i];
+			e[i] = et[i];
+			d[i] = thickness[i];
+		}
+		this->pData = pData;
+	}
+	int numLayers() const { return nLayers; }
+	float thickness(int layer) const { return d[layer]; }
+    float eta(int layer) const { return e[layer]; }
+    Spectrum sigma_a(int layer) const { return sig_a[layer]; }
+    Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
+
+	Spectrum reflectance(float distanceSquared) const;
+	Spectrum transmittance(float distanceSquared) const;
+	Spectrum totalReflectance() const;
+	Spectrum totalTransmittance() const;
+
+	// MultipoleBSSRDF Public Data
+	static const int MAX_LAYERS = 4;
 private:
     // MultipoleBSSRDF Private Data
-    float e;
-    Spectrum sig_a, sigp_s;
+	int nLayers;
+	float d[MAX_LAYERS];
+    float e[MAX_LAYERS];
+    Spectrum sig_a[MAX_LAYERS];
+	Spectrum sigp_s[MAX_LAYERS];
+	const MultipoleProfileData* pData;
 };
 
 

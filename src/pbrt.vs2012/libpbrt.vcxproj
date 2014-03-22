@@ -176,6 +176,7 @@
     <ClInclude Include="..\core\floatfile.h" />
     <ClInclude Include="..\core\geometry.h" />
     <ClInclude Include="..\core\imageio.h" />
+    <ClInclude Include="..\core\multipole.h" />
     <ClInclude Include="..\core\skinlayer.h" />
     <ClInclude Include="..\core\targa.h" />
     <ClInclude Include="..\core\integrator.h" />
@@ -1116,6 +1117,7 @@
     <ClCompile Include="..\core\floatfile.cpp" />
     <ClCompile Include="..\core\geometry.cpp" />
     <ClCompile Include="..\core\imageio.cpp" />
+    <ClCompile Include="..\core\multipole.cpp" />
     <ClCompile Include="..\core\StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

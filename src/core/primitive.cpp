@@ -92,7 +92,7 @@ BSSRDF *Aggregate::GetBSSRDF(const DifferentialGeometry &,
 }
 
 
-MultipoleBSSRDF* Aggregate::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+const MultipoleBSSRDF* Aggregate::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 	const Transform &ObjectToWorld, MemoryArena &arena) const
 {
     Severe("Aggregate::GetMultipoleBSSRDF() method"
@@ -208,7 +208,7 @@ BSSRDF *GeometricPrimitive::GetBSSRDF(const DifferentialGeometry &dg,
 }
 
 
-MultipoleBSSRDF* GeometricPrimitive::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+const MultipoleBSSRDF* GeometricPrimitive::GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 	const Transform &ObjectToWorld, MemoryArena &arena) const
 {
     DifferentialGeometry dgs;

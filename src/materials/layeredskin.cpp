@@ -33,6 +33,7 @@
 
 #include "layeredskin.h"
 #include "paramset.h"
+#include "multipole.h"
 #include <functional>
 
 
@@ -204,10 +205,32 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	lps[2].musp = lps[1].musp * 0.333f;
 	lps[2].ga = 1.f;
 	lps[2].isotropicHGPF = false;
+
+	// Prepare BSSRDF for better performance
+	Spectrum mua[2];
+	Spectrum musp[2];
+	SampledSpectrum smua[2];
+	SampledSpectrum smusp[2];
+
+	float eta[2];
+	float thickness[2];
+	for (int i = 0; i < 2; i++) {
+		mua[i] = lps[i].mua.toSpectrum();
+		musp[i] = lps[i].musp.toSpectrum();
+		smua[i] = lps[i].mua.toSampledSpectrum();
+		smusp[i] = lps[i].musp.toSampledSpectrum();
+		eta[i] = layers[i].ior;
+		thickness[i] = lps[i].thickness;
+	}
+
+	ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData);
+	preparedBSSRDF = new MultipoleBSSRDF(2, mua, musp, eta, thickness, profileData);
 }
 
 LayeredSkin::~LayeredSkin() {
 	delete pcoeff;
+	ReleaseMultipoleProfile(profileData);
+	delete preparedBSSRDF;
 }
 
 vector<float_type> LayeredSkin::GetLayerThickness() const {
@@ -258,12 +281,10 @@ BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
 }
 
 
-MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
+const MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
 	const DifferentialGeometry &dgShading, MemoryArena &arena) const
 {
-	const LayerParam& lp = lps[1];
-	return BSDF_ALLOC(arena, MultipoleBSSRDF)(lp.mua.toSpectrum(),
-		lp.musp.toSpectrum(), layers[1].ior);
+	return preparedBSSRDF;
 }
 
 
@@ -308,6 +329,8 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	const SkinLayer* layers = ps.FindSkinLayer("layers", &nLayers);
 	if (!layers)
 		Error("No layers param set for LayeredSkin material.");
+	if (nLayers < 2)
+		Error("Not enough layers specified for LayeredSkin material.");
 	float roughness = ps.FindOneFloat("roughness", 0.4f);
 	float nmperunit = ps.FindOneFloat("nmperunit", 100e6f);
 	float f_mel = ps.FindOneFloat("f_mel", 0.15f);

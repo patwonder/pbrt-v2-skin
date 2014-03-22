@@ -64,7 +64,7 @@ public:
         const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
     virtual BSSRDF *GetBSSRDF(const DifferentialGeometry &dg,
         const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
-    virtual MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+    virtual const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
  	// Low-cost RTTI
 	virtual LayeredGeometricPrimitive* ToLayered() { return NULL; }
@@ -93,7 +93,7 @@ public:
                   const Transform &ObjectToWorld, MemoryArena &arena) const;
     BSSRDF *GetBSSRDF(const DifferentialGeometry &dg,
                       const Transform &ObjectToWorld, MemoryArena &arena) const;
-    MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+    const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
 	const Shape* GetShape() const;
 	const Material* GetMaterial() const;
@@ -144,7 +144,7 @@ public:
                   const Transform &ObjectToWorld, MemoryArena &arena) const {
         return NULL;
     }
-    MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+    const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override
 	{
 		return NULL;
@@ -169,7 +169,7 @@ public:
                   const Transform &, MemoryArena &) const;
     BSSRDF *GetBSSRDF(const DifferentialGeometry &dg,
                   const Transform &, MemoryArena &) const;
-    MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
+    const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
 };
 

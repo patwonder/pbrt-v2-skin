@@ -187,6 +187,19 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
     octree->InitHierarchy();
 }
 
+
+class MultipoleReflectance {
+public:
+	MultipoleReflectance(const MultipoleBSSRDF* bssrdf) {
+		this->bssrdf = bssrdf;
+	}
+	Spectrum operator()(float d2) const {
+		return bssrdf->reflectance(d2);
+	}
+private:
+	const MultipoleBSSRDF* bssrdf;
+};
+
 Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *renderer,
 	const RayDifferential &ray, const Intersection &isect,
 	const Sample *sample, RNG &rng, MemoryArena &arena) const
@@ -202,27 +215,22 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
     const Point &p = bsdf->dgShading.p;
     const Normal &n = bsdf->dgShading.nn;
     // Evaluate MultipoleBSSRDF and possibly compute subsurface scattering
-    MultipoleBSSRDF *bssrdf = isect.GetMultipoleBSSRDF(ray, arena);
+    const MultipoleBSSRDF *bssrdf = isect.GetMultipoleBSSRDF(ray, arena);
     if (bssrdf && octree) {
-        Spectrum sigma_a  = bssrdf->sigma_a();
-        Spectrum sigmap_s = bssrdf->sigma_prime_s();
-        Spectrum sigmap_t = sigmap_s + sigma_a;
-        if (!sigmap_t.IsBlack()) {
-            // Use hierarchical integration to evaluate reflection from dipole model
-            PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
-            DiffusionReflectance Rd(sigma_a, sigmap_s, bssrdf->eta());
-			if (!trcalculated) {
-				trcalculated = true;
-				Spectrum tr = Rd.TotalReflectance();
-				Info("Total Reflectance: %s\n", tr.ToString().c_str());
-			}
-            Spectrum Mo = octree->Mo(octreeBounds, p, Rd, maxError);
-            FresnelDielectric fresnel(1.f, bssrdf->eta());
-            Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
-            float Fdt = 1.f - Fdr(bssrdf->eta());
-            L += (INV_PI * Ft) * (Fdt * Mo);
-            PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
-        }
+        // Use hierarchical integration to evaluate reflection from dipole model
+        PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
+		if (!trcalculated) {
+			trcalculated = true;
+			Spectrum tr = bssrdf->totalReflectance();
+			Info("Total Reflectance: %s\n", tr.ToString().c_str());
+		}
+		MultipoleReflectance mr(bssrdf);
+        Spectrum Mo = octree->Mo(octreeBounds, p, mr, maxError);
+        FresnelDielectric fresnel(1.f, bssrdf->eta(0));
+        Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
+        float Fdt = 1.f - Fdr(bssrdf->eta(0));
+        L += (INV_PI * Ft) * (Fdt * Mo);
+        PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
     L += UniformSampleAllLights(scene, renderer, arena, p, n,
         wo, isect.rayEpsilon, ray.time, bsdf, sample, rng, lightSampleOffsets,

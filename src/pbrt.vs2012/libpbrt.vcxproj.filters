@@ -930,6 +930,9 @@
     <ClInclude Include="..\integrators\irradiancepoint.h">
       <Filter>Header Files\integrators</Filter>
     </ClInclude>
+    <ClInclude Include="..\core\multipole.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1711,6 +1714,9 @@
     </ClCompile>
     <ClCompile Include="..\integrators\multipolesubsurface.cpp">
       <Filter>Source Files\integrators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\core\multipole.cpp">
+      <Filter>Source Files\core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -1,8 +1,8 @@
 
 /*
-    pbrt source code Copyright(c) 1998-2012 Matt Pharr and Greg Humphreys.
+    Copyright(c) 2013-2014 Yifan Wu.
 
-    This file is part of pbrt.
+    This file is part of fork of pbrt (pbrt-v2-skin).
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are
@@ -29,39 +29,9 @@
 
  */
 
-#if defined(_MSC_VER)
 #pragma once
-#endif
 
-#ifndef PBRT_CORE_INTERSECTION_H
-#define PBRT_CORE_INTERSECTION_H
-
-// core/intersection.h*
-#include "pbrt.h"
-#include "diffgeom.h"
-#include "transform.h"
-
-// Intersection Declarations
-struct Intersection {
-    // Intersection Public Methods
-    Intersection() {
-        primitive = NULL;
-        shapeId = primitiveId = 0;
-        rayEpsilon = 0.f;
-    }
-    BSDF *GetBSDF(const RayDifferential &ray, MemoryArena &arena) const;
-    BSSRDF *GetBSSRDF(const RayDifferential &ray, MemoryArena &arena) const;
-	const MultipoleBSSRDF* GetMultipoleBSSRDF(const RayDifferential &ray, MemoryArena &arena) const;
-    Spectrum Le(const Vector &wo) const;
-
-    // Intersection Public Data
-    DifferentialGeometry dg;
-    const Primitive *primitive;
-    Transform WorldToObject, ObjectToWorld;
-    uint32_t shapeId, primitiveId;
-    float rayEpsilon;
-};
-
-
-
-#endif // PBRT_CORE_INTERSECTION_H
+struct MultipoleProfileData;
+void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
+							 MultipoleProfileData** oppData);
+void ReleaseMultipoleProfile(MultipoleProfileData* pData);
