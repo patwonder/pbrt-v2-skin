@@ -447,8 +447,8 @@ public:
         float costhetah = AbsCosTheta(wh);
         return (exponent+2) * INV_TWOPI * powf(costhetah, exponent);
     }
-    virtual void Sample_f(const Vector &wi, Vector *sampled_f, float u1, float u2, float *pdf) const;
-    virtual float Pdf(const Vector &wi, const Vector &wo) const;
+    virtual void Sample_f(const Vector &wo, Vector *wi, float u1, float u2, float *pdf) const;
+    virtual float Pdf(const Vector &wo, const Vector &wi) const;
 private:
     float exponent;
 };
@@ -474,6 +474,31 @@ public:
     void sampleFirstQuadrant(float u1, float u2, float *phi, float *costheta) const;
 private:
     float ex, ey;
+};
+
+
+class Beckmann : public MicrofacetDistribution {
+public:
+    Beckmann(float rms) {
+		if (rms < 1e-3)
+			rms = 1e-3;
+		rms2 = rms * rms;
+		rcpRMS2 = 1 / rms2;
+	}
+    // Blinn Public Methods
+    float D(const Vector &wh) const override {
+        float costheta = AbsCosTheta(wh);
+		float c2 = costheta * costheta;
+		float d = c2 * c2 * M_PI;
+		if (d == 0.f) return 0.f;
+		float e = (c2 - 1) * rcpRMS2 / c2;
+		return rcpRMS2 * exp(e) / d;
+    }
+    void Sample_f(const Vector &wo, Vector *wi, float u1, float u2, float *pdf) const override;
+    float Pdf(const Vector &wo, const Vector &wi) const override;
+private:
+	float rms2;
+    float rcpRMS2;
 };
 
 

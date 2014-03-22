@@ -236,10 +236,10 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	Spectrum T = Kt->Evaluate(dgs);
 	if (!R.IsBlack())
 		bsdf->Add(BSDF_ALLOC(arena, Microfacet)(R, fresnel,
-			BSDF_ALLOC(arena, Blinn)(1.f / rough)));
+			BSDF_ALLOC(arena, Beckmann)(rough)));
 	if (!T.IsBlack())
 		bsdf->Add(BSDF_ALLOC(arena, MicrofacetTransmission)(T, fresnel,
-			BSDF_ALLOC(arena, Blinn)(1.f / rough), ior));
+			BSDF_ALLOC(arena, Beckmann)(rough), ior));
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, Microfacet)(Spectrum(1.), fresnel,
 	//	BSDF_ALLOC(arena, Blinn)(1.f / rough))));
 	//bsdf->Add(BSDF_ALLOC(arena, BRDFToBTDF)(BSDF_ALLOC(arena, MicrofacetTransmission)(Spectrum(1.), fresnel,
