@@ -48,9 +48,9 @@ public:
 	static const float dhg_vals[];
 	static const int dhg_n;
 
-	SkinCoefficients(float f_mel, float f_blood, float f_ohg,
+	SkinCoefficients(float f_mel, float f_eu, float f_blood, float f_ohg,
 		float ga_epi, float ga_derm, float b_derm)
-	: f_mel(f_mel), f_blood(f_blood), f_ohg(f_ohg),
+	: f_mel(f_mel), f_eu(f_eu), f_blood(f_blood), f_ohg(f_ohg),
 	  ga_epi(ga_epi), ga_derm(ga_derm), b_derm(b_derm) {}
 
 	// Baseline absorption coefficient, mua.skinbaseline
@@ -61,17 +61,26 @@ public:
 	}
 
 	// == Epidermis ============================================
-	// Absorption coefficient of a single melanosome, mua.mel
-	static WLDValue mua_mel() {
+	// Absorption coefficient of a single eumelanosome, mua.eumel
+	static WLDValue mua_eumel() {
 		return calculate([] (float wl) {
 			return 6.6e11f * powf(wl, -3.33f);
 		});
 	}
+	// Absorption coefficient of a single pheomelanosome, mua.pheomel
+	static WLDValue mua_pheomel() {
+		return calculate([] (float wl) {
+			return 2.9e15f * powf(wl, -4.75f);
+		});
+	}
 	// Volume fraction of melanosomes in epidermis
 	float f_mel;
+	// Fraction of eumelanin in melanosomes
+	float f_eu;
 	// Net epidermal absorption coefficient, mua.epi
 	WLDValue mua_epi() const {
-		return f_mel * mua_mel() + (1 - f_mel) * mua_skinbaseline();
+		return f_mel * (f_eu * mua_eumel() + (1 - f_eu) * mua_pheomel()) +
+			(1 - f_mel) * mua_skinbaseline();
 	}
 	//// Scattering coefficient of the epidermis, mus.epi
 	//Spectrum mus_epi() const;
@@ -79,7 +88,7 @@ public:
 	//float g_epi;
 	// Reduced scattering coefficient of the epidermis, musp.epi
 	static WLDValue musp_epi() {
-		return musp_derm();
+		return musp_Rayleigh() + musp_Mie_fibers();
 	}
 
 	// == Dermis ============================================
@@ -106,7 +115,8 @@ public:
 	// (Reduced) Mie scattering coefficient of collagen fibers, musp_Mie.fibers
 	static WLDValue musp_Mie_fibers() {
 		return calculate([] (float wl) {
-			return 2e5f * powf(wl, -1.5f);
+			//return 2e5f * powf(wl, -1.5f);
+			return 147.4f * powf(wl, -0.22);
 		});
 	}
 	// (Reduced) Rayleigh scattering coefficient of the dermis, musp_Rayleigh
@@ -117,7 +127,8 @@ public:
 	}
 	// (Reduced) scattering coefficient of dermis, musp.derm
 	static WLDValue musp_derm() {
-		return musp_Rayleigh() + musp_Mie_fibers();
+		// scale coeff by 50% as the dermis is more translucent
+		return musp_epi() * 0.5f;
 	}
 	// Anisotropy of the epidermis, ga.epi
 	float ga_epi;
@@ -334,12 +345,13 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	float roughness = ps.FindOneFloat("roughness", 0.4f);
 	float nmperunit = ps.FindOneFloat("nmperunit", 100e6f);
 	float f_mel = ps.FindOneFloat("f_mel", 0.15f);
+	float f_eu = ps.FindOneFloat("f_eu", 1.f);
 	float f_blood = ps.FindOneFloat("f_blood", 0.002f);
 	float f_ohg = ps.FindOneFloat("f_ohg", 0.3f);
 	float ga_epi = ps.FindOneFloat("ga_epi", 0.9f);
 	float ga_derm = ps.FindOneFloat("ga_derm", 0.8f);
 	float b_derm = ps.FindOneFloat("b_derm", 0.4f);
-	SkinCoefficients coeff(f_mel, f_blood, f_ohg, ga_epi, ga_derm, b_derm);
+	SkinCoefficients coeff(f_mel, f_eu, f_blood, f_ohg, ga_epi, ga_derm, b_derm);
     Reference<Texture<Spectrum> > Kr = mp.GetSpectrumTexture("Kr", Spectrum(1.f));
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");

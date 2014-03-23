@@ -230,6 +230,13 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 	for (Task* task : profileTasks)
 		delete task;
 	reporter.Done();
+
+	Spectrum tr = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
+		&MultipoleProfileDataEntry::reflectance));
+	Spectrum tt = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
+		&MultipoleProfileDataEntry::transmittance));
+	Info("Total Reflectance: %s", tr.ToString().c_str());
+	Info("Total Transmittance: %s", tt.ToString().c_str());
 }
 
 void ReleaseMultipoleProfile(MultipoleProfileData* pData) {

@@ -204,7 +204,6 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
 	const RayDifferential &ray, const Intersection &isect,
 	const Sample *sample, RNG &rng, MemoryArena &arena) const
 {
-	static bool trcalculated = false;
     Spectrum L(0.);
     Vector wo = -ray.d;
     // Compute emitted light if ray hit an area light source
@@ -219,11 +218,6 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
     if (bssrdf && octree) {
         // Use hierarchical integration to evaluate reflection from dipole model
         PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
-		if (!trcalculated) {
-			trcalculated = true;
-			Spectrum tr = bssrdf->totalReflectance();
-			Info("Total Reflectance: %s\n", tr.ToString().c_str());
-		}
 		MultipoleReflectance mr(bssrdf);
         Spectrum Mo = octree->Mo(octreeBounds, p, mr, maxError);
         FresnelDielectric fresnel(1.f, bssrdf->eta(0));
