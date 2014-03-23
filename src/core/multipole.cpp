@@ -165,12 +165,12 @@ void MultipoleProfileTask::Run() {
 	MPC_Options options;
 	options.desiredLength = 512;
 
-	// Compute mfps as spectral data
-	SampledSpectrum mfpTotal = Spectrum(0.f);
+	// Compute mfp
+	float mfpTotal = 0.f;
 	for (int layer = 0; layer < layers; layer++) {
-		mfpTotal += Spectrum(1.f) / (mua[layer] + musp[layer]);
+		mfpTotal += 1.f / (mua[layer][sc] + musp[layer][sc]);
 	}
-	SampledSpectrum mfp = mfpTotal / (float)layers;
+	float mfp = mfpTotal / (float)layers;
 	
 	// Fill in layer information
 	for (int layer = 0; layer < layers; layer++) {
@@ -182,7 +182,7 @@ void MultipoleProfileTask::Run() {
 		ls.thickness = thickness[layer];
 	}
 	// Compute desired step size
-	options.desiredStepSize = 16.f * mfp[sc] / (float)options.desiredLength;
+	options.desiredStepSize = 16.f * mfp / (float)options.desiredLength;
 
 	// Do the computation
 	MPC_Output* pOutput;
