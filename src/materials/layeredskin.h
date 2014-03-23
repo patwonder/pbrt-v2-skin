@@ -35,13 +35,14 @@
 #include "skinlayer.h"
 
 class SkinCoefficients;
+struct MultipoleProfileData;
 class LayeredSkin : public LayeredMaterial {
 public:
     // LayeredSkin Public Methods
 	LayeredSkin(const vector<SkinLayer>& layers, float roughness,
 		float_type nmperunit, const SkinCoefficients& coeff,
 		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-		Reference<Texture<float> > bumpMap);
+		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo);
 	~LayeredSkin();
 
 	vector<float_type> GetLayerThickness() const override;
@@ -79,7 +80,8 @@ private:
 	Reference<Texture<Spectrum> > Kr;
 	Reference<Texture<Spectrum> > Kt;
 	Reference<Texture<float> > bumpMap;
-	MultipoleBSSRDF* preparedBSSRDF;
+	Reference<Texture<Spectrum> > albedo;
+	MultipoleBSSRDFData* preparedBSSRDFData;
 	MultipoleProfileData* profileData;
 };
 

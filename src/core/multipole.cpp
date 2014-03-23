@@ -89,12 +89,12 @@ struct MultipoleProfileData {
 };
 
 
-Spectrum MultipoleBSSRDF::reflectance(float distanceSquared) const {
+Spectrum MultipoleBSSRDFData::reflectance(float distanceSquared) const {
 	return Spectrum::FromSampledSpectrum(pData->reflectance(distanceSquared));
 }
 
 
-Spectrum MultipoleBSSRDF::transmittance(float distanceSquared) const {
+Spectrum MultipoleBSSRDFData::transmittance(float distanceSquared) const {
 	return Spectrum::FromSampledSpectrum(pData->transmittance(distanceSquared));
 }
 
@@ -121,13 +121,13 @@ SampledSpectrum integrateSpectralProfile(const Profile profile[nSpectralSamples]
 }
 
 
-Spectrum MultipoleBSSRDF::totalReflectance() const {
+Spectrum MultipoleBSSRDFData::totalReflectance() const {
 	return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::reflectance));
 }
 
 
-Spectrum MultipoleBSSRDF::totalTransmittance() const {
+Spectrum MultipoleBSSRDFData::totalTransmittance() const {
 	return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::transmittance));
 }

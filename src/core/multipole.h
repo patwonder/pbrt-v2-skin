@@ -32,6 +32,46 @@
 #pragma once
 
 struct MultipoleProfileData;
+
+class MultipoleBSSRDFData {
+public:
+	// MultipoleBSSRDF Public Methods
+    MultipoleBSSRDFData(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
+		const MultipoleProfileData* pData) {
+		if (layers > MAX_LAYERS)
+			layers = MAX_LAYERS;
+		nLayers = layers;
+		for (int i = 0; i < layers; i++) {
+			sig_a[i] = mua[i];
+			sigp_s[i] = musp[i];
+			e[i] = et[i];
+			d[i] = thickness[i];
+		}
+		this->pData = pData;
+	}
+	int numLayers() const { return nLayers; }
+	float thickness(int layer) const { return d[layer]; }
+    float eta(int layer) const { return e[layer]; }
+    Spectrum sigma_a(int layer) const { return sig_a[layer]; }
+    Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
+
+	Spectrum reflectance(float distanceSquared) const;
+	Spectrum transmittance(float distanceSquared) const;
+	Spectrum totalReflectance() const;
+	Spectrum totalTransmittance() const;
+
+	// MultipoleBSSRDFData Public Data
+	static const int MAX_LAYERS = 4;
+private:
+    // MultipoleBSSRDFData Private Data
+	int nLayers;
+	float d[MAX_LAYERS];
+    float e[MAX_LAYERS];
+    Spectrum sig_a[MAX_LAYERS];
+	Spectrum sigp_s[MAX_LAYERS];
+	const MultipoleProfileData* pData;
+};
+
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
 							 MultipoleProfileData** oppData);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);

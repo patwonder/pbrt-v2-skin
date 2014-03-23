@@ -36,6 +36,7 @@
 #include "spectrum.h"
 #include "sampler.h"
 #include "montecarlo.h"
+#include "multipole.h"
 #include <stdarg.h>
 
 // BxDF Local Definitions
@@ -783,4 +784,38 @@ Spectrum BSDF::rho(const Vector &wo, RNG &rng, BxDFType flags,
     return ret;
 }
 
+int MultipoleBSSRDF::numLayers() const {
+	return pData->numLayers();
+}
 
+float MultipoleBSSRDF::thickness(int layer) const {
+	return pData->thickness(layer);
+}
+
+float MultipoleBSSRDF::eta(int layer) const {
+	return pData->eta(layer);
+}
+
+Spectrum MultipoleBSSRDF::sigma_a(int layer) const {
+	return pData->sigma_a(layer);
+}
+
+Spectrum MultipoleBSSRDF::sigma_prime_s(int layer) const {
+	return pData->sigma_prime_s(layer);
+}
+
+Spectrum MultipoleBSSRDF::reflectance(float distanceSquared) const {
+	return pData->reflectance(distanceSquared);
+}
+
+Spectrum MultipoleBSSRDF::transmittance(float distanceSquared) const {
+	return pData->transmittance(distanceSquared);
+}
+
+Spectrum MultipoleBSSRDF::totalReflectance() const {
+	return pData->totalReflectance();
+}
+
+Spectrum MultipoleBSSRDF::totalTransmittance() const {
+	return pData->totalTransmittance();
+}

@@ -564,46 +564,29 @@ private:
     Spectrum sig_a, sigp_s;
 };
 
-struct MultipoleProfileData;
+class MultipoleBSSRDFData;
 
 // Multipole BSSRDF Declarations
 class MultipoleBSSRDF {
 public:
 	// MultipoleBSSRDF Public Methods
-    MultipoleBSSRDF(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
-		const MultipoleProfileData* pData) {
-		if (layers > MAX_LAYERS)
-			layers = MAX_LAYERS;
-		nLayers = layers;
-		for (int i = 0; i < layers; i++) {
-			sig_a[i] = mua[i];
-			sigp_s[i] = musp[i];
-			e[i] = et[i];
-			d[i] = thickness[i];
-		}
-		this->pData = pData;
-	}
-	int numLayers() const { return nLayers; }
-	float thickness(int layer) const { return d[layer]; }
-    float eta(int layer) const { return e[layer]; }
-    Spectrum sigma_a(int layer) const { return sig_a[layer]; }
-    Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
+    MultipoleBSSRDF(const MultipoleBSSRDFData* pData, const Spectrum& al)
+		: pData(pData), al(al) { }
+	int numLayers() const;
+	float thickness(int layer) const;
+    float eta(int layer) const;
+    Spectrum sigma_a(int layer) const;
+    Spectrum sigma_prime_s(int layer) const;
+	Spectrum albedo() const { return al; }
 
 	Spectrum reflectance(float distanceSquared) const;
 	Spectrum transmittance(float distanceSquared) const;
 	Spectrum totalReflectance() const;
 	Spectrum totalTransmittance() const;
-
-	// MultipoleBSSRDF Public Data
-	static const int MAX_LAYERS = 4;
 private:
     // MultipoleBSSRDF Private Data
-	int nLayers;
-	float d[MAX_LAYERS];
-    float e[MAX_LAYERS];
-    Spectrum sig_a[MAX_LAYERS];
-	Spectrum sigp_s[MAX_LAYERS];
-	const MultipoleProfileData* pData;
+	const MultipoleBSSRDFData* pData;
+	Spectrum al;
 };
 
 

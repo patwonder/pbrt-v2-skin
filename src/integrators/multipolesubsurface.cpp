@@ -223,7 +223,7 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
         FresnelDielectric fresnel(1.f, bssrdf->eta(0));
         Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
         float Fdt = 1.f - Fdr(bssrdf->eta(0));
-        L += (INV_PI * Ft) * (Fdt * Mo);
+		L += (INV_PI * Ft) * (Fdt * Mo) * bssrdf->albedo();
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
     L += UniformSampleAllLights(scene, renderer, arena, p, n,
