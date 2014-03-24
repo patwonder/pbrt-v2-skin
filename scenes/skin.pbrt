@@ -1,5 +1,5 @@
 Film "image" "integer xresolution" [640] "integer yresolution" [480]
-LookAt 0 -4 0  0 0 0  0 0 1
+LookAt 1.34671 -2.88802 0.292805 0 0 0 0 0 1
 Camera "perspective" "float fov" [30]
 
 # SurfaceIntegrator "dipolesubsurface"
@@ -8,8 +8,13 @@ Camera "perspective" "float fov" [30]
 #  "integer maxdepth" 100
 
 Sampler "lowdiscrepancy" "integer pixelsamples" 1
+# Sampler "adaptive" "integer minsamples" 2
+                   # "integer maxsamples" 16
 
 #SurfaceIntegrator "path"
+#  "integer maxdepth" 100
+
+#SurfaceIntegrator "layered"
 #  "integer maxdepth" 100
 
 SurfaceIntegrator "multipolesubsurface"
@@ -24,14 +29,14 @@ SurfaceIntegrator "multipolesubsurface"
 WorldBegin
 
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
-    Translate -3.2025 -3.2025 5.3374
+    AreaLightSource "area" "color L" [ 6000 6000 6000 ] "integer nsamples" [4]
+    Translate 2.42104 6.58076 -0.214002
     Shape "sphere" "float radius" 0.5
   AttributeEnd
-  
+
   AttributeBegin
-    AreaLightSource "area" "color L" [ 1000 1000 1000 ] "integer nsamples"  [4]
-    Translate 2.7574 6.4340 0
+    AreaLightSource "area" "color L" [ 3000 3000 3000 ] "integer nsamples" [4]
+    Translate -5.20969 -4.48896 2.20104
     Shape "sphere" "float radius" 0.5
   AttributeEnd
   
@@ -43,29 +48,29 @@ WorldBegin
   AttributeEnd
 
   AttributeBegin
-    Scale 10 10 10
-    Rotate 90  1 0 0
     Translate 0 0 0.2
-#    Texture "headbump" "float" "imagemap" "string filename" "textures/bump-lowRes2.pfm"
-#      "float vscale" -1 "float vdelta" 1
-#      "string wrap" "clamp" "float scale" 0.1
-#    Texture "lambertian" "color" "imagemap" "string filename" "textures/lambertian.tga"
-#      "float vscale" -1 "float vdelta" 1
-#      "string wrap" "clamp" "float gamma" 2.2
+    Rotate 90  1 0 0
+    Scale 10 10 10
+    Texture "headbump" "float" "imagemap" "string filename" "textures/bump-lowRes2.tga"
+      "string wrap" "clamp" "float scale" -0.01
+    Texture "lambertian" "color" "imagemap" "string filename" "textures/lambertian.tga"
+      "string wrap" "clamp" "float gamma" 2.2
+    Texture "lambertian-norm" "color" "imagemap" "string filename" "textures/lambertian-norm.tga"
+      "string wrap" "clamp" "float gamma" 2.2 "float scale" 2
 #    Material "kdsubsurface" "texture Kd" "lambertian"
 #      "float meanfreepath" 0.01
-#    Material "matte" "color Kd" [1 1 1] "float sigma" 0.8
-    Material "layeredskin" "float roughness" 0.25
-                           "float nmperunit" 120e6
-                           "color Kr" [1 1 1]
-                           "color Kt" [0 0 0]
-                           "skinlayer layers" [ 100000 1.4 2000000 1.45]
-                           "float f_mel" 0.06
-                           "float f_blood" 0.002
-                           "float f_ohg" 0.3
-                           "float ga_epi" 0.9
-                           "float ga_derm" 0.6
-                           "float b_derm" 0.4
+   Material "layeredskin" "float roughness" 0.3
+                          "float nmperunit" 120e6
+                          "color Kr" [1 1 1]
+                          "color Kt" [0 0 0]
+                          "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
+                          "float f_mel" 0.005
+                          "float f_eu" 0.7
+                          "float f_blood" 0.005
+                          "float f_ohg" 0.75
+                          "texture bumpmap" "headbump"
+                          "texture albedo" "lambertian-norm"
+    # Material "matte" "texture Kd" "lambertian" "float sigma" 0.8 "texture bumpmap" "headbump"
     Include "geometry/head.pbrt"
   AttributeEnd
   
