@@ -42,29 +42,61 @@ struct MultipoleProfileDataEntry {
 	float transmittance;
 };
 
-typedef vector<MultipoleProfileDataEntry> Profile;
+struct Profile {
+	static const uint32_t LUT_SIZE = 1024;
+
+	uint32_t lut[LUT_SIZE];
+	float rcpChunkLength;
+	vector<MultipoleProfileDataEntry> data;
+};
+
+
+static void generateLUT(Profile& profile) {
+	// divide extent of the profile into equal-sized chunks,
+	// saving a few binary search steps and reducing cache misses
+	uint32_t current = 0;
+	const auto& data = profile.data;
+	float chunkLength = data.back().distanceSquared / Profile::LUT_SIZE;
+	profile.rcpChunkLength = 1.f / chunkLength;
+	for (uint32_t i = 0; i < Profile::LUT_SIZE; i++) {
+		float target = chunkLength * (i + 1);
+		// find first entry out of the chunk
+		while (current < data.size() - 1 && data[current].distanceSquared < target)
+			current++;
+
+		profile.lut[i] = current;
+	}
+}
+
 
 static float sampleProfile(const Profile& profile, float distanceSquared, float MultipoleProfileDataEntry::* dataField) {
-	if (distanceSquared <= profile[0].distanceSquared)
-		return profile[0].*dataField;
-	if (distanceSquared > profile.back().distanceSquared)
+	const auto& data = profile.data;
+	float extent = data.back().distanceSquared;
+	if (distanceSquared > extent)
 		return 0.f; // ensure integral convergence
-	size_t lo = 1, hi = profile.size() - 1;
+
+	uint32_t chunkId = min((uint32_t)(distanceSquared * profile.rcpChunkLength), Profile::LUT_SIZE - 1);
+	uint32_t lo = chunkId ? profile.lut[chunkId - 1] : 0;
+	uint32_t hi = profile.lut[chunkId];
 
 	// binary search to find the interval to interpolate
 	while (lo < hi) {
-		size_t mid = (lo + hi) / 2;
-		if (distanceSquared > profile[mid].distanceSquared)
+		uint32_t mid = (lo + hi) / 2;
+		if (distanceSquared > data[mid].distanceSquared)
 			lo = mid + 1;
 		else
 			hi = mid;
 	}
 	// lo points to the entry with minimum dsq no less than distanceSquared
-	float lerpAmount = Clamp((distanceSquared - profile[lo - 1].distanceSquared) /
-		(profile[lo].distanceSquared - profile[lo - 1].distanceSquared), 0.f, 1.f);
-	if (isnan(lerpAmount))
-		lerpAmount = 0.5;
-	return Lerp(lerpAmount, profile[lo - 1].*dataField, profile[lo].*dataField);
+	if (lo) {
+		float lerpAmount = Clamp((distanceSquared - data[lo - 1].distanceSquared) /
+			(data[lo].distanceSquared - data[lo - 1].distanceSquared), 0.f, 1.f);
+		if (isnan(lerpAmount))
+			lerpAmount = 0.5;
+		return Lerp(lerpAmount, data[lo - 1].*dataField, data[lo].*dataField);
+	} else {
+		return data[0].*dataField;
+	}
 }
 
 static SampledSpectrum sampleSpectralProfile(const Profile spectralProfile[nSpectralSamples], float distanceSquared,
@@ -102,11 +134,12 @@ Spectrum MultipoleBSSRDFData::transmittance(float distanceSquared) const {
 float integrateProfile(const Profile& profile, float MultipoleProfileDataEntry::* dataField) {
 	// Computes the integral {r,0,+inf}2*pi*r*Rd(r)dr = {r^2,0,+inf}pi*Rd(r)d(r^2) as total reflectance
 	// The integrals does not include delta distributions
+	const auto& data = profile.data;
 	float lastD2 = 0.f;
 	float integral = 0.f;
-	for (size_t i = 0; i < profile.size(); i++) {
-		integral += M_PI * profile[i].*dataField * (profile[i].distanceSquared - lastD2);
-		lastD2 = profile[i].distanceSquared;
+	for (size_t i = 0; i < data.size(); i++) {
+		integral += M_PI * data[i].*dataField * (data[i].distanceSquared - lastD2);
+		lastD2 = data[i].distanceSquared;
 	}
 	return integral;
 }
@@ -190,19 +223,23 @@ void MultipoleProfileTask::Run() {
 
 	// Collect result
 	Profile& profile = pData->spectralProfile[sc];
-	profile.clear();
-	profile.reserve(pOutput->length);
+	auto& data = profile.data;
+	data.clear();
+	data.reserve(pOutput->length);
 
 	for (uint32 ri = 0; ri < pOutput->length; ri++) {
 		MultipoleProfileDataEntry entry;
 		entry.distanceSquared = pOutput->pDistanceSquared[ri];
 		entry.reflectance = pOutput->pReflectance[ri];
 		entry.transmittance = pOutput->pTransmittance[ri];
-		profile.push_back(entry);
+		data.push_back(entry);
 	}
 
 	MPC_FreeOutput(pOutput);
 	delete [] pLayerSpecs;
+
+	// Generate lut for profile to accelerate lookup
+	generateLUT(profile);
 
 	reporter.Update();
 }
