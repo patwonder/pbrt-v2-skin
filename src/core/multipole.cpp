@@ -43,7 +43,7 @@ struct MultipoleProfileDataEntry {
 };
 
 struct Profile {
-	static const uint32_t LUT_SIZE = 1024;
+	static const uint32_t LUT_SIZE = 4096;
 
 	uint32_t lut[LUT_SIZE];
 	float rcpChunkLength;
@@ -75,18 +75,55 @@ static float sampleProfile(const Profile& profile, float distanceSquared, float 
 	if (distanceSquared > extent)
 		return 0.f; // ensure integral convergence
 
+#if 1
 	uint32_t chunkId = min((uint32_t)(distanceSquared * profile.rcpChunkLength), Profile::LUT_SIZE - 1);
 	uint32_t lo = chunkId ? profile.lut[chunkId - 1] : 0;
 	uint32_t hi = profile.lut[chunkId];
+#else
+	uint32_t lo = 0;
+	uint32_t hi = data.size() - 1;
+#endif
 
-	// binary search to find the interval to interpolate
-	while (lo < hi) {
+#define SEARCH_METHOD 0
+#if SEARCH_METHOD == 2
+	// binary-linear hybrid search to find the interval to interpolate
+	while (lo + 32 < hi) {
 		uint32_t mid = (lo + hi) / 2;
 		if (distanceSquared > data[mid].distanceSquared)
 			lo = mid + 1;
 		else
 			hi = mid;
 	}
+	while (lo < hi && distanceSquared > data[lo].distanceSquared) {
+		lo++;
+	}
+#elif SEARCH_METHOD == 1
+	// linear search to find the interval to interpolate
+	while (lo < hi && distanceSquared > data[lo].distanceSquared) {
+		lo++;
+	}
+#else
+	// intepolation-linear hybrid search to find the interval to interpolate
+	float d2lo = data[lo].distanceSquared;
+	if (lo + 32 < hi) {
+		float d2hi = data[hi].distanceSquared;
+		do {
+			uint32_t mid = Clamp((int)((distanceSquared - d2lo) / (d2hi - d2lo) * (hi - lo)), 0, (int)(hi - lo - 1)) + lo;
+			float d2mid = data[mid].distanceSquared;
+			if (distanceSquared > d2mid) {
+				lo = mid + 1;
+				d2lo = data[lo].distanceSquared;
+			} else {
+				hi = mid;
+				d2hi = d2mid;
+			}
+		} while (lo + 32 < hi);
+	}
+	while (lo < hi && distanceSquared > d2lo) {
+		lo++;
+		d2lo = data[lo].distanceSquared;
+	}
+#endif
 	// lo points to the entry with minimum dsq no less than distanceSquared
 	if (lo) {
 		float lerpAmount = Clamp((distanceSquared - data[lo - 1].distanceSquared) /

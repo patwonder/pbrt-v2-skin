@@ -32,6 +32,7 @@
 #include "stdafx.h"
 #include "MultipoleProfileCalculator.h"
 #include <vector>
+#include <set>
 #include "DipoleCalculator.h"
 #include "numutil.h"
 #include "tools/kiss_fftndr.h"
@@ -286,6 +287,10 @@ struct OutEntry {
 	float distanceSquared;
 	float reflectance;
 	float transmittance;
+
+	bool operator<(const OutEntry& entry) const {
+		return distanceSquared < entry.distanceSquared;
+	}
 };
 
 
@@ -310,7 +315,7 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 		mp0.transmittance = std::move(combined.transmittance);
 	}
 
-	vector<OutEntry> entries;
+	set<OutEntry> setEntries;
 	uint32 center = length - 1;
 	uint32 extent = center;
 	float denormalizeFactor = 1.f / (stepSize * stepSize);
@@ -320,13 +325,11 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 			entry.distanceSquared = (float)(i * i + j * j) * stepSize * stepSize;
 			entry.reflectance = (float)mp0.reflectance[center + i][center + j] * denormalizeFactor;
 			entry.transmittance = (float)mp0.transmittance[center + i][center + j] * denormalizeFactor;
-			entries.push_back(entry);
+			setEntries.insert(entry);
 		}
 	}
-
-	sort(entries.begin(), entries.end(), [](const OutEntry& e1, const OutEntry& e2) {
-		return e1.distanceSquared < e2.distanceSquared;
-	});
+	
+	vector<OutEntry> entries(setEntries.begin(), setEntries.end());
 
 	MPC_Output* pOut = *oppOutput = new MPC_Output;
 
