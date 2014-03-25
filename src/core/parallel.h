@@ -101,6 +101,24 @@ inline int32_t AtomicAdd(AtomicInt32 *v, int32_t delta) {
 #endif
 }
 
+inline int32_t AtomicIncrement(AtomicInt32 *v) {
+#if defined(PBRT_IS_WINDOWS)
+	PBRT_ATOMIC_MEMORY_OP();
+	return InterlockedIncrement(v);
+#else
+	return AtomicAdd(v, 1);
+#endif
+}
+
+inline int32_t AtomicDecrement(AtomicInt32 *v) {
+#if defined(PBRT_IS_WINDOWS)
+	PBRT_ATOMIC_MEMORY_OP();
+	return InterlockedDecrement(v);
+#else
+	return AtomicAdd(v, -1);
+#endif
+}
+
 
 inline int32_t AtomicCompareAndSwap(AtomicInt32 *v, int32_t newValue,
                                     int32_t oldValue);
@@ -166,6 +184,25 @@ inline int64_t AtomicAdd(AtomicInt64 *v, int64_t delta) {
 #endif
 }
 
+
+inline int64_t AtomicIncrement(AtomicInt64 *v) {
+#if defined(PBRT_IS_WINDOWS)
+	PBRT_ATOMIC_MEMORY_OP();
+	return InterlockedIncrement64(v);
+#else
+	return AtomicAdd(v, 1);
+#endif
+}
+
+
+inline int64_t AtomicDecrement(AtomicInt64 *v) {
+#if defined(PBRT_IS_WINDOWS)
+	PBRT_ATOMIC_MEMORY_OP();
+	return InterlockedDecrement64(v);
+#else
+	return AtomicAdd(v, -1);
+#endif
+}
 
 
 inline int64_t AtomicCompareAndSwap(AtomicInt64 *v, int64_t newValue, int64_t oldValue) {

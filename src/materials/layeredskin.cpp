@@ -138,7 +138,8 @@ public:
 	float b_derm;
 private:
 	// Calculated SampledSpectrum from wavelength->value mapping
-	static WLDValue calculate(std::function<float(float wl)> mapping) {
+	template <class MappingFunction>
+	static WLDValue calculate(const MappingFunction& mapping) {
 		WLDValue res;
 		for (int i = 0; i < WLD_nSamples; i++) {
 			res[i] = mapping(WLD_lambdas[i]);

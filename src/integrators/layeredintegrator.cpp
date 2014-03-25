@@ -109,22 +109,22 @@ public:
 
 	void spectralRayTraced(int wlIndex) {
 #ifdef USE_RANDOMWALK_PROBES
-		AtomicAdd(spectralRayCount + wlIndex, 1);
+		AtomicIncrement(spectralRayCount + wlIndex);
 #endif
 	}
 
 	void spectralRayOut(int wlIndex, int bounces, int layer, float L, float mfp) {
 #ifdef USE_RANDOMWALK_PROBES
 		if (layer < 0 || L > 0.f) {
-			AtomicAdd(contributedRayCount + wlIndex, 1);
+			AtomicIncrement(contributedRayCount + wlIndex);
 			AtomicAdd(bouncesContributed + wlIndex, bounces);
 			AtomicAdd(mfpContributed + wlIndex, mfp);
 		} else {
-			AtomicAdd(discardedRayCount + wlIndex, 1);
+			AtomicIncrement(discardedRayCount + wlIndex);
 			AtomicAdd(bouncesDiscarded + wlIndex, bounces);
 			AtomicAdd(mfpDiscarded + wlIndex, mfp);
 			int l = max(0, min(layer, 2));
-			AtomicAdd(discardedRayCountInLayers[wlIndex] + l, 1);
+			AtomicIncrement(discardedRayCountInLayers[wlIndex] + l);
 		}
 		AtomicMin(minBounces + wlIndex, bounces);
 		AtomicMax(maxBounces + wlIndex, bounces);

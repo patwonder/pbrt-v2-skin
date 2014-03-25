@@ -42,62 +42,99 @@
 
 // Memory Declarations
 class ReferenceCounted {
-public:
-    ReferenceCounted() { nReferences = 0; }
-    mutable AtomicInt32 nReferences;
+protected:
+	ReferenceCounted() { nReferences = 0; }
+	~ReferenceCounted() {}
 private:
-    ReferenceCounted(const ReferenceCounted &);
-    ReferenceCounted &operator=(const ReferenceCounted &);
+	mutable AtomicInt32 nReferences;
+	ReferenceCounted(const ReferenceCounted &);
+	ReferenceCounted &operator=(const ReferenceCounted &);
+	template<typename T>
+	friend class Reference;
 };
 
 
 template <typename T> class Reference {
 public:
-    // Reference Public Methods
-    Reference(T *p = NULL) {
-        ptr = p;
-        if (ptr) AtomicAdd(&ptr->nReferences, 1);
-    }
-    Reference(const Reference<T> &r) {
-        ptr = r.ptr;
-        if (ptr) AtomicAdd(&ptr->nReferences, 1);
-    }
-
-	template<class S>
-	Reference(S* p) {
+	// Reference Public Methods
+	Reference(T* p = NULL) {
 		ptr = p;
-		if (ptr) AtomicAdd(&ptr->nReferences, 1);
+		if (ptr) AtomicIncrement(&ptr->nReferences);
+	}
+	Reference &operator=(T *p) {
+		if (p) AtomicIncrement(&p->nReferences);
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0) delete ptr;
+		ptr = p;
+		return *this;
+	}
+	Reference(const Reference &r) {
+		ptr = r.ptr;
+		if (ptr) AtomicIncrement(&ptr->nReferences);
+	}
+	Reference &operator=(const Reference &r) {
+		if (r.ptr) AtomicIncrement(&r.ptr->nReferences);
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0) delete ptr;
+		ptr = r.ptr;
+		return *this;
+	}
+	Reference(Reference &&r) {
+		ptr = r.ptr;
+		r.ptr = NULL;
+	}
+	Reference &operator=(Reference &&r) {
+		swap(ptr, r.ptr);
+		return *this;
 	}
 
 	template<class S>
 	friend class Reference;
 
 	template<class S>
+	Reference(S* p) {
+		ptr = p;
+		if (ptr) AtomicIncrement(&ptr->nReferences);
+	}
+	template<class S>
+	Reference &operator=(S *p) {
+		if (p) AtomicIncrement(&p->nReferences);
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0) delete ptr;
+		ptr = p;
+		return *this;
+	}
+	template<class S>
 	Reference(const Reference<S> &r) {
 		ptr = r.ptr;
-		if (ptr) AtomicAdd(&ptr->nReferences, 1);
+		if (ptr) AtomicIncrement(&ptr->nReferences);
 	}
-    Reference &operator=(const Reference<T> &r) {
-        if (r.ptr) AtomicAdd(&r.ptr->nReferences, 1);
-        if (ptr && AtomicAdd(&ptr->nReferences, -1) == 0) delete ptr;
-        ptr = r.ptr;
-        return *this;
-    }
-    Reference &operator=(T *p) {
-        if (p) AtomicAdd(&p->nReferences, 1);
-        if (ptr && AtomicAdd(&ptr->nReferences, -1) == 0) delete ptr;
-        ptr = p;
-        return *this;
-    }
-    ~Reference() {
-        if (ptr && AtomicAdd(&ptr->nReferences, -1) == 0)
-            delete ptr;
-    }
-    T *operator->() const { return ptr; }
-    operator bool() const { return ptr != NULL; }
-    T *GetPtr() const { return ptr; }
+	template<class S>
+	Reference &operator=(const Reference<S> &r) {
+		if (r.ptr) AtomicIncrement(&r.ptr->nReferences);
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0) delete ptr;
+		ptr = r.ptr;
+		return *this;
+	}
+	template<class S>
+	Reference(Reference<S> &&r) {
+		ptr = r.ptr;
+		r.ptr = NULL;
+	}
+	template<class S>
+	Reference &operator=(Reference<S> &&r) {
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0) delete ptr;
+		ptr = r.ptr;
+		r.ptr = NULL;
+		return *this;
+	}
+
+	~Reference() {
+		if (ptr && AtomicDecrement(&ptr->nReferences) == 0)
+			delete ptr;
+	}
+	T *operator->() const { return ptr; }
+	operator bool() const { return ptr != NULL; }
+	T *GetPtr() const { return ptr; }
 private:
-    T *ptr;
+	T *ptr;
 };
 
 

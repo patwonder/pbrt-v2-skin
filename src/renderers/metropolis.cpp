@@ -769,7 +769,7 @@ void MLTTask::Run() {
     Assert(pixelNumOffset == nPixels);
     // Update display for recently computed Metropolis samples
     PBRT_MLT_STARTED_DISPLAY_UPDATE();
-    int ntf = AtomicAdd(&renderer->nTasksFinished, 1);
+    int ntf = AtomicIncrement(&renderer->nTasksFinished);
     int64_t totalSamples = int64_t(nPixels) * int64_t(nPixelSamples);
     float splatScale = float(double(totalSamples) / double(ntf * nTaskSamples));
     camera->film->UpdateDisplay(x0, y0, x1, y1, splatScale);

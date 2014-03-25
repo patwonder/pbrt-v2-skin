@@ -49,10 +49,10 @@ public:
     // StatsCounter Public Methods
     StatsCounter(const string &category, const string &name);
     void operator++() {
-        AtomicAdd(&num, 1);
+        AtomicIncrement(&num);
     }
     void operator++(int) {
-        AtomicAdd(&num, 1);
+        AtomicIncrement(&num);
     }
 #ifdef PBRT_HAS_64_BIT_ATOMICS
     void Max(int64_t newval) {
