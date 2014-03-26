@@ -4,8 +4,40 @@
 #include "stdafx.h"
 #include <iostream>
 #include "MultipoleProfileCalculator.h"
+#include "gaussianfit.h"
+#include <vector>
+#include <iomanip>
 
 using namespace std;
+
+void computeGaussianFit(const MPC_Output* pOutput) {
+	uint32 length = pOutput->length;
+	float mfp = sqrt(pOutput->pDistanceSquared[length - 1]) / 16.f;
+	vector<float> distArray(length);
+	for (uint32 i = 0; i < length; i++) {
+		distArray[i] = sqrt(pOutput->pDistanceSquared[i]);
+	}
+	const uint32 nSigmas = 7;
+	float sigmaArray[nSigmas];
+	for (uint32 i = 0; i < nSigmas; i++) {
+		sigmaArray[i] = mfp * pow(2, -((int)(nSigmas - 1) / 2) + (int)i);
+	}
+
+	GF_Output* pGFOutput;
+	GF_FitSumGaussians(length, &distArray[0], pOutput->pReflectance, nSigmas, sigmaArray, &pGFOutput);
+
+	cout << "Gaussian Fit: Error = " 
+		 << setiosflags(ios::fixed) << setprecision(4) << pGFOutput->overallError * 100.f << "%" << endl;
+	cout.copyfmt(ios(NULL));
+	cout << "{ ";
+	for (uint32 i = 0; i < pGFOutput->nCoeffs; i++) {
+		if (i) cout << ", ";
+		cout << pGFOutput->pNormalizedCoeffs[i];
+	}
+	cout << " }" << endl;
+
+	GF_FreeOutput(pGFOutput);
+}
 
 void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	const MPC_Options* pOptions) {
@@ -39,6 +71,9 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	cout << endl;
 	cout << "Reflectance Integral: " << integralR << endl;
 	cout << "Transmittance Integral: " << integralT << endl;
+
+	computeGaussianFit(pOutput);
+
 	MPC_FreeOutput(pOutput);
 }
 
@@ -50,22 +85,31 @@ int _tmain(int argc, _TCHAR* argv[])
 	specs[0].thickness = 0.025f;
 	specs[0].ior = 1.4f;
 	specs[0].g_HG = 0.90f;
-	specs[1].mua = 1.6f;
-	specs[1].musp = 19.4879f;
-	specs[1].thickness = 0.2f;
-	specs[1].ior = 1.45f;
+	//specs[1].mua = 1.6f;
+	//specs[1].musp = 19.4879f;
+	//specs[1].thickness = 0.2f;
+	//specs[1].ior = 1.45f;
+	//specs[1].g_HG = 0.80f;
+	specs[1].mua = 0.1f;
+	specs[1].musp = 0.9f;
+	specs[1].thickness = 2.f;
+	specs[1].ior = 1.f;
 	specs[1].g_HG = 0.80f;
 	MPC_Options options;
-	options.desiredLength = 512;
+	options.desiredLength = 1024;
 	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
 	float mfp1 = 1.f / (specs[1].mua + specs[1].musp);
-	options.desiredStepSize = 8.f * (mfp0 + mfp1) / (float)options.desiredLength;
 	
 	cout << "First layer: " << endl;
+	options.desiredStepSize = 16.f * mfp0 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[0], &options);
+
 	cout << endl << "Second Layer: " << endl;
+	options.desiredStepSize = 16.f * mfp1 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[1], &options);
+
 	cout << endl << "Combined Layer: " << endl;
+	options.desiredStepSize = 16.f * min(mfp0, mfp1) / (float)options.desiredLength;
 	computeConfiguration(2, &specs[0], &options);
 
 	system("PAUSE");

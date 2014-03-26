@@ -256,6 +256,7 @@
     <ClInclude Include="..\renderers\aggregatetest.h" />
     <ClInclude Include="..\renderers\createprobes.h" />
     <ClInclude Include="..\renderers\metropolis.h" />
+    <ClInclude Include="..\renderers\profilefit.h" />
     <ClInclude Include="..\renderers\samplerrenderer.h" />
     <ClInclude Include="..\renderers\surfacepoints.h" />
     <ClInclude Include="..\samplers\adaptive.h" />
@@ -1222,6 +1223,7 @@
     <ClCompile Include="..\renderers\aggregatetest.cpp" />
     <ClCompile Include="..\renderers\createprobes.cpp" />
     <ClCompile Include="..\renderers\metropolis.cpp" />
+    <ClCompile Include="..\renderers\profilefit.cpp" />
     <ClCompile Include="..\renderers\samplerrenderer.cpp" />
     <ClCompile Include="..\renderers\surfacepoints.cpp" />
     <ClCompile Include="..\samplers\adaptive.cpp" />

@@ -96,6 +96,7 @@
 #include "renderers/metropolis.h"
 #include "renderers/samplerrenderer.h"
 #include "renderers/surfacepoints.h"
+#include "renderers/profilefit.h"
 #include "samplers/adaptive.h"
 #include "samplers/bestcandidate.h"
 #include "samplers/halton.h"
@@ -1255,6 +1256,10 @@ Renderer *RenderOptions::MakeRenderer() const {
 	else if (RendererName == "tessellatesurfacepoints") {
 		renderer = CreateTessellateSurfacePointsRenderer(RendererParams, camera->shutterOpen,
 			&renderOptions->primitives);
+		RendererParams.ReportUnused();
+	}
+	else if (RendererName == "multipoleprofilefit") {
+		renderer = CreateMultipoleProfileFitRenderer(RendererParams);
 		RendererParams.ReportUnused();
 	}
     else {

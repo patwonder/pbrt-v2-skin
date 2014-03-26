@@ -933,6 +933,9 @@
     <ClInclude Include="..\core\multipole.h">
       <Filter>Header Files\core</Filter>
     </ClInclude>
+    <ClInclude Include="..\renderers\profilefit.h">
+      <Filter>Header Files\renderers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1717,6 +1720,9 @@
     </ClCompile>
     <ClCompile Include="..\core\multipole.cpp">
       <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\renderers\profilefit.cpp">
+      <Filter>Source Files\renderers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
