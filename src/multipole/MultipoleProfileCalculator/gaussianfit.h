@@ -36,9 +36,10 @@
 struct GF_Output {
 	uint32 nCoeffs;
 	float* pNormalizedCoeffs;
+	float overallError;
 };
 
-MULTIPOLEPROFILECALCULATOR_API void GF_FitSumGaussians(float stepSize, uint32 length, float* pData,
-	uint32 nSigmas, float* pSigmas, GF_Output** oppOutput);
+MULTIPOLEPROFILECALCULATOR_API void GF_FitSumGaussians(uint32 length, const float* pDistance, const float* pData,
+	uint32 nSigmas, const float* pSigmas, GF_Output** oppOutput);
 
 MULTIPOLEPROFILECALCULATOR_API void GF_FreeOutput(GF_Output* pOutput);

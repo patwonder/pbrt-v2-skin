@@ -223,6 +223,17 @@ public:
 		}
 		return ret;
 	}
+	void swapRow(uint32 nRow1, uint32 nRow2, uint32 startCol = 0) {
+		for (uint32 i = startCol; i < nCols; i++) {
+			std::swap((*this)[nRow1][i], (*this)[nRow2][i]);
+		}
+	}
+	void swapCol(uint32 nCol1, uint32 nCol2, uint32 startRow = 0) {
+		for (uint32 i = startRow; i < nRows; i++) {
+			swap((*this)[i][nCol1], (*this)[i][nCol2]);
+		}
+	}
+
 	Type* GetData() { return data; }
 	const Type* GetData() const { return data; }
 	uint32 GetNumRows() const { return nRows; }
