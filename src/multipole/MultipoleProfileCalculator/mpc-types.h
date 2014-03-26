@@ -31,6 +31,12 @@
 
 #pragma once
 
+#ifdef MULTIPOLEPROFILECALCULATOR_EXPORTS
+#define MULTIPOLEPROFILECALCULATOR_API __declspec(dllexport)
+#else
+#define MULTIPOLEPROFILECALCULATOR_API __declspec(dllimport)
+#endif
+
 typedef unsigned int uint32;
 typedef int int32;
 typedef unsigned long long uint64;

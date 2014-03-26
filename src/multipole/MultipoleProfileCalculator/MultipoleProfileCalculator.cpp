@@ -164,16 +164,19 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	uint32 extent = center;
 	// Using 11 dipole pairs is enough for all normal circumstances,
 	// even in the extreme configuration that scattering/absorption ratio is 99.
-	// (Planar integral within 20 mfps yields less than 0.01% error)
+	// (Areal integral within 20 mfps yields less than 0.01% error)
 	const uint32 numDipolePairs = 11;
+	vector<DipoleCalculator> dcs;
+	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++)
+		dcs.push_back(DipoleCalculator(iorUpper, iorLower, thickness, spec.mua, spec.musp, pair));
+	// Compute the discrete 2D profile
 	kiss_fft_scalar normalizeFactor = stepSize * stepSize;
-	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++) {
-		DipoleCalculator dc(iorUpper, iorLower, thickness, spec.mua, spec.musp, pair);
-		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
-			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
-				kiss_fft_scalar drow2 = sampleRow * sampleRow;
-				kiss_fft_scalar dcol2 = sampleCol * sampleCol;
-				kiss_fft_scalar r2 = (drow2 + dcol2) * (stepSize * stepSize);
+	for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
+		for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
+			kiss_fft_scalar drow2 = sampleRow * sampleRow;
+			kiss_fft_scalar dcol2 = sampleCol * sampleCol;
+			kiss_fft_scalar r2 = (drow2 + dcol2) * (stepSize * stepSize);
+			for (const DipoleCalculator& dc : dcs) {
 				kiss_fft_scalar rd = dc.Rd((float)r2) * normalizeFactor;
 				kiss_fft_scalar td = dc.Td((float)r2) * normalizeFactor;
 				profile.reflectance[center + sampleRow][center + sampleCol] += rd;
@@ -192,6 +195,7 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 		// This is for discrete convolution to work properly in 2D
 		profile.transmittance[center][center] += 1. - lerp;
 	}
+
 	// Fill the rest of the matrix through symmetricity
 	for (uint32 sampleRow = 1; sampleRow <= extent; sampleRow++) {
 		for (uint32 sampleCol = 0; sampleCol < sampleRow; sampleCol++) {

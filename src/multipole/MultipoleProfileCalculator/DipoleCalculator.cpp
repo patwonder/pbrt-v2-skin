@@ -65,7 +65,7 @@ DipoleCalculator::DipoleCalculator(float eta_0, float eta_d, float d,
 	zneg = zpos - 2.f * (l + zb_0);
 }
 
-float DipoleCalculator::Rd(float dsq) {
+float DipoleCalculator::Rd(float dsq) const {
 	float dpos = sqrt(dsq + zpos * zpos);
 	float dneg = sqrt(dsq + zneg * zneg);
 	float dpos3 = dpos * dpos * dpos;
@@ -76,7 +76,7 @@ float DipoleCalculator::Rd(float dsq) {
 	return rd;
 }
 
-float DipoleCalculator::Td(float dsq) {
+float DipoleCalculator::Td(float dsq) const {
 	float dpos = sqrt(dsq + (d - zpos) * (d - zpos));
 	float dneg = sqrt(dsq + (d - zneg) * (d - zneg));
 	float dpos3 = dpos * dpos * dpos;

@@ -36,8 +36,8 @@
 // Calculate reflectance & transmittance caused by dipole sources
 class DipoleCalculator {
 public:
-	float Rd(float distanceSquared);
-	float Td(float distanceSquared);
+	float Rd(float distanceSquared) const;
+	float Td(float distanceSquared) const;
 	DipoleCalculator(float iorUpper, float iorLower, float thickness,
 		float mua, float musp, int32 zi);
 private:

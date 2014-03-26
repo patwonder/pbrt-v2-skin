@@ -29,40 +29,16 @@
 
  */
 
+#pragma once
+
 #include "mpc-types.h"
 
-typedef struct MPC_LayerSpec {
-	// Index of refraction
-	float ior;
-	// Layer thickness
-	float thickness;
-	// Absorption coefficient
-	float mua;
-	// Reduced scattering coefficient
-	float musp;
-	// Anisotropy for the HGPF (probably not needed)
-	float g_HG;
+struct GF_Output {
+	uint32 nCoeffs;
+	float* pNormalizedCoeffs;
+};
 
-} MPC_LayerSpec;
+MULTIPOLEPROFILECALCULATOR_API void GF_FitSumGaussians(float stepSize, uint32 length, float* pData,
+	uint32 nSigmas, float* pSigmas, GF_Output** oppOutput);
 
-typedef struct MPC_Options {
-	// distance between adjacent samples
-	float desiredStepSize;
-	// number of samples in one direction
-	uint32 desiredLength;
-} MPC_Options;
-
-typedef struct MPC_Output {
-	// number of samples
-	uint32 length;
-	// Profile data
-	float* pDistanceSquared;
-	float* pReflectance;
-	float* pTransmittance;
-} MPC_Output;
-
-// Profile calculation
-MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
-	const MPC_Options* pOptions, MPC_Output** oppOutput);
-
-MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput);
+MULTIPOLEPROFILECALCULATOR_API void GF_FreeOutput(GF_Output* pOutput);

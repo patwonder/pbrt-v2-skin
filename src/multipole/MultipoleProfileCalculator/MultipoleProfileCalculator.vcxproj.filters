@@ -7,11 +7,13 @@
     <ClInclude Include="mpc-types.h" />
     <ClInclude Include="DipoleCalculator.h" />
     <ClInclude Include="numutil.h" />
+    <ClInclude Include="gaussianfit.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="MultipoleProfileCalculator.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="DipoleCalculator.cpp" />
+    <ClCompile Include="gaussianfit.cpp" />
   </ItemGroup>
 </Project>

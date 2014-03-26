@@ -156,6 +156,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DipoleCalculator.h" />
+    <ClInclude Include="gaussianfit.h" />
     <ClInclude Include="MultipoleProfileCalculator.h" />
     <ClInclude Include="numutil.h" />
     <ClInclude Include="stdafx.h" />
@@ -178,6 +179,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="gaussianfit.cpp" />
     <ClCompile Include="MultipoleProfileCalculator.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
