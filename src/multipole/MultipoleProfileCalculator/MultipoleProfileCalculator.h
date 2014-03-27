@@ -64,5 +64,5 @@ typedef struct MPC_Output {
 // Profile calculation
 MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	const MPC_Options* pOptions, MPC_Output** oppOutput);
-
+MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput);
 MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput);

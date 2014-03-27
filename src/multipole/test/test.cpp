@@ -12,15 +12,16 @@ using namespace std;
 
 void computeGaussianFit(const MPC_Output* pOutput) {
 	uint32 length = pOutput->length;
-	float mfp = sqrt(pOutput->pDistanceSquared[length - 1]) / 16.f;
+	float mfp = sqrt(pOutput->pDistanceSquared[length - 1]) / 12.f;
 	vector<float> distArray(length);
 	for (uint32 i = 0; i < length; i++) {
-		distArray[i] = sqrt(pOutput->pDistanceSquared[i]);
+		float dsq = pOutput->pDistanceSquared[i];
+		distArray[i] = sqrt(dsq);
 	}
-	const uint32 nSigmas = 7;
+	const uint32 nSigmas = 3;
 	float sigmaArray[nSigmas];
 	for (uint32 i = 0; i < nSigmas; i++) {
-		sigmaArray[i] = mfp * pow(2, -((int)(nSigmas - 1) / 2) + (int)i);
+		sigmaArray[i] = (float)(mfp * pow(2, -((int)(nSigmas - 1) / 2) + (int)i));
 	}
 
 	GF_Output* pGFOutput;
@@ -43,7 +44,8 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	const MPC_Options* pOptions) {
 	MPC_Output* pOutput;
 	MPC_ComputeDiffusionProfile(numLayers, pLayerSpecs, pOptions, &pOutput);
-	
+	MPC_ResampleForUniformDistanceSquaredDistribution(pOutput);
+
 	// Computes the integral {r,0,+inf}2*pi*r*Rd(r)dr = {r^2,0,+inf}pi*Rd(r)d(r^2) as total reflectance
 	// The integrals does not include delta distributions
 	cout << "Reflectance(" << pOutput->length << "):";
@@ -96,20 +98,20 @@ int _tmain(int argc, _TCHAR* argv[])
 	specs[1].ior = 1.f;
 	specs[1].g_HG = 0.80f;
 	MPC_Options options;
-	options.desiredLength = 1024;
+	options.desiredLength = 512;
 	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
 	float mfp1 = 1.f / (specs[1].mua + specs[1].musp);
 	
 	cout << "First layer: " << endl;
-	options.desiredStepSize = 16.f * mfp0 / (float)options.desiredLength;
+	options.desiredStepSize = 12.f * mfp0 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[0], &options);
 
 	cout << endl << "Second Layer: " << endl;
-	options.desiredStepSize = 16.f * mfp1 / (float)options.desiredLength;
+	options.desiredStepSize = 12.f * mfp1 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[1], &options);
 
 	cout << endl << "Combined Layer: " << endl;
-	options.desiredStepSize = 16.f * min(mfp0, mfp1) / (float)options.desiredLength;
+	options.desiredStepSize = 12.f * min(mfp0, mfp1) / (float)options.desiredLength;
 	computeConfiguration(2, &specs[0], &options);
 
 	system("PAUSE");

@@ -349,6 +349,87 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	}
 }
 
+template <class T>
+static T Clamp(T v, T min, T max) {
+	if (v < min) return min;
+	if (v > max) return max;
+	return v;
+}
+
+static void resample(const MPC_Output* pOutput, float distanceSquared, float* reflectance, float* transmittance) {
+	uint32 length = pOutput->length;
+	const float* pDsq = pOutput->pDistanceSquared;
+	const float* pRef = pOutput->pReflectance;
+	const float* pTrans = pOutput->pTransmittance;
+	float extent = pDsq[length - 1];
+	if (distanceSquared > extent) {
+		*reflectance = *transmittance = 0.f; // ensure integral convergence
+		return;
+	}
+
+	uint32 lo = 0;
+	uint32 hi = length - 1;
+
+	// intepolation-linear hybrid search to find the interval to interpolate
+	float d2lo = pDsq[lo];
+	if (lo + 32 < hi) {
+		float d2hi = pDsq[hi];
+		do {
+			uint32 mid = Clamp((int)((distanceSquared - d2lo) / (d2hi - d2lo) * (hi - lo)), 0, (int)(hi - lo - 1)) + lo;
+			float d2mid = pDsq[mid];
+			if (distanceSquared > d2mid) {
+				lo = mid + 1;
+				d2lo = pDsq[lo];
+			} else {
+				hi = mid;
+				d2hi = d2mid;
+			}
+		} while (lo + 32 < hi);
+	}
+	while (lo < hi && distanceSquared > d2lo) {
+		lo++;
+		d2lo = pDsq[lo];
+	}
+
+	// lo points to the entry with minimum dsq no less than distanceSquared
+	if (lo) {
+		float lerpAmount = Clamp((distanceSquared - pDsq[lo - 1]) /
+			(pDsq[lo] - pDsq[lo - 1]), 0.f, 1.f);
+		if (lerpAmount != lerpAmount)
+			lerpAmount = 0.5;
+		*reflectance = (1.f - lerpAmount) * pRef[lo - 1] + lerpAmount * pRef[lo];
+		*transmittance = (1.f - lerpAmount) * pTrans[lo - 1] + lerpAmount * pTrans[lo];
+	} else {
+		*reflectance = pRef[0];
+		*transmittance = pTrans[0];
+	}
+}
+
+MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput) {
+	uint32 length = pOutput->length;
+	float extent = pOutput->pDistanceSquared[length - 1];
+	uint32 targetLength = length * 2; // Nyquist rate
+	float* newDistance = new float[targetLength];
+	float* newReflectance = new float[targetLength];
+	float* newTransmittance = new float[targetLength];
+
+	for (uint32 i = 0; i < targetLength; i++) {
+		float dsq = (float)i * extent / (float)(targetLength - 1);
+		newDistance[i] = dsq;
+		resample(pOutput, dsq, newReflectance + i, newTransmittance + i);
+	}
+
+	delete [] pOutput->pDistanceSquared;
+	delete [] pOutput->pReflectance;
+	delete [] pOutput->pTransmittance;
+
+	pOutput->length = targetLength;
+	pOutput->pDistanceSquared = newDistance;
+	pOutput->pReflectance = newReflectance;
+	pOutput->pTransmittance = newTransmittance;
+}
+
+
 MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
 	delete [] pOutput->pDistanceSquared;
 	delete [] pOutput->pReflectance;

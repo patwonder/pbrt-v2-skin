@@ -113,10 +113,10 @@ MULTIPOLEPROFILECALCULATOR_API void GF_FitSumGaussians(uint32 length, const floa
 		for (uint32 j = 0; j < nSigmas; j++) {
 			double sigma_j = pSigmas[j];
 			double Gj = GaussianFunc(xi, sigma_j);
-			Y[j] += xi * xi * Gj * yi;
+			Y[j] += Gj * yi;
 			for (uint32 k = 0; k < nSigmas; k++) {
 				double sigma_k = pSigmas[k];
-				X[j][k] += xi * xi * Gj * GaussianFunc(xi, sigma_k);
+				X[j][k] += Gj * GaussianFunc(xi, sigma_k);
 			}
 		}
 	}
@@ -137,13 +137,13 @@ MULTIPOLEPROFILECALCULATOR_API void GF_FitSumGaussians(uint32 length, const floa
 		}
 		error += xi * (fitted - yi) * (fitted - yi) * (xi - prevDistance);
 		total += xi * yi * yi * (xi - prevDistance);
-		prevDistance = pDistance[i];
+		prevDistance = xi;
 	}
 
 	// Return result
 	GF_Output* pOutput = *oppOutput = new GF_Output;
 	pOutput->nCoeffs = nSigmas;
-	pOutput->overallError = error / total;
+	pOutput->overallError = (float)sqrt(error / total);
 	pOutput->pNormalizedCoeffs = new float[nSigmas];
 
 	for (uint32 k = 0; k < nSigmas; k++) {
