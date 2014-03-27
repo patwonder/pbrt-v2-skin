@@ -249,6 +249,7 @@
     <ClInclude Include="..\materials\mixmat.h" />
     <ClInclude Include="..\materials\plastic.h" />
     <ClInclude Include="..\materials\shinymetal.h" />
+    <ClInclude Include="..\materials\skincoeffs.h" />
     <ClInclude Include="..\materials\substrate.h" />
     <ClInclude Include="..\materials\subsurface.h" />
     <ClInclude Include="..\materials\translucent.h" />
@@ -1216,6 +1217,7 @@
     <ClCompile Include="..\materials\mixmat.cpp" />
     <ClCompile Include="..\materials\plastic.cpp" />
     <ClCompile Include="..\materials\shinymetal.cpp" />
+    <ClCompile Include="..\materials\skincoeffs.cpp" />
     <ClCompile Include="..\materials\substrate.cpp" />
     <ClCompile Include="..\materials\subsurface.cpp" />
     <ClCompile Include="..\materials\translucent.cpp" />

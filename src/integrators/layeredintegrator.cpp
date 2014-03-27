@@ -234,7 +234,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
 				SampledSpectrum sL = L.ToSampledSpectrum();
 				SampledSpectrum sPathThroughput = pathThroughput.ToSampledSpectrum();
 				// Switch to spectral shading
-				for (int i = 0; i < SampledSpectrum::NumComponents(); i++) {
+				for (int i = 0; i < SampledSpectrum::nComponents; i++) {
 					sL[i] += LiSpectral(i, sPathThroughput[i], bounces, specularBounce,
 						scene, renderer, ray, *isectp, sample, rng, arena);
 				}

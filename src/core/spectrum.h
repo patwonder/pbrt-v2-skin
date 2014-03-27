@@ -94,6 +94,8 @@ extern const float RGBIllum2SpectBlue[nRGB2SpectSamples];
 // Spectrum Declarations
 template <int nSamples> class CoefficientSpectrum {
 public:
+	static const int nComponents = nSamples;
+
     // CoefficientSpectrum Public Methods
     CoefficientSpectrum(float v = 0.f) {
         for (int i = 0; i < nSamples; ++i)
@@ -202,6 +204,12 @@ public:
     bool operator!=(const CoefficientSpectrum &sp) const {
         return !(*this == sp);
     }
+	float& operator[](uint32_t index) {
+		return c[index];
+	}
+	const float& operator[](uint32_t index) const {
+		return c[index];
+	}
     bool IsBlack() const {
         for (int i = 0; i < nSamples; ++i)
             if (c[i] != 0.) return false;
@@ -228,6 +236,30 @@ public:
         Assert(!ret.HasNaNs());
         return ret;
     }
+	friend CoefficientSpectrum Min(const CoefficientSpectrum &s1, const CoefficientSpectrum &s2) {
+        CoefficientSpectrum ret;
+        for (int i = 0; i < nSamples; ++i)
+            ret.c[i] = min(s1.c[i], s2.c[i]);
+        return ret;
+	}
+	friend CoefficientSpectrum Max(const CoefficientSpectrum &s1, const CoefficientSpectrum &s2) {
+        CoefficientSpectrum ret;
+        for (int i = 0; i < nSamples; ++i)
+            ret.c[i] = max(s1.c[i], s2.c[i]);
+        return ret;
+	}
+	float Min() const {
+		float m = c[0];
+        for (int i = 1; i < nSamples; ++i)
+            m = min(m, c[i]);
+		return m;
+	}
+	float Max() const {
+		float m = c[0];
+        for (int i = 1; i < nSamples; ++i)
+            m = max(m, c[i]);
+		return m;
+	}
     CoefficientSpectrum Clamp(float low = 0, float high = INFINITY) const {
         CoefficientSpectrum ret;
         for (int i = 0; i < nSamples; ++i)
@@ -372,18 +404,6 @@ public:
         XYZToRGB(xyz, rgb);
         return FromRGB(rgb, type);
     }
-
-	static int NumComponents() {
-		return nSpectralSamples;
-	}
-
-	float& operator[](uint32_t index) {
-		return c[index];
-	}
-
-	const float& operator[](uint32_t index) const {
-		return c[index];
-	}
 
 	static float WaveLength(uint32_t index) {
 		return Lerp(0.5, (float)(index * (sampledLambdaEnd - sampledLambdaStart)) / (float)nSpectralSamples,

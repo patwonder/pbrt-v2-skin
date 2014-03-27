@@ -1,4 +1,10 @@
 Renderer "multipoleprofilefit"
-
+         "float f_mel" [ 0.001 0.5 ]
+         "float f_eu" [ 0 1 ]
+         "float f_blood" [ 0 0.1 ]
+         "float f_ohg" [ 0 1 ]
+         "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
+         "integer segments" 1
+         "string filename" "profilefit.txt"
 WorldBegin
 WorldEnd

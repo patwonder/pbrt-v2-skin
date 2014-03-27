@@ -252,7 +252,7 @@ void MultipoleProfileTask::Run() {
 		ls.thickness = thickness[layer];
 	}
 	// Compute desired step size
-	options.desiredStepSize = 16.f * mfp / (float)options.desiredLength;
+	options.desiredStepSize = 12.f * mfp / (float)options.desiredLength;
 
 	// Do the computation
 	MPC_Output* pOutput;

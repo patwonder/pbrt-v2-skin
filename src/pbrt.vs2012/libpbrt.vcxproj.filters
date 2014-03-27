@@ -936,6 +936,9 @@
     <ClInclude Include="..\renderers\profilefit.h">
       <Filter>Header Files\renderers</Filter>
     </ClInclude>
+    <ClInclude Include="..\materials\skincoeffs.h">
+      <Filter>Header Files\materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1723,6 +1726,9 @@
     </ClCompile>
     <ClCompile Include="..\renderers\profilefit.cpp">
       <Filter>Source Files\renderers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\materials\skincoeffs.cpp">
+      <Filter>Source Files\materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

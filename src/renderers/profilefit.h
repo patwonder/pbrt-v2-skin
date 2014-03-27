@@ -33,12 +33,27 @@
 
 #include "pbrt.h"
 #include "renderer.h"
+#include "skinlayer.h"
+
+struct ParamRange {
+	float min, max;
+	ParamRange(float min, float max) : min(min), max(max) {}
+};
+
+class SkinCoefficients;
+struct VariableParams;
+class GaussianFitTask;
+struct SpectralGaussianCoeffs {
+	vector<SampledSpectrum> coeffs;
+	SampledSpectrum error;
+};
 
 class MultipoleProfileFitRenderer : public Renderer {
 public:
 	// MultipoleProfileFitRenderer Public Methods
-	MultipoleProfileFitRenderer()
-		{}
+	MultipoleProfileFitRenderer(const vector<SkinLayer>& layers,
+		ParamRange f_mel, ParamRange f_eu, ParamRange f_blood,
+		ParamRange f_ohg, uint32_t segments, const string& filename);
 	void Render(const Scene* scene) override;
 	Spectrum Li(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena,
@@ -47,7 +62,24 @@ public:
 		const Sample* sample, RNG& rng, MemoryArena& arena) const override;
 private:
 	// MultipoleProfileFitRenderer Private Data
+	vector<SkinLayer> layers;
+	ParamRange pr_f_mel;
+	ParamRange pr_f_eu;
+	ParamRange pr_f_blood;
+	ParamRange pr_f_ohg;
+	uint32_t nSegments;
+	string filename;
 
+	// MultipoleProfileFitRenderer Private Methods
+	template <class Processor>
+	void ForRanges(const Processor& p) const;
+
+	float NextParamFromId(uint32_t& id, ParamRange pr) const;
+	VariableParams ParamsFromId(uint32_t id) const;
+
+	GaussianFitTask* CreateGaussianFitTask(const SkinCoefficients& coeffs,
+		const vector<float>& sigmas, SpectralGaussianCoeffs& sgc,
+		ProgressReporter& reporter, uint32_t id) const;
 };
 
 MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params);

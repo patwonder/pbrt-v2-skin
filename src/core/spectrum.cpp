@@ -912,10 +912,10 @@ using namespace std;
 string SampledSpectrum::ToString() const {
 	stringstream ss;
 	ss << "SampledSpectrum{ ";
-	for (int i = 0; i < NumComponents(); i++) {
+	for (int i = 0; i < nComponents; i++) {
 		float wl = WaveLength(i);
 		ss << wl << ": " << c[i];
-		if (i < NumComponents() - 1)
+		if (i < nComponents - 1)
 			ss << ", ";
 	}
 	ss << " }";
