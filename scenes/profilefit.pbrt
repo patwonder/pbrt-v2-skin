@@ -1,10 +1,16 @@
+# Renderer "multipoleprofilefit"
+         # "float f_mel" [ 0 0.00125 0.005 0.01125 0.02 0.03125 0.045 0.06125 0.08 0.10125 0.125 0.15125 0.18 0.21125 0.245 0.28125 0.32 0.36125 0.405 0.45125 0.5 ]
+         # "float f_eu" [ 0 0.2 0.4 0.6 0.8 1. ]
+         # "float f_blood" [ 0 0.00025 0.001 0.00225 0.004 0.00625 0.009 0.01225 0.016 0.02025 0.025 0.03025 0.036 0.04225 0.049 0.05625 0.064 0.07225 0.081 0.09025 0.1 ]
+         # "float f_ohg" [ 0.4 0.5 0.6 0.7 0.8 ]
+         # "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
+         # "string filename" "profilefit.txt"
 Renderer "multipoleprofilefit"
-         "float f_mel" [ 0.001 0.5 ]
-         "float f_eu" [ 0 1 ]
-         "float f_blood" [ 0 0.1 ]
-         "float f_ohg" [ 0 1 ]
+         "float f_mel" [ 0 ]
+         "float f_eu" [ 0 ]
+         "float f_blood" [ 0 ]
+         "float f_ohg" [ 0 ]
          "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
-         "integer segments" 1
          "string filename" "profilefit.txt"
 WorldBegin
 WorldEnd

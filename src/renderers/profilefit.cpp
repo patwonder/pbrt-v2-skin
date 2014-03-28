@@ -40,6 +40,7 @@
 #include "multipole/MultipoleProfileCalculator/gaussianfit.h"
 #include <map>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -50,14 +51,20 @@ struct VariableParams {
 };
 
 static ostream& operator<<(ostream& os, const VariableParams& vps) {
-	return os << "f_mel=" << vps.f_mel << " f_eu=" << vps.f_eu
-			  << " f_blood=" << vps.f_blood << " f_ohg=" << vps.f_ohg;
+	return os << vps.f_mel << "\t" << vps.f_eu << "\t" << vps.f_blood << "\t" << vps.f_ohg;
+}
+
+static ostream& operator<<(ostream& os, const ParamRange& pr) {
+	os << pr.size();
+	for (float value : pr) {
+		os << "\t" << value;
+	}
+	return os;
 }
 
 template <class Processor>
-void ForParamRange(ParamRange pr, uint32_t segments, const Processor& processor) {
-	for (uint32_t i = 0; i <= segments; i++) {
-		float value = pr.min + (float)i * (pr.max - pr.min) / (float)segments;
+void ForParamRange(const ParamRange& pr, const Processor& processor) {
+	for (float value : pr) {
 		processor(value);
 	}
 }
@@ -65,10 +72,10 @@ void ForParamRange(ParamRange pr, uint32_t segments, const Processor& processor)
 template <class Processor>
 void MultipoleProfileFitRenderer::ForRanges(const Processor& p) const {
 	uint32_t id = 0;
-	ForParamRange(pr_f_mel, nSegments, [&](float f_mel) {
-		ForParamRange(pr_f_eu, nSegments, [&](float f_eu) {
-			ForParamRange(pr_f_blood, nSegments, [&](float f_blood) {
-				ForParamRange(pr_f_ohg, nSegments, [&](float f_ohg) {
+	ForParamRange(pr_f_mel, [&](float f_mel) {
+		ForParamRange(pr_f_eu, [&](float f_eu) {
+			ForParamRange(pr_f_blood, [&](float f_blood) {
+				ForParamRange(pr_f_ohg, [&](float f_ohg) {
 					p(VariableParams(f_mel, f_eu, f_blood, f_ohg), id);
 					id++;
 				});
@@ -78,10 +85,10 @@ void MultipoleProfileFitRenderer::ForRanges(const Processor& p) const {
 }
 
 
-float MultipoleProfileFitRenderer::NextParamFromId(uint32_t& id, ParamRange pr) const {
-	uint32_t remainder = id % (nSegments + 1);
-	id /= (nSegments + 1);
-	return pr.min + (float)remainder * (pr.max - pr.min) / (float)nSegments;
+float MultipoleProfileFitRenderer::NextParamFromId(uint32_t& id, ParamRange pr) {
+	uint32_t remainder = id % (uint32_t)pr.size();
+	id /= (uint32_t)pr.size();
+	return pr[remainder];
 }
 
 VariableParams MultipoleProfileFitRenderer::ParamsFromId(uint32_t id) const {
@@ -107,81 +114,79 @@ public:
 
 	GaussianFitTask(const SampledSpectrum* mua, const SampledSpectrum* musp,
 		const float* et, const float* thickness, const vector<float>& sigmas,
-		SpectralGaussianCoeffs& coeffs, ProgressReporter& pr, uint32_t id)
-		: sigmas(sigmas), coeffs(coeffs), reporter(pr), id(id)
+		SpectralGaussianCoeffs& coeffs, ProgressReporter& pr, uint32_t id,
+		int sc)
+		: sigmas(sigmas), coeffs(coeffs), reporter(pr), id(id), sc(sc)
 	{
 		for (int i = 0; i < nLayers; i++) {
-			this->mua[i] = mua[i];
-			this->musp[i] = musp[i];
+			this->mua[i] = mua[i][sc];
+			this->musp[i] = musp[i][sc];
 			this->et[i] = et[i];
 			this->thickness[i] = thickness[i];
 		}
 	}
 
-	void Run() override;
 private:
-	SampledSpectrum mua[nLayers];
-	SampledSpectrum musp[nLayers];
+	float mua[nLayers];
+	float musp[nLayers];
 	float et[nLayers];
 	float thickness[nLayers];
 	const vector<float>& sigmas;
 	SpectralGaussianCoeffs& coeffs;
 	uint32_t id;
+	int sc;
 
 	ProgressReporter& reporter;
 
-	void DoGaussianFit(const MPC_Output* pOutput, int sc, float mfpMin, float mfpMax);
+	void Run() override;
+	void DoGaussianFit(const MPC_Output* pOutput, float mfpMin, float mfpMax);
 };
 
 void GaussianFitTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[nLayers];
 	MPC_Options options;
-	options.desiredLength = 512;
+	options.desiredLength = 256;
 
-	coeffs.coeffs.resize(sigmas.size(), SampledSpectrum(0.f));
-
-	for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
-		// Compute mfp
-		float mfpMin = INFINITY;
-		float mfpMax = 0.f;
-		float mfpTotal = 0.f;
-		for (int layer = 0; layer < nLayers; layer++) {
-			float mfp = 1.f / (mua[layer][sc] + musp[layer][sc]);
-			mfpTotal += mfp;
-			mfpMin = min(mfpMin, mfp);
-			mfpMax = max(mfpMax, mfp);
-		}
-		float mfp = mfpTotal / (float)nLayers;
-	
-		// Fill in layer information
-		for (int layer = 0; layer < nLayers; layer++) {
-			MPC_LayerSpec& ls = pLayerSpecs[layer];
-			ls.g_HG = 0.f;
-			ls.ior = et[layer];
-			ls.mua = mua[layer][sc];
-			ls.musp = musp[layer][sc];
-			ls.thickness = thickness[layer];
-		}
-		// Compute desired step size
-		options.desiredStepSize = 12.f * mfp / (float)options.desiredLength;
-
-		// Do the computation
-		MPC_Output* pOutput;
-		MPC_ComputeDiffusionProfile(nLayers, pLayerSpecs, &options, &pOutput);
-		MPC_ResampleForUniformDistanceSquaredDistribution(pOutput);
-
-		// Do gaussian fit
-		DoGaussianFit(pOutput, sc, mfpMin, mfpMax);
-		
-		MPC_FreeOutput(pOutput);
-
+	// Compute mfp
+	float mfpMin = INFINITY;
+	float mfpMax = 0.f;
+	float mfpTotal = 0.f;
+	for (int layer = 0; layer < nLayers; layer++) {
+		float mfp = 1.f / (mua[layer] + musp[layer]);
+		mfpTotal += mfp;
+		mfpMin = min(mfpMin, mfp);
+		mfpMax = max(mfpMax, mfp);
 	}
+	float mfp = mfpTotal / (float)nLayers;
+	
+	// Fill in layer information
+	for (int layer = 0; layer < nLayers; layer++) {
+		MPC_LayerSpec& ls = pLayerSpecs[layer];
+		ls.g_HG = 0.f;
+		ls.ior = et[layer];
+		ls.mua = mua[layer];
+		ls.musp = musp[layer];
+		ls.thickness = thickness[layer];
+	}
+	// Compute desired step size
+	options.desiredStepSize = 12.f * mfp / (float)options.desiredLength;
+
+	// Do the computation
+	MPC_Output* pOutput;
+	MPC_ComputeDiffusionProfile(nLayers, pLayerSpecs, &options, &pOutput);
+	MPC_ResampleForUniformDistanceSquaredDistribution(pOutput);
+
+	// Do gaussian fit
+	DoGaussianFit(pOutput, mfpMin, mfpMax);
+		
+	MPC_FreeOutput(pOutput);
+
 	delete [] pLayerSpecs;
 
 	reporter.Update();
 }
 
-void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, int sc, float mfpMin, float mfpMax) {
+void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, float mfpMax) {
 	int nSigmas = sigmas.size();
 	const int nTargetSigmas = 4;
 	const int sigmaNegExtent = nTargetSigmas / 2;
@@ -231,9 +236,11 @@ void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, int sc, float mfp
 	GF_FreeOutput(pGFOutput);
 }
 
-GaussianFitTask* MultipoleProfileFitRenderer::CreateGaussianFitTask(const SkinCoefficients& coeffs,
+vector<Task*> MultipoleProfileFitRenderer::CreateGaussianFitTasks(const SkinCoefficients& coeffs,
 	const vector<float>& sigmas, SpectralGaussianCoeffs& sgc, ProgressReporter& reporter, uint32_t id) const
 {
+	sgc.coeffs.resize(sigmas.size(), SampledSpectrum(0.f));
+
 	SampledSpectrum mua[2];
 	mua[0] = coeffs.mua_epi().toSampledSpectrum() / 10.f;
 	mua[1] = coeffs.mua_derm().toSampledSpectrum() / 10.f;
@@ -247,7 +254,11 @@ GaussianFitTask* MultipoleProfileFitRenderer::CreateGaussianFitTask(const SkinCo
 	thickness[0] = layers[0].thickness / 1e6f;
 	thickness[1] = layers[1].thickness / 1e6f;
 
-	return new GaussianFitTask(mua, musp, et, thickness, sigmas, sgc, reporter, id);
+	vector<Task*> tasks;
+	for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
+		tasks.push_back(new GaussianFitTask(mua, musp, et, thickness, sigmas, sgc, reporter, id, sc));
+	}
+	return tasks;
 }
 
 void MultipoleProfileFitRenderer::Render(const Scene* scene) {
@@ -277,13 +288,14 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 		sigmas.push_back(sigma);
 	}
 	// Compute profiles and do fitting
-	map<uint32_t, SpectralGaussianCoeffs> gaussianCoeffs;
-	ProgressReporter reporter(nTasks, "Gaussian Fit");
+	vector<SpectralGaussianCoeffs> gaussianCoeffs(nTasks);
+	ProgressReporter reporter(nTasks * SampledSpectrum::nComponents, "Gaussian Fit");
 	vector<Task*> fitTasks;
-	fitTasks.reserve(nTasks);
+	fitTasks.reserve(nTasks * SampledSpectrum::nComponents);
 	ForRanges([&] (const VariableParams& vps, uint32_t id) {
 		SkinCoefficients coeffs(vps.f_mel, vps.f_eu, vps.f_blood, vps.f_ohg, 0.f, 0.f, 0.f);
-		fitTasks.push_back(CreateGaussianFitTask(coeffs, sigmas, gaussianCoeffs[id], reporter, id));
+		vector<Task*> newTasks = CreateGaussianFitTasks(coeffs, sigmas, gaussianCoeffs[id], reporter, id);
+		fitTasks.insert(fitTasks.end(), newTasks.begin(), newTasks.end());
 	});
 	EnqueueTasks(fitTasks);
 	WaitForAllTasks();
@@ -293,41 +305,43 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 	reporter.Done();
 
 	if (filename != "") {
-		Info("Writing to file...");
+		Info("Writing to file \"%s\"", filename.c_str());
 		fstream out(filename, ios::out | ios::trunc);
 		if (!out) {
 			Error("Cannot open %s", filename.c_str());
 			abort();
 		}
-		for (const auto& pair : gaussianCoeffs) {
-			out << string(80, '=') << endl;
-			uint32_t id = pair.first;
-			const SpectralGaussianCoeffs& coeffs = pair.second;
+		// Output _ParamRange_s
+		out << "Param\tNum Samples\tSample Points" << endl;
+		out << "f_mel\t" << pr_f_mel << endl;
+		out << "f_eu\t" << pr_f_eu << endl;
+		out << "f_blood\t" << pr_f_blood << endl;
+		out << "f_ohg\t" << pr_f_ohg << endl;
+		// Output sigmas
+		out << "ID\tf_mel\tf_eu\tf_blood\tf_ohg\tRGB";
+		for (float sigma : sigmas) {
+			out << "\t" << sigma;
+		}
+		out << "\tError" << endl;
+		for (uint32_t id = 0; id < (uint32_t)nTasks; id++) {
+			const SpectralGaussianCoeffs& coeffs = gaussianCoeffs[id];
 			VariableParams vps = ParamsFromId(id);
-			out << "ID " << id << " " << vps << endl;
 			for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
-				out << "WL=" << SampledSpectrum::WaveLength(sc);
-				for (int i = 0; i < sigmas.size(); i++) {
-					if (coeffs.coeffs[i][sc] != 0.f) {
-						out << "\tL" << sigmas[i] << "=" << coeffs.coeffs[i][sc];
-					}
-				}
-				out << "\tError=" << coeffs.error[sc] << endl;
+				out << id << "\t" << vps << "\t" << SampledSpectrum::WaveLength(sc);
+				for (int i = 0; i < sigmas.size(); i++)
+					out << "\t" << coeffs.coeffs[i][sc];
+				out << "\t" << coeffs.error[sc] << endl;
 			}
 			vector<RGBSpectrum> rgbCoeffs;
 			for (const SampledSpectrum& spectrum : coeffs.coeffs) {
 				rgbCoeffs.push_back(spectrum.ToRGBSpectrum());
 			}
 			for (int rgb = 0; rgb < RGBSpectrum::nComponents; rgb++) {
-				out << "RGB"[rgb];
-				for (int i = 0; i < sigmas.size(); i++) {
-					if (rgbCoeffs[i][rgb] != 0.f) {
-						out << "\tL" << sigmas[i] << "=" << rgbCoeffs[i][rgb];
-					}
-				}
+				out << id << "\t" << vps << "\t" << "RGB"[rgb];
+				for (int i = 0; i < sigmas.size(); i++)
+					out << "\t" << rgbCoeffs[i][rgb];
 				out << endl;
 			}
-			out << endl;
 		}
 		out.close();
 	}
@@ -353,16 +367,13 @@ static ParamRange FindParamRange(const ParamSet& params, const string& name) {
 		Error("Param %s not specified for MultipoleProfileFitRenderer.", name);
 		abort();
 	}
-	if (nItems < 2) {
-		Error("Param %s doesn't specify enough (2) floats.", name);
+	if (nItems < 1) {
+		Error("Param %s doesn't specify any float.", name);
 		abort();
 	}
-	if (pData[0] > pData[1]) {
-		Warning("Param %s minimum value is greater than maximum value, swapping them.", name);
-		return ParamRange(pData[1], pData[0]);
-	} else {
-		return ParamRange(pData[0], pData[1]);
-	}
+	ParamRange pr(pData, pData + nItems);
+	sort(pr.begin(), pr.end());
+	return pr;
 }
 
 MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params) {

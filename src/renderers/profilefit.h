@@ -35,10 +35,7 @@
 #include "renderer.h"
 #include "skinlayer.h"
 
-struct ParamRange {
-	float min, max;
-	ParamRange(float min, float max) : min(min), max(max) {}
-};
+typedef vector<float> ParamRange;
 
 class SkinCoefficients;
 struct VariableParams;
@@ -74,10 +71,10 @@ private:
 	template <class Processor>
 	void ForRanges(const Processor& p) const;
 
-	float NextParamFromId(uint32_t& id, ParamRange pr) const;
+	static float NextParamFromId(uint32_t& id, ParamRange pr);
 	VariableParams ParamsFromId(uint32_t id) const;
 
-	GaussianFitTask* CreateGaussianFitTask(const SkinCoefficients& coeffs,
+	vector<Task*> CreateGaussianFitTasks(const SkinCoefficients& coeffs,
 		const vector<float>& sigmas, SpectralGaussianCoeffs& sgc,
 		ProgressReporter& reporter, uint32_t id) const;
 };
