@@ -101,9 +101,9 @@ VariableParams MultipoleProfileFitRenderer::ParamsFromId(uint32_t id) const {
 
 MultipoleProfileFitRenderer::MultipoleProfileFitRenderer(const vector<SkinLayer>& layers,
 	ParamRange f_mel, ParamRange f_eu, ParamRange f_blood, ParamRange f_ohg,
-	uint32_t segments, const string& filename)
+	uint32_t desiredLength, uint32_t segments, const string& filename)
 	: layers(layers), pr_f_mel(f_mel), pr_f_eu(f_eu), pr_f_blood(f_blood), pr_f_ohg(f_ohg),
-	  nSegments(segments), filename(filename)
+	  desiredLength(desiredLength), nSegments(segments), filename(filename)
 {
 }
 
@@ -115,8 +115,9 @@ public:
 	GaussianFitTask(const SampledSpectrum* mua, const SampledSpectrum* musp,
 		const float* et, const float* thickness, const vector<float>& sigmas,
 		SpectralGaussianCoeffs& coeffs, ProgressReporter& pr, uint32_t id,
-		int sc)
-		: sigmas(sigmas), coeffs(coeffs), reporter(pr), id(id), sc(sc)
+		int sc, uint32_t desiredLength)
+		: sigmas(sigmas), coeffs(coeffs), reporter(pr), id(id), sc(sc),
+		  desiredLength(desiredLength)
 	{
 		for (int i = 0; i < nLayers; i++) {
 			this->mua[i] = mua[i][sc];
@@ -134,6 +135,7 @@ private:
 	const vector<float>& sigmas;
 	SpectralGaussianCoeffs& coeffs;
 	uint32_t id;
+	uint32_t desiredLength;
 	int sc;
 
 	ProgressReporter& reporter;
@@ -145,7 +147,7 @@ private:
 void GaussianFitTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[nLayers];
 	MPC_Options options;
-	options.desiredLength = 256;
+	options.desiredLength = desiredLength;
 
 	// Compute mfp
 	float mfpMin = INFINITY;
@@ -256,7 +258,8 @@ vector<Task*> MultipoleProfileFitRenderer::CreateGaussianFitTasks(const SkinCoef
 
 	vector<Task*> tasks;
 	for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
-		tasks.push_back(new GaussianFitTask(mua, musp, et, thickness, sigmas, sgc, reporter, id, sc));
+		tasks.push_back(new GaussianFitTask(mua, musp, et, thickness,
+			sigmas, sgc, reporter, id, sc, desiredLength));
 	}
 	return tasks;
 }
@@ -393,6 +396,7 @@ MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& p
 	ParamRange pr_f_ohg = FindParamRange(params, "f_ohg");
 	uint32_t segments = params.FindOneInt("segments", 10);
     string filename = params.FindOneFilename("filename", "");
+	uint32_t desiredLength = params.FindOneInt("desiredProfileLength", 256);
 	return new MultipoleProfileFitRenderer(vector<SkinLayer>(layers, layers + nLayers),
-		pr_f_mel, pr_f_eu, pr_f_blood, pr_f_ohg, segments, filename);
+		pr_f_mel, pr_f_eu, pr_f_blood, pr_f_ohg, desiredLength, segments, filename);
 }

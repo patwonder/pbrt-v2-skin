@@ -50,7 +50,7 @@ public:
 	// MultipoleProfileFitRenderer Public Methods
 	MultipoleProfileFitRenderer(const vector<SkinLayer>& layers,
 		ParamRange f_mel, ParamRange f_eu, ParamRange f_blood,
-		ParamRange f_ohg, uint32_t segments, const string& filename);
+		ParamRange f_ohg, uint32_t desiredLength, uint32_t segments, const string& filename);
 	void Render(const Scene* scene) override;
 	Spectrum Li(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena,
@@ -64,6 +64,7 @@ private:
 	ParamRange pr_f_eu;
 	ParamRange pr_f_blood;
 	ParamRange pr_f_ohg;
+	uint32_t desiredLength;
 	uint32_t nSegments;
 	string filename;
 
