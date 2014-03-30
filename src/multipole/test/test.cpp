@@ -18,10 +18,10 @@ void computeGaussianFit(const MPC_Output* pOutput) {
 		float dsq = pOutput->pDistanceSquared[i];
 		distArray[i] = sqrt(dsq);
 	}
-	const uint32 nSigmas = 3;
+	const uint32 nSigmas = 2;
 	float sigmaArray[nSigmas];
 	for (uint32 i = 0; i < nSigmas; i++) {
-		sigmaArray[i] = (float)(mfp * pow(2, -((int)(nSigmas - 1) / 2) + (int)i));
+		sigmaArray[i] = (float)(mfp * pow(2, -((int)nSigmas / 2) + (int)i));
 	}
 
 	GF_Output* pGFOutput;

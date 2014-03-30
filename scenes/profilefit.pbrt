@@ -6,10 +6,10 @@
          # "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
          # "string filename" "profilefit.txt"
 Renderer "multipoleprofilefit"
-         "float f_mel" [ 0 ]
+         "float f_mel" [ 0.15 ]
          "float f_eu" [ 0 ]
-         "float f_blood" [ 0 ]
-         "float f_ohg" [ 0 ]
+         "float f_blood" [ 0.01 ]
+         "float f_ohg" [ 0.75 ]
          "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
          "string filename" "profilefit.txt"
 WorldBegin

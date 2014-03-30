@@ -20,7 +20,7 @@ Sampler "lowdiscrepancy" "integer pixelsamples" 1
 SurfaceIntegrator "multipolesubsurface"
   "integer maxdepth" 5
   "float maxerror" 0.05
-  "float minsampledistance" 0.002
+  "float minsampledistance" 0.0015
 
 #Renderer "tessellatesurfacepoints"
 #  "float minsampledistance" 0.002
@@ -55,12 +55,12 @@ WorldBegin
       "string wrap" "clamp" "float scale" -0.01
     Texture "lambertian" "color" "imagemap" "string filename" "textures/lambertian.tga"
       "string wrap" "clamp" "float gamma" 2.2
-    Texture "lambertian-norm" "color" "imagemap" "string filename" "textures/lambertian-norm.tga"
+    Texture "lambertian-norm" "color" "imagemap" "string filename" "textures/lambertian-norm2.tga"
       "string wrap" "clamp" "float gamma" 2.2 "float scale" 2
 #    Material "kdsubsurface" "texture Kd" "lambertian"
 #      "float meanfreepath" 0.01
    Material "layeredskin" "float roughness" 0.3
-                          "float nmperunit" 120e6
+                          "float nmperunit" 80e6
                           "color Kr" [1 1 1]
                           "color Kt" [0 0 0]
                           "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]

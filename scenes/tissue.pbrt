@@ -21,7 +21,7 @@ LightSource "spot" "point from" [0 -10 0]
                    "point to" [0 0 0]
                    "float coneangle" 0.5
                    "float conedeltaangle" 0.001
-                   "color I" [00000 10000 00000]
+                   "color I" [10000 10000 10000]
 
 Material "layeredskin" "float roughness" 0.3
                        "float nmperunit" 5e6
