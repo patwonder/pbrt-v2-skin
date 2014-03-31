@@ -205,6 +205,12 @@ void ParamSet::AddSkinLayer(const string& name, const SkinLayer* layers, int nIt
 }
 
 
+void ParamSet::AddLayer(const string& name, const Layer* layers, int nItems) {
+	EraseLayer(name);
+	this->layers.push_back(new ParamSetItem<Layer>(name, layers, nItems));
+}
+
+
 bool ParamSet::EraseInt(const string &n) {
     for (uint32_t i = 0; i < ints.size(); ++i)
         if (ints[i]->name == n) {
@@ -299,6 +305,16 @@ bool ParamSet::EraseSkinLayer(const string &n) {
     for (uint32_t i = 0; i < skinLayers.size(); ++i)
         if (skinLayers[i]->name == n) {
 			skinLayers.erase(skinLayers.begin() + i);
+            return true;
+        }
+    return false;
+}
+
+
+bool ParamSet::EraseLayer(const string &n) {
+    for (uint32_t i = 0; i < layers.size(); ++i)
+        if (layers[i]->name == n) {
+			layers.erase(layers.begin() + i);
             return true;
         }
     return false;
@@ -416,6 +432,11 @@ const SkinLayer* ParamSet::FindSkinLayer(const string& name, int* nItems) const 
 }
 
 
+const Layer* ParamSet::FindLayer(const string& name, int* nItems) const {
+	LOOKUP_PTR(layers);
+}
+
+
 void ParamSet::ReportUnused() const {
 #define CHECK_UNUSED(v) \
     for (i = 0; i < (v).size(); ++i) \
@@ -428,6 +449,7 @@ void ParamSet::ReportUnused() const {
     CHECK_UNUSED(vectors); CHECK_UNUSED(normals);
     CHECK_UNUSED(spectra); CHECK_UNUSED(strings);
     CHECK_UNUSED(textures);CHECK_UNUSED(skinLayers);
+	CHECK_UNUSED(layers);
 }
 
 
@@ -439,6 +461,7 @@ void ParamSet::Clear() {
     DEL_PARAMS(vectors); DEL_PARAMS(normals);
     DEL_PARAMS(spectra); DEL_PARAMS(strings);
     DEL_PARAMS(textures);DEL_PARAMS(skinLayers);
+	DEL_PARAMS(layers);
 #undef DEL_PARAMS
 }
 
@@ -624,7 +647,27 @@ string ParamSet::ToString() const {
         ret += string(" [");
         for (j = 0; j < nPrint; ++j) {
             const SkinLayer& layer = item->data[j];
-			bufp += snprintf(bufp, bufEnd - bufp, "%.8g ", layer.thickness);
+			bufp += snprintf(bufp, bufEnd - bufp, "%.8g %.8g ", layer.thickness, layer.ior);
+        }
+        ret += buf;
+        ret += string("] ");
+	}
+	for (i = 0; i < layers.size(); ++i) {
+		char* bufp = buf;
+		*bufp = '\0';
+		const Reference<ParamSetItem<Layer> > &item = layers[i];
+		typeString = "layer ";
+        // Print _ParamSetItem_ declaration, determine how many to print
+        int nPrint = item->nItems;
+        ret += string("\"");
+        ret += typeString;
+        ret += item->name;
+        ret += string("\"");
+        ret += string(" [");
+        for (j = 0; j < nPrint; ++j) {
+            const Layer& layer = item->data[j];
+			bufp += snprintf(bufp, bufEnd - bufp, "%.8g %.8g %.8g %.8g ",
+				layer.mua, layer.musp, layer.ior, layer.thickness);
         }
         ret += buf;
         ret += string("] ");

@@ -123,8 +123,8 @@ MeasuredMaterial::MeasuredMaterial(const string &filename,
             float phii = values[pos++];
             float thetao = values[pos++];
             float phio = values[pos++];
-            Vector wo = SphericalDirection(sinf(thetao), cosf(thetao), phio);
-            Vector wi = SphericalDirection(sinf(thetai), cosf(thetai), phii);
+            Vector wo = SphericalDirection<float>(sinf(thetao), cosf(thetao), phio);
+            Vector wi = SphericalDirection<float>(sinf(thetai), cosf(thetai), phii);
             Spectrum s = Spectrum::FromSampled(&wls[0], &values[pos], numWls);
             pos += numWls;
             Point p = BRDFRemap(wo, wi);

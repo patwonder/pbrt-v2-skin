@@ -140,7 +140,7 @@ static bool VerifyArrayLength(ParamArray *arr, int required,
 enum { PARAM_TYPE_INT, PARAM_TYPE_BOOL, PARAM_TYPE_FLOAT, PARAM_TYPE_POINT,
     PARAM_TYPE_VECTOR, PARAM_TYPE_NORMAL, PARAM_TYPE_RGB, PARAM_TYPE_XYZ,
     PARAM_TYPE_BLACKBODY, PARAM_TYPE_SPECTRUM,
-    PARAM_TYPE_STRING, PARAM_TYPE_TEXTURE, PARAM_TYPE_SKINLAYER };
+    PARAM_TYPE_STRING, PARAM_TYPE_TEXTURE, PARAM_TYPE_SKINLAYER, PARAM_TYPE_LAYER };
 static const char *paramTypeToName(int type);
 static void InitParamSet(ParamSet &ps, SpectrumType);
 static bool lookupType(const char *name, int *type, string &sname);
@@ -654,6 +654,7 @@ static const char *paramTypeToName(int type) {
     case PARAM_TYPE_STRING: return "string";
     case PARAM_TYPE_TEXTURE: return "texture";
     case PARAM_TYPE_SKINLAYER: return "skinlayer";
+	case PARAM_TYPE_LAYER: return "layer";
     default: Severe("Error in paramTypeToName"); return NULL;
     }
 }
@@ -779,6 +780,20 @@ static void InitParamSet(ParamSet &ps, SpectrumType type) {
                 ps.AddSkinLayer(name, sldata, nItems / 2);
                 delete [] sldata;
             }
+			else if (type == PARAM_TYPE_LAYER) {
+				if ((nItems % 4) != 0)
+					Warning("Non-quadruple number of values given with layer "
+							"parameter \"%s\". Ignoring extra.", cur_paramlist[i].name);
+				Layer* ldata = new Layer[nItems / 4];
+				for (int i = 0; i < nItems / 4; i++) {
+					ldata[i].mua = ((float*)data)[4 * i];
+					ldata[i].musp = ((float*)data)[4 * i + 1];
+					ldata[i].ior = ((float*)data)[4 * i + 2];
+					ldata[i].thickness = ((float*)data)[4 * i + 3];
+				}
+				ps.AddLayer(name, ldata, nItems / 4);
+				delete [] ldata;
+			}
         }
         else
             Warning("Type of parameter \"%s\" is unknown",
@@ -815,6 +830,7 @@ static bool lookupType(const char *name, int *type, string &sname) {
     else TRY_DECODING_TYPE("blackbody", PARAM_TYPE_BLACKBODY)
     else TRY_DECODING_TYPE("spectrum",  PARAM_TYPE_SPECTRUM)
     else TRY_DECODING_TYPE("skinlayer", PARAM_TYPE_SKINLAYER)
+	else TRY_DECODING_TYPE("layer",     PARAM_TYPE_LAYER)
     else {
         Error("Unable to decode type for name \"%s\"", name);
         return false;

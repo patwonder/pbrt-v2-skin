@@ -40,386 +40,414 @@
 #include "pbrt.h"
 
 // Geometry Declarations
-class Vector {
+template <class scalar>
+class VectorBase {
+protected:
+	typedef ScalarTraits<scalar> Traits;
 public:
-    // Vector Public Methods
-    Vector() { x = y = z = 0.f; }
-    Vector(float xx, float yy, float zz)
+    // VectorBase Public Methods
+    VectorBase() { x = y = z = Traits::zero(); }
+    VectorBase(scalar xx, scalar yy, scalar zz)
         : x(xx), y(yy), z(zz) {
         Assert(!HasNaNs());
     }
-    bool HasNaNs() const { return isnan(x) || isnan(y) || isnan(z); }
-    explicit Vector(const Point &p);
+    bool HasNaNs() const { return Traits::isNaN(x) || Traits::isNaN(y) || Traits::isNaN(z); }
+    explicit VectorBase(const PointBase<scalar> &p);
 #ifndef NDEBUG
     // The default versions of these are fine for release builds; for debug
     // we define them so that we can add the Assert checks.
-    Vector(const Vector &v) {
+    VectorBase(const VectorBase &v) {
         Assert(!v.HasNaNs());
         x = v.x; y = v.y; z = v.z;
     }
     
-    Vector &operator=(const Vector &v) {
+    VectorBase &operator=(const VectorBase &v) {
         Assert(!v.HasNaNs());
         x = v.x; y = v.y; z = v.z;
         return *this;
     }
 #endif // !NDEBUG
-    Vector operator+(const Vector &v) const {
+    VectorBase operator+(const VectorBase &v) const {
         Assert(!v.HasNaNs());
-        return Vector(x + v.x, y + v.y, z + v.z);
+        return VectorBase(x + v.x, y + v.y, z + v.z);
     }
     
-    Vector& operator+=(const Vector &v) {
+    VectorBase& operator+=(const VectorBase &v) {
         Assert(!v.HasNaNs());
         x += v.x; y += v.y; z += v.z;
         return *this;
     }
-    Vector operator-(const Vector &v) const {
+    VectorBase operator-(const VectorBase &v) const {
         Assert(!v.HasNaNs());
-        return Vector(x - v.x, y - v.y, z - v.z);
+        return VectorBase(x - v.x, y - v.y, z - v.z);
     }
     
-    Vector& operator-=(const Vector &v) {
+    VectorBase& operator-=(const VectorBase &v) {
         Assert(!v.HasNaNs());
         x -= v.x; y -= v.y; z -= v.z;
         return *this;
     }
-    Vector operator*(float f) const { return Vector(f*x, f*y, f*z); }
+	template <class scalartype>
+    VectorBase operator*(scalartype f) const {
+		return VectorBase(Traits::value(f)*x, Traits::value(f)*y, Traits::value(f)*z);
+	}
     
-    Vector &operator*=(float f) {
-        Assert(!isnan(f));
-        x *= f; y *= f; z *= f;
+	template <class scalartype>
+    VectorBase &operator*=(scalartype f) {
+        Assert(!Traits::isNaN(Traits::value(f)));
+        x *= Traits::value(f); y *= Traits::value(f); z *= Traits::value(f);
         return *this;
     }
-    Vector operator/(float f) const {
-        Assert(f != 0);
-        float inv = 1.f / f;
-        return Vector(x * inv, y * inv, z * inv);
+	template <class scalartype>
+    VectorBase operator/(scalartype f) const {
+        Assert(Traits::value(f) != Traits::zero());
+        scalar inv = Traits::one() / Traits::value(f);
+        return VectorBase(x * inv, y * inv, z * inv);
     }
     
-    Vector &operator/=(float f) {
-        Assert(f != 0);
-        float inv = 1.f / f;
+	template <class scalartype>
+    VectorBase &operator/=(scalartype f) {
+        Assert(Traits::value(f) != Traits::zero());
+        scalar inv = Traits::one() / Traits::value(f);
         x *= inv; y *= inv; z *= inv;
         return *this;
     }
-    Vector operator-() const { return Vector(-x, -y, -z); }
-    float operator[](int i) const {
+    VectorBase operator-() const { return VectorBase(-x, -y, -z); }
+    scalar operator[](int i) const {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
     
-    float &operator[](int i) {
+    scalar &operator[](int i) {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
-    float LengthSquared() const { return x*x + y*y + z*z; }
-    float Length() const { return sqrtf(LengthSquared()); }
-    explicit Vector(const Normal &n);
+    scalar LengthSquared() const { return x*x + y*y + z*z; }
+    scalar Length() const { return sqrt(LengthSquared()); }
+    explicit VectorBase(const NormalBase<scalar> &n);
 
-    bool operator==(const Vector &v) const {
+    bool operator==(const VectorBase &v) const {
         return x == v.x && y == v.y && z == v.z;
     }
-    bool operator!=(const Vector &v) const {
+    bool operator!=(const VectorBase &v) const {
         return x != v.x || y != v.y || z != v.z;
     }
 
-    // Vector Public Data
-    float x, y, z;
+    // VectorBase Public Data
+    scalar x, y, z;
 };
 
-
-class Point {
+template <class scalar>
+class PointBase {
+protected:
+	typedef ScalarTraits<scalar> Traits;
 public:
-    // Point Public Methods
-    Point() { x = y = z = 0.f; }
-    Point(float xx, float yy, float zz)
+    // PointBase Public Methods
+    PointBase() { x = y = z = Traits::zero(); }
+    PointBase(scalar xx, scalar yy, scalar zz)
         : x(xx), y(yy), z(zz) {
         Assert(!HasNaNs());
     }
 #ifndef NDEBUG
-    Point(const Point &p) {
+    PointBase(const PointBase &p) {
         Assert(!p.HasNaNs());
         x = p.x; y = p.y; z = p.z;
     }
     
-    Point &operator=(const Point &p) {
+    PointBase &operator=(const PointBase &p) {
         Assert(!p.HasNaNs());
         x = p.x; y = p.y; z = p.z;
         return *this;
     }
 #endif // !NDEBUG
-    Point operator+(const Vector &v) const {
+    PointBase operator+(const VectorBase<scalar> &v) const {
         Assert(!v.HasNaNs());
-        return Point(x + v.x, y + v.y, z + v.z);
+        return PointBase(x + v.x, y + v.y, z + v.z);
     }
     
-    Point &operator+=(const Vector &v) {
+    PointBase &operator+=(const VectorBase<scalar> &v) {
         Assert(!v.HasNaNs());
         x += v.x; y += v.y; z += v.z;
         return *this;
     }
-    Vector operator-(const Point &p) const {
+    VectorBase<scalar> operator-(const PointBase &p) const {
         Assert(!p.HasNaNs());
-        return Vector(x - p.x, y - p.y, z - p.z);
+        return VectorBase<scalar>(x - p.x, y - p.y, z - p.z);
     }
     
-    Point operator-(const Vector &v) const {
+    PointBase operator-(const VectorBase<scalar> &v) const {
         Assert(!v.HasNaNs());
-        return Point(x - v.x, y - v.y, z - v.z);
+        return PointBase(x - v.x, y - v.y, z - v.z);
     }
     
-    Point &operator-=(const Vector &v) {
+    PointBase &operator-=(const VectorBase<scalar> &v) {
         Assert(!v.HasNaNs());
         x -= v.x; y -= v.y; z -= v.z;
         return *this;
     }
-    Point &operator+=(const Point &p) {
+    PointBase &operator+=(const PointBase &p) {
         Assert(!p.HasNaNs());
         x += p.x; y += p.y; z += p.z;
         return *this;
     }
-    Point operator+(const Point &p) const {
+    PointBase operator+(const PointBase &p) const {
         Assert(!p.HasNaNs());
-        return Point(x + p.x, y + p.y, z + p.z);
+        return PointBase(x + p.x, y + p.y, z + p.z);
     }
-    Point operator* (float f) const {
-        return Point(f*x, f*y, f*z);
+	template <class scalartype>
+    PointBase operator* (scalartype f) const {
+        return PointBase(Traits::value(f)*x, Traits::value(f)*y, Traits::value(f)*z);
     }
-    Point &operator*=(float f) {
-        x *= f; y *= f; z *= f;
+	template <class scalartype>
+    PointBase &operator*=(scalartype f) {
+        x *= Traits::value(f); y *= Traits::value(f); z *= Traits::value(f);
         return *this;
     }
-    Point operator/ (float f) const {
-        float inv = 1.f/f;
-        return Point(inv*x, inv*y, inv*z);
+	template <class scalartype>
+    PointBase operator/ (scalartype f) const {
+        scalar inv = Traits::one()/Traits::value(f);
+        return PointBase(inv*x, inv*y, inv*z);
     }
-    Point &operator/=(float f) {
-        float inv = 1.f/f;
+	template <class scalartype>
+    PointBase &operator/=(scalartype f) {
+        scalar inv = Traits::one()/Traits::value(f);
         x *= inv; y *= inv; z *= inv;
         return *this;
     }
-    float operator[](int i) const {
+    scalar operator[](int i) const {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
     
-    float &operator[](int i) {
+    scalar &operator[](int i) {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
     bool HasNaNs() const {
-        return isnan(x) || isnan(y) || isnan(z);
+        return Traits::isNaN(x) || Traits::isNaN(y) || Traits::isNaN(z);
     }
 
-    bool operator==(const Point &p) const {
+    bool operator==(const PointBase &p) const {
         return x == p.x && y == p.y && z == p.z;
     }
-    bool operator!=(const Point &p) const {
+    bool operator!=(const PointBase &p) const {
         return x != p.x || y != p.y || z != p.z;
     }
 
-    // Point Public Data
-    float x, y, z;
+    // PointBase Public Data
+    scalar x, y, z;
 };
 
-
-class Normal {
+template <class scalar>
+class NormalBase {
+protected:
+	typedef ScalarTraits<scalar> Traits;
 public:
-    // Normal Public Methods
-    Normal() { x = y = z = 0.f; }
-    Normal(float xx, float yy, float zz)
+    // NormalBase Public Methods
+    NormalBase() { x = y = z = Traits::zero(); }
+    NormalBase(scalar xx, scalar yy, scalar zz)
         : x(xx), y(yy), z(zz) {
         Assert(!HasNaNs());
     }
-    Normal operator-() const {
-        return Normal(-x, -y, -z);
+    NormalBase operator-() const {
+        return NormalBase(-x, -y, -z);
     }
-    Normal operator+ (const Normal &n) const {
+    NormalBase operator+ (const NormalBase &n) const {
         Assert(!n.HasNaNs());
-        return Normal(x + n.x, y + n.y, z + n.z);
+        return NormalBase(x + n.x, y + n.y, z + n.z);
     }
     
-    Normal& operator+=(const Normal &n) {
+    NormalBase& operator+=(const NormalBase &n) {
         Assert(!n.HasNaNs());
         x += n.x; y += n.y; z += n.z;
         return *this;
     }
-    Normal operator- (const Normal &n) const {
+    NormalBase operator- (const NormalBase &n) const {
         Assert(!n.HasNaNs());
-        return Normal(x - n.x, y - n.y, z - n.z);
+        return NormalBase(x - n.x, y - n.y, z - n.z);
     }
     
-    Normal& operator-=(const Normal &n) {
+    NormalBase& operator-=(const NormalBase &n) {
         Assert(!n.HasNaNs());
         x -= n.x; y -= n.y; z -= n.z;
         return *this;
     }
     bool HasNaNs() const {
-        return isnan(x) || isnan(y) || isnan(z);
+        return Traits::isNaN(x) || Traits::isNaN(y) || Traits::isNaN(z);
     }
-    Normal operator*(float f) const {
-        return Normal(f*x, f*y, f*z);
+	template <class scalartype>
+    NormalBase operator*(scalartype f) const {
+        return NormalBase(Traits::value(f)*x, Traits::value(f)*y, Traits::value(f)*z);
     }
-    
-    Normal &operator*=(float f) {
-        x *= f; y *= f; z *= f;
+	template <class scalartype>
+    NormalBase &operator*=(scalartype f) {
+        x *= Traits::value(f); y *= Traits::value(f); z *= Traits::value(f);
         return *this;
     }
-    Normal operator/(float f) const {
-        Assert(f != 0);
-        float inv = 1.f/f;
-        return Normal(x * inv, y * inv, z * inv);
+	template <class scalartype>
+    NormalBase operator/(scalartype f) const {
+        Assert(Traits::value(f) != Traits::zero());
+        scalar inv = Traits::one()/Traits::value(f);
+        return NormalBase(x * inv, y * inv, z * inv);
     }
-    
-    Normal &operator/=(float f) {
-        Assert(f != 0);
-        float inv = 1.f/f;
+	template <class scalartype>
+    NormalBase &operator/=(scalartype f) {
+        Assert(Traits::value(f) != Traits::zero());
+        scalar inv = Traits::one()/Traits::value(f);
         x *= inv; y *= inv; z *= inv;
         return *this;
     }
-    float LengthSquared() const { return x*x + y*y + z*z; }
-    float Length() const        { return sqrtf(LengthSquared()); }
+    scalar LengthSquared() const { return x*x + y*y + z*z; }
+    scalar Length() const        { return sqrt(LengthSquared()); }
     
 #ifndef NDEBUG
-    Normal(const Normal &n) {
+    NormalBase(const NormalBase &n) {
         Assert(!n.HasNaNs());
         x = n.x; y = n.y; z = n.z;
     }
     
-    Normal &operator=(const Normal &n) {
+    NormalBase &operator=(const NormalBase &n) {
         Assert(!n.HasNaNs());
         x = n.x; y = n.y; z = n.z;
         return *this;
     }
 #endif // !NDEBUG
-    explicit Normal(const Vector &v)
+    explicit NormalBase(const VectorBase<scalar> &v)
       : x(v.x), y(v.y), z(v.z) {
         Assert(!v.HasNaNs());
     }
-    float operator[](int i) const {
+    scalar operator[](int i) const {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
     
-    float &operator[](int i) {
+    scalar &operator[](int i) {
         Assert(i >= 0 && i <= 2);
         return (&x)[i];
     }
 
-    bool operator==(const Normal &n) const {
+    bool operator==(const NormalBase &n) const {
         return x == n.x && y == n.y && z == n.z;
     }
-    bool operator!=(const Normal &n) const {
+    bool operator!=(const NormalBase &n) const {
         return x != n.x || y != n.y || z != n.z;
     }
 
-    // Normal Public Data
-    float x, y, z;
+    // NormalBase Public Data
+    scalar x, y, z;
 };
 
-
-class Ray {
+template <class scalar>
+class RayBase {
+protected:
+	typedef ScalarTraits<scalar> Traits;
 public:
-    // Ray Public Methods
-    Ray() : mint(0.f), maxt(INFINITY), time(0.f), depth(0) { }
-    Ray(const Point &origin, const Vector &direction,
-        float start, float end = INFINITY, float t = 0.f, int d = 0)
+    // RayBase Public Methods
+    RayBase() : mint(ScalarTraits<scalar>::zero()), maxt(Traits::max()), time(ScalarTraits<scalar>::zero()), depth(0) { }
+    RayBase(const PointBase<scalar> &origin, const VectorBase<scalar> &direction,
+        scalar start, scalar end = Traits::max(), scalar t = ScalarTraits<scalar>::zero(), int d = 0)
         : o(origin), d(direction), mint(start), maxt(end), time(t), depth(d) { }
-    Ray(const Point &origin, const Vector &direction, const Ray &parent,
-        float start, float end = INFINITY)
+    RayBase(const PointBase<scalar> &origin, const VectorBase<scalar> &direction, const RayBase &parent,
+        scalar start, scalar end = Traits::max())
         : o(origin), d(direction), mint(start), maxt(end),
           time(parent.time), depth(parent.depth+1) { }
-    Point operator()(float t) const { return o + d * t; }
+	template <class scalartype>
+    PointBase<scalar> operator()(scalartype t) const { return o + d * Traits::value(t); }
     bool HasNaNs() const {
         return (o.HasNaNs() || d.HasNaNs() ||
-                isnan(mint) || isnan(maxt));
+                Traits::isNaN(mint) || Traits::isNaN(maxt));
     }
 
-    // Ray Public Data
-    Point o;
-    Vector d;
-    mutable float mint, maxt;
-    float time;
+    // RayBase Public Data
+    PointBase<scalar> o;
+    VectorBase<scalar> d;
+    mutable scalar mint, maxt;
+    scalar time;
     int depth;
 };
 
 
-class RayDifferential : public Ray {
+template <class scalar>
+class RayDifferentialBase : public RayBase<scalar> {
 public:
-    // RayDifferential Public Methods
-    RayDifferential() { hasDifferentials = false; }
-    RayDifferential(const Point &org, const Vector &dir, float start,
-        float end = INFINITY, float t = 0.f, int d = 0)
-            : Ray(org, dir, start, end, t, d) {
+    // RayDifferentialBase Public Methods
+    RayDifferentialBase() { hasDifferentials = false; }
+    RayDifferentialBase(const PointBase<scalar> &org, const VectorBase<scalar> &dir, scalar start,
+        scalar end = Traits::max(), scalar t = ScalarTraits<scalar>::zero(), int d = 0)
+            : RayBase<scalar>(org, dir, start, end, t, d) {
         hasDifferentials = false;
     }
-    RayDifferential(const Point &org, const Vector &dir, const Ray &parent,
-        float start, float end = INFINITY)
-            : Ray(org, dir, start, end, parent.time, parent.depth+1) {
+    RayDifferentialBase(const PointBase<scalar> &org, const VectorBase<scalar> &dir, const RayBase<scalar> &parent,
+        scalar start, scalar end = Traits::max())
+            : RayBase<scalar>(org, dir, start, end, parent.time, parent.depth+1) {
         hasDifferentials = false;
     }
-    explicit RayDifferential(const Ray &ray) : Ray(ray) {
+    explicit RayDifferentialBase(const RayBase<scalar> &ray) : RayBase<scalar>(ray) {
         hasDifferentials = false;
     }
     bool HasNaNs() const {
-        return Ray::HasNaNs() ||
+        return RayBase<scalar>::HasNaNs() ||
            (hasDifferentials && (rxOrigin.HasNaNs() || ryOrigin.HasNaNs() ||
                                  rxDirection.HasNaNs() || ryDirection.HasNaNs()));
     }
-    void ScaleDifferentials(float s) {
-        rxOrigin = o + (rxOrigin - o) * s;
-        ryOrigin = o + (ryOrigin - o) * s;
-        rxDirection = d + (rxDirection - d) * s;
-        ryDirection = d + (ryDirection - d) * s;
+	template <class scalartype>
+    void ScaleDifferentials(scalartype s) {
+        rxOrigin = o + (rxOrigin - o) * Traits::value(s);
+        ryOrigin = o + (ryOrigin - o) * Traits::value(s);
+        rxDirection = d + (rxDirection - d) * Traits::value(s);
+        ryDirection = d + (ryDirection - d) * Traits::value(s);
     }
 
-    // RayDifferential Public Data
+    // RayDifferentialBase Public Data
     bool hasDifferentials;
-    Point rxOrigin, ryOrigin;
-    Vector rxDirection, ryDirection;
+    PointBase<scalar> rxOrigin, ryOrigin;
+    VectorBase<scalar> rxDirection, ryDirection;
 };
 
 
-class BBox {
+template <class scalar>
+class BBoxBase {
+private:
+	typedef ScalarTraits<scalar> Traits;
 public:
-    // BBox Public Methods
-    BBox() {
-        pMin = Point( INFINITY,  INFINITY,  INFINITY);
-        pMax = Point(-INFINITY, -INFINITY, -INFINITY);
+    // BBoxBase Public Methods
+    BBoxBase() {
+        pMin = PointBase<scalar>(Traits::max(), Traits::max(), Traits::max());
+        pMax = PointBase<scalar>(Traits::negmax(), Traits::negmax(), Traits::negmax());
     }
-    BBox(const Point &p) : pMin(p), pMax(p) { }
-    BBox(const Point &p1, const Point &p2) {
-        pMin = Point(min(p1.x, p2.x), min(p1.y, p2.y), min(p1.z, p2.z));
-        pMax = Point(max(p1.x, p2.x), max(p1.y, p2.y), max(p1.z, p2.z));
+    BBoxBase(const PointBase<scalar> &p) : pMin(p), pMax(p) { }
+    BBoxBase(const PointBase<scalar> &p1, const PointBase<scalar> &p2) {
+        pMin = PointBase<scalar>(min(p1.x, p2.x), min(p1.y, p2.y), min(p1.z, p2.z));
+        pMax = PointBase<scalar>(max(p1.x, p2.x), max(p1.y, p2.y), max(p1.z, p2.z));
     }
-    friend BBox Union(const BBox &b, const Point &p);
-    friend BBox Union(const BBox &b, const BBox &b2);
-    bool Overlaps(const BBox &b) const {
+    friend BBoxBase Union(const BBoxBase &b, const PointBase<scalar> &p);
+    friend BBoxBase Union(const BBoxBase &b, const BBoxBase &b2);
+    bool Overlaps(const BBoxBase &b) const {
         bool x = (pMax.x >= b.pMin.x) && (pMin.x <= b.pMax.x);
         bool y = (pMax.y >= b.pMin.y) && (pMin.y <= b.pMax.y);
         bool z = (pMax.z >= b.pMin.z) && (pMin.z <= b.pMax.z);
         return (x && y && z);
     }
-    bool Inside(const Point &pt) const {
+    bool Inside(const PointBase<scalar> &pt) const {
         return (pt.x >= pMin.x && pt.x <= pMax.x &&
                 pt.y >= pMin.y && pt.y <= pMax.y &&
                 pt.z >= pMin.z && pt.z <= pMax.z);
     }
-    void Expand(float delta) {
-        pMin -= Vector(delta, delta, delta);
-        pMax += Vector(delta, delta, delta);
+	template <class scalartype>
+    void Expand(scalartype delta) {
+        pMin -= VectorBase<scalar>(Traits::value(delta), Traits::value(delta), Traits::value(delta));
+        pMax += VectorBase<scalar>(Traits::value(delta), Traits::value(delta), Traits::value(delta));
     }
-    float SurfaceArea() const {
-        Vector d = pMax - pMin;
-        return 2.f * (d.x * d.y + d.x * d.z + d.y * d.z);
+    scalar SurfaceArea() const {
+        VectorBase<scalar> d = pMax - pMin;
+        return Traits::value(2) * (d.x * d.y + d.x * d.z + d.y * d.z);
     }
-    float Volume() const {
-        Vector d = pMax - pMin;
+    scalar Volume() const {
+        VectorBase<scalar> d = pMax - pMin;
         return d.x * d.y * d.z;
     }
     int MaximumExtent() const {
-        Vector diag = pMax - pMin;
+        VectorBase<scalar> diag = pMax - pMin;
         if (diag.x > diag.y && diag.x > diag.z)
             return 0;
         else if (diag.y > diag.z)
@@ -427,224 +455,258 @@ public:
         else
             return 2;
     }
-    const Point &operator[](int i) const;
-    Point &operator[](int i);
-    Point Lerp(float tx, float ty, float tz) const {
-        return Point(::Lerp(tx, pMin.x, pMax.x), ::Lerp(ty, pMin.y, pMax.y),
-                     ::Lerp(tz, pMin.z, pMax.z));
+    const PointBase<scalar> &operator[](int i) const;
+    PointBase<scalar> &operator[](int i);
+	template <class scalar1, class scalar2, class scalar3>
+	PointBase<scalar> Lerp(scalar1 tx, scalar2 ty, scalar3 tz) const {
+        return PointBase<scalar>(::Lerp(Traits::value(tx), pMin.x, pMax.x), ::Lerp(Traits::value(ty), pMin.y, pMax.y),
+                     ::Lerp(Traits::value(tz), pMin.z, pMax.z));
     }
-    Vector Offset(const Point &p) const {
-        return Vector((p.x - pMin.x) / (pMax.x - pMin.x),
+    VectorBase<scalar> Offset(const PointBase<scalar> &p) const {
+        return VectorBase<scalar>((p.x - pMin.x) / (pMax.x - pMin.x),
                       (p.y - pMin.y) / (pMax.y - pMin.y),
                       (p.z - pMin.z) / (pMax.z - pMin.z));
     }
-    void BoundingSphere(Point *c, float *rad) const;
-    bool IntersectP(const Ray &ray, float *hitt0 = NULL, float *hitt1 = NULL) const;
+    void BoundingSphere(PointBase<scalar> *c, scalar *rad) const;
+    bool IntersectP(const RayBase<scalar> &ray, scalar *hitt0 = NULL, scalar *hitt1 = NULL) const;
 
-    bool operator==(const BBox &b) const {
+    bool operator==(const BBoxBase &b) const {
         return b.pMin == pMin && b.pMax == pMax;
     }
-    bool operator!=(const BBox &b) const {
+    bool operator!=(const BBoxBase &b) const {
         return b.pMin != pMin || b.pMax != pMax;
     }
 
-    // BBox Public Data
-    Point pMin, pMax;
+    // BBoxBase Public Data
+    PointBase<scalar> pMin, pMax;
 };
 
 
 
 // Geometry Inline Functions
-inline Vector::Vector(const Point &p)
+template <class scalar>
+inline VectorBase<scalar>::VectorBase(const PointBase<scalar> &p)
     : x(p.x), y(p.y), z(p.z) {
     Assert(!HasNaNs());
 }
 
 
-inline Vector operator*(float f, const Vector &v) { return v*f; }
-inline float Dot(const Vector &v1, const Vector &v2) {
+template <class scalar, class scalartype>
+inline VectorBase<scalar> operator*(scalartype f, const VectorBase<scalar> &v) { return v*f; }
+template <class scalar>
+inline float Dot(const VectorBase<scalar> &v1, const VectorBase<scalar> &v2) {
     Assert(!v1.HasNaNs() && !v2.HasNaNs());
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
 
-inline float AbsDot(const Vector &v1, const Vector &v2) {
+template <class scalar>
+inline float AbsDot(const VectorBase<scalar> &v1, const VectorBase<scalar> &v2) {
     Assert(!v1.HasNaNs() && !v2.HasNaNs());
-    return fabsf(Dot(v1, v2));
+    return abs(Dot(v1, v2));
 }
 
 
-inline Vector Cross(const Vector &v1, const Vector &v2) {
+template <class scalar>
+inline VectorBase<scalar> Cross(const VectorBase<scalar> &v1, const VectorBase<scalar> &v2) {
     Assert(!v1.HasNaNs() && !v2.HasNaNs());
     double v1x = v1.x, v1y = v1.y, v1z = v1.z;
     double v2x = v2.x, v2y = v2.y, v2z = v2.z;
-    return Vector((v1y * v2z) - (v1z * v2y),
+    return VectorBase<scalar>((v1y * v2z) - (v1z * v2y),
                   (v1z * v2x) - (v1x * v2z),
                   (v1x * v2y) - (v1y * v2x));
 }
 
 
-inline Vector Cross(const Vector &v1, const Normal &v2) {
+template <class scalar>
+inline VectorBase<scalar> Cross(const VectorBase<scalar> &v1, const NormalBase<scalar> &v2) {
     Assert(!v1.HasNaNs() && !v2.HasNaNs());
     double v1x = v1.x, v1y = v1.y, v1z = v1.z;
     double v2x = v2.x, v2y = v2.y, v2z = v2.z;
-    return Vector((v1y * v2z) - (v1z * v2y),
+    return VectorBase<scalar>((v1y * v2z) - (v1z * v2y),
                   (v1z * v2x) - (v1x * v2z),
                   (v1x * v2y) - (v1y * v2x));
 }
 
 
-inline Vector Cross(const Normal &v1, const Vector &v2) {
+template <class scalar>
+inline VectorBase<scalar> Cross(const NormalBase<scalar> &v1, const VectorBase<scalar> &v2) {
     Assert(!v1.HasNaNs() && !v2.HasNaNs());
     double v1x = v1.x, v1y = v1.y, v1z = v1.z;
     double v2x = v2.x, v2y = v2.y, v2z = v2.z;
-    return Vector((v1y * v2z) - (v1z * v2y),
+    return VectorBase<scalar>((v1y * v2z) - (v1z * v2y),
                   (v1z * v2x) - (v1x * v2z),
                   (v1x * v2y) - (v1y * v2x));
 }
 
 
-inline Vector Normalize(const Vector &v) { return v / v.Length(); }
-inline void CoordinateSystem(const Vector &v1, Vector *v2, Vector *v3) {
-    if (fabsf(v1.x) > fabsf(v1.y)) {
-        float invLen = 1.f / sqrtf(v1.x*v1.x + v1.z*v1.z);
-        *v2 = Vector(-v1.z * invLen, 0.f, v1.x * invLen);
+template <class scalar>
+inline VectorBase<scalar> Normalize(const VectorBase<scalar> &v) { return v / v.Length(); }
+template <class scalar>
+inline void CoordinateSystem(const VectorBase<scalar> &v1, VectorBase<scalar> *v2, VectorBase<scalar> *v3) {
+    if (abs(v1.x) > abs(v1.y)) {
+        scalar invLen = ScalarTraits<scalar>::one() / sqrt(v1.x*v1.x + v1.z*v1.z);
+        *v2 = VectorBase<scalar>(-v1.z * invLen, ScalarTraits<scalar>::zero(), v1.x * invLen);
     }
     else {
-        float invLen = 1.f / sqrtf(v1.y*v1.y + v1.z*v1.z);
-        *v2 = Vector(0.f, v1.z * invLen, -v1.y * invLen);
+        scalar invLen = ScalarTraits<scalar>::one() / sqrt(v1.y*v1.y + v1.z*v1.z);
+        *v2 = VectorBase<scalar>(ScalarTraits<scalar>::zero(), v1.z * invLen, -v1.y * invLen);
     }
     *v3 = Cross(v1, *v2);
 }
 
 
-inline float Distance(const Point &p1, const Point &p2) {
+template <class scalar>
+inline scalar Distance(const PointBase<scalar> &p1, const PointBase<scalar> &p2) {
     return (p1 - p2).Length();
 }
 
 
-inline float DistanceSquared(const Point &p1, const Point &p2) {
+template <class scalar>
+inline scalar DistanceSquared(const PointBase<scalar> &p1, const PointBase<scalar> &p2) {
     return (p1 - p2).LengthSquared();
 }
 
 
-inline Point operator*(float f, const Point &p) {
+template <class scalar, class scalartype>
+inline PointBase<scalar> operator*(scalartype f, const PointBase<scalar> &p) {
     Assert(!p.HasNaNs());
     return p*f;
 }
 
 
-inline Normal operator*(float f, const Normal &n) {
-    return Normal(f*n.x, f*n.y, f*n.z);
+template <class scalar, class scalartype>
+inline NormalBase<scalar> operator*(scalartype f, const NormalBase<scalar> &n) {
+    return NormalBase<scalar>(ScalarTraits<scalar>::value(f)*n.x,
+		ScalarTraits<scalar>::value(f)*n.y, ScalarTraits<scalar>::value(f)*n.z);
 }
 
 
-inline Normal Normalize(const Normal &n) {
+template <class scalar>
+inline NormalBase<scalar> Normalize(const NormalBase<scalar> &n) {
     return n / n.Length();
 }
 
 
-inline Vector::Vector(const Normal &n)
+template <class scalar>
+inline VectorBase<scalar>::VectorBase(const NormalBase<scalar> &n)
   : x(n.x), y(n.y), z(n.z) {
     Assert(!n.HasNaNs());
 }
 
 
-inline float Dot(const Normal &n1, const Vector &v2) {
+template <class scalar>
+inline scalar Dot(const NormalBase<scalar> &n1, const VectorBase<scalar> &v2) {
     Assert(!n1.HasNaNs() && !v2.HasNaNs());
     return n1.x * v2.x + n1.y * v2.y + n1.z * v2.z;
 }
 
 
-inline float Dot(const Vector &v1, const Normal &n2) {
+template <class scalar>
+inline scalar Dot(const VectorBase<scalar> &v1, const NormalBase<scalar> &n2) {
     Assert(!v1.HasNaNs() && !n2.HasNaNs());
     return v1.x * n2.x + v1.y * n2.y + v1.z * n2.z;
 }
 
 
-inline float Dot(const Normal &n1, const Normal &n2) {
+template <class scalar>
+inline scalar Dot(const NormalBase<scalar> &n1, const NormalBase<scalar> &n2) {
     Assert(!n1.HasNaNs() && !n2.HasNaNs());
     return n1.x * n2.x + n1.y * n2.y + n1.z * n2.z;
 }
 
 
-inline float AbsDot(const Normal &n1, const Vector &v2) {
+template <class scalar>
+inline scalar AbsDot(const NormalBase<scalar> &n1, const VectorBase<scalar> &v2) {
     Assert(!n1.HasNaNs() && !v2.HasNaNs());
-    return fabsf(n1.x * v2.x + n1.y * v2.y + n1.z * v2.z);
+    return abs(n1.x * v2.x + n1.y * v2.y + n1.z * v2.z);
 }
 
 
-inline float AbsDot(const Vector &v1, const Normal &n2) {
+template <class scalar>
+inline scalar AbsDot(const VectorBase<scalar> &v1, const NormalBase<scalar> &n2) {
     Assert(!v1.HasNaNs() && !n2.HasNaNs());
-    return fabsf(v1.x * n2.x + v1.y * n2.y + v1.z * n2.z);
+    return abs(v1.x * n2.x + v1.y * n2.y + v1.z * n2.z);
 }
 
 
-inline float AbsDot(const Normal &n1, const Normal &n2) {
+template <class scalar>
+inline scalar AbsDot(const NormalBase<scalar> &n1, const NormalBase<scalar> &n2) {
     Assert(!n1.HasNaNs() && !n2.HasNaNs());
-    return fabsf(n1.x * n2.x + n1.y * n2.y + n1.z * n2.z);
+    return abs(n1.x * n2.x + n1.y * n2.y + n1.z * n2.z);
 }
 
 
-inline Normal Faceforward(const Normal &n, const Vector &v) {
-    return (Dot(n, v) < 0.f) ? -n : n;
+template <class scalar>
+inline NormalBase<scalar> Faceforward(const NormalBase<scalar> &n, const VectorBase<scalar> &v) {
+    return (Dot(n, v) < ScalarTraits<scalar>::zero()) ? -n : n;
 }
 
 
-inline Normal Faceforward(const Normal &n, const Normal &n2) {
-    return (Dot(n, n2) < 0.f) ? -n : n;
-}
-
-
-
-inline Vector Faceforward(const Vector &v, const Vector &v2) {
-    return (Dot(v, v2) < 0.f) ? -v : v;
+template <class scalar>
+inline NormalBase<scalar> Faceforward(const NormalBase<scalar> &n, const NormalBase<scalar> &n2) {
+    return (Dot(n, n2) < ScalarTraits<scalar>::zero()) ? -n : n;
 }
 
 
 
-inline Vector Faceforward(const Vector &v, const Normal &n2) {
-    return (Dot(v, n2) < 0.f) ? -v : v;
+template <class scalar>
+inline VectorBase<scalar> Faceforward(const VectorBase<scalar> &v, const VectorBase<scalar> &v2) {
+    return (Dot(v, v2) < ScalarTraits<scalar>::zero()) ? -v : v;
 }
 
 
-inline const Point &BBox::operator[](int i) const {
+
+template <class scalar>
+inline VectorBase<scalar> Faceforward(const VectorBase<scalar> &v, const NormalBase<scalar> &n2) {
+    return (Dot(v, n2) < ScalarTraits<scalar>::zero()) ? -v : v;
+}
+
+
+template <class scalar>
+inline const PointBase<scalar> &BBoxBase<scalar>::operator[](int i) const {
     Assert(i == 0 || i == 1);
     return (&pMin)[i];
 }
 
 
 
-inline Point &BBox::operator[](int i) {
+template <class scalar>
+inline PointBase<scalar> &BBoxBase<scalar>::operator[](int i) {
     Assert(i == 0 || i == 1);
     return (&pMin)[i];
 }
 
 
-inline Vector SphericalDirection(float sintheta,
-                                 float costheta, float phi) {
-    return Vector(sintheta * cosf(phi),
-                  sintheta * sinf(phi),
-                  costheta);
+template <class scalar, class scalar1, class scalar2, class scalar3>
+inline VectorBase<scalar> SphericalDirection(scalar1 sintheta,
+                                 scalar2 costheta, scalar3 phi) {
+    return VectorBase<scalar>(ScalarTraits<scalar>::value(sintheta) * cos(ScalarTraits<scalar>::value(phi)),
+                  ScalarTraits<scalar>::value(sintheta) * sin(ScalarTraits<scalar>::value(phi)),
+                  ScalarTraits<scalar>::value(costheta));
 }
 
 
-inline Vector SphericalDirection(float sintheta, float costheta,
-                                 float phi, const Vector &x,
-                                 const Vector &y, const Vector &z) {
-    return sintheta * cosf(phi) * x +
-           sintheta * sinf(phi) * y + costheta * z;
+template <class scalar, class scalar1, class scalar2, class scalar3>
+inline VectorBase<scalar> SphericalDirection(scalar1 sintheta, scalar2 costheta,
+                                 scalar3 phi, const VectorBase<scalar> &x,
+                                 const VectorBase<scalar> &y, const VectorBase<scalar> &z) {
+    return ScalarTraits<scalar>::value(sintheta) * cos(ScalarTraits<scalar>::value(phi)) * x +
+           ScalarTraits<scalar>::value(sintheta) * sin(ScalarTraits<scalar>::value(phi)) * y +
+		   ScalarTraits<scalar>::value(costheta) * z;
 }
 
 
-inline float SphericalTheta(const Vector &v) {
-    return acosf(Clamp(v.z, -1.f, 1.f));
+template <class scalar>
+inline scalar SphericalTheta(const VectorBase<scalar> &v) {
+    return acos(Clamp(v.z, -ScalarTraits<scalar>::one(), ScalarTraits<scalar>::one()));
 }
 
 
-inline float SphericalPhi(const Vector &v) {
-    float p = atan2f(v.y, v.x);
-    return (p < 0.f) ? p + 2.f*M_PI : p;
+template <class scalar>
+inline scalar SphericalPhi(const VectorBase<scalar> &v) {
+    scalar p = atan2(v.y, v.x);
+    return (p < ScalarTraits<scalar>::zero()) ? p + ScalarTraits<scalar>::value(2*M_PI) : p;
 }
 
 

@@ -176,6 +176,7 @@
     <ClInclude Include="..\core\floatfile.h" />
     <ClInclude Include="..\core\geometry.h" />
     <ClInclude Include="..\core\imageio.h" />
+    <ClInclude Include="..\core\layer.h" />
     <ClInclude Include="..\core\multipole.h" />
     <ClInclude Include="..\core\skinlayer.h" />
     <ClInclude Include="..\core\targa.h" />
@@ -256,6 +257,7 @@
     <ClInclude Include="..\materials\uber.h" />
     <ClInclude Include="..\renderers\aggregatetest.h" />
     <ClInclude Include="..\renderers\createprobes.h" />
+    <ClInclude Include="..\renderers\mcprofile.h" />
     <ClInclude Include="..\renderers\metropolis.h" />
     <ClInclude Include="..\renderers\profilefit.h" />
     <ClInclude Include="..\renderers\samplerrenderer.h" />
@@ -1226,6 +1228,7 @@
     <ClCompile Include="..\renderers\createprobes.cpp" />
     <ClCompile Include="..\renderers\metropolis.cpp" />
     <ClCompile Include="..\renderers\profilefit.cpp" />
+    <ClCompile Include="..\renderers\mcprofile.cpp" />
     <ClCompile Include="..\renderers\samplerrenderer.cpp" />
     <ClCompile Include="..\renderers\surfacepoints.cpp" />
     <ClCompile Include="..\samplers\adaptive.cpp" />

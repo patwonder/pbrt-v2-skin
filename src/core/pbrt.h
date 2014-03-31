@@ -140,12 +140,18 @@ extern Options PbrtOptions;
 class TextureParams;
 class Scene;
 class Renderer;
-class Vector;
-class Point;
-class Normal;
-class Ray;
-class RayDifferential;
-class BBox;
+template<class scalar> class VectorBase;
+template<class scalar> class PointBase;
+template<class scalar> class NormalBase;
+template<class scalar> class RayBase;
+template<class scalar> class RayDifferentialBase;
+template<class scalar> class BBoxBase;
+typedef VectorBase<float> Vector;
+typedef PointBase<float> Point;
+typedef NormalBase<float> Normal;
+typedef RayBase<float> Ray;
+typedef RayDifferentialBase<float> RayDifferential;
+typedef BBoxBase<float> BBox;
 class Transform;
 struct DifferentialGeometry;
 class Primitive;
@@ -216,9 +222,39 @@ class VolumeIntegrator;
 #endif
 #endif // PBRT_HAS_64_BIT_ATOMICS
 
+template <class scalar>
+class ScalarTraits {
+public:
+	static scalar zero() {
+		return value(0);
+	}
+	static scalar one() {
+		return value(1);
+	}
+	template <class V>
+	static scalar value(V v) {
+		return scalar(v);
+	}
+
+	static scalar max() {
+		return std::numeric_limits<scalar>::max();
+	}
+	static scalar negmax() {
+		return std::numeric_limits<scalar>::lowest();
+	}
+	static bool isNaN(scalar value) {
+		return isnan(value);
+	}
+};
+
 // Global Inline Functions
-inline float Lerp(float t, float v1, float v2) {
-    return (1.f - t) * v1 + t * v2;
+inline float Lerp(float t, const float& v1, const float& v2) {
+	return (1.f - t) * v1 + t * v2;
+}
+
+template <class scalar, class Entity>
+inline Entity Lerp(scalar t, const Entity& v1, const Entity& v2) {
+	return (ScalarTraits<scalar>::one() - t) * v1 + t * v2;
 }
 
 
@@ -232,6 +268,14 @@ inline float Clamp(float val, float low, float high) {
 inline int Clamp(int val, int low, int high) {
     if (val < low) return low;
     else if (val > high) return high;
+    else return val;
+}
+
+
+template <class scalar, class scalar1, class scalar2>
+inline scalar Clamp(scalar val, scalar1 low, scalar2 high) {
+    if (val < ScalarTraits<scalar>::value(low)) return ScalarTraits<scalar>::value(low);
+    else if (val > ScalarTraits<scalar>::value(high)) return ScalarTraits<scalar>::value(high);
     else return val;
 }
 

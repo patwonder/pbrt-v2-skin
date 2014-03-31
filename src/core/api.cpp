@@ -97,6 +97,7 @@
 #include "renderers/samplerrenderer.h"
 #include "renderers/surfacepoints.h"
 #include "renderers/profilefit.h"
+#include "renderers/mcprofile.h"
 #include "samplers/adaptive.h"
 #include "samplers/bestcandidate.h"
 #include "samplers/halton.h"
@@ -1260,6 +1261,10 @@ Renderer *RenderOptions::MakeRenderer() const {
 	}
 	else if (RendererName == "multipoleprofilefit") {
 		renderer = CreateMultipoleProfileFitRenderer(RendererParams);
+		RendererParams.ReportUnused();
+	}
+	else if (RendererName == "montecarloprofile") {
+		renderer = CreateMonteCarloProfileRenderer(RendererParams);
 		RendererParams.ReportUnused();
 	}
     else {

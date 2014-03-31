@@ -446,7 +446,7 @@ void Blinn::Sample_f(const Vector &wo, Vector *wi, float u1, float u2,
     float costheta = powf(u1, 1.f / (exponent+1));
     float sintheta = sqrtf(max(0.f, 1.f - costheta*costheta));
     float phi = u2 * 2.f * M_PI;
-    Vector wh = SphericalDirection(sintheta, costheta, phi);
+    Vector wh = SphericalDirection<float>(sintheta, costheta, phi);
     if (!SameHemisphere(wo, wh)) wh = -wh;
 
     // Compute incident direction by reflecting about $\wh$
@@ -491,7 +491,7 @@ void Anisotropic::Sample_f(const Vector &wo, Vector *wi,
         phi = 2.f * M_PI - phi;
     }
     float sintheta = sqrtf(max(0.f, 1.f - costheta*costheta));
-    Vector wh = SphericalDirection(sintheta, costheta, phi);
+    Vector wh = SphericalDirection<float>(sintheta, costheta, phi);
     if (!SameHemisphere(wo, wh)) wh = -wh;
 
     // Compute incident direction by reflecting about $\wh$
@@ -534,7 +534,7 @@ void Beckmann::Sample_f(const Vector &wo, Vector *wi,
     float costheta = atanf(sqrtf(-rms2 * logf(u1)));
     float sintheta = sqrtf(max(0.f, 1.f - costheta*costheta));
     float phi = u2 * 2.f * M_PI;
-    Vector wh = SphericalDirection(sintheta, costheta, phi);
+    Vector wh = SphericalDirection<float>(sintheta, costheta, phi);
     if (!SameHemisphere(wo, wh)) wh = -wh;
 	
     // Compute incident direction by reflecting about $\wh$

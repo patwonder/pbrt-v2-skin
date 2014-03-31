@@ -254,7 +254,7 @@ void SHWriteImage(const char *filename, const Spectrum *c, int lmax, int yres) {
         for (int x = 0; x < xres; ++x) {
             float phi = (float(x) + 0.5f) / float(xres) * 2.f * M_PI;
             // Compute RGB color for direction $(\theta,\phi)$ from SH coefficients
-            Vector w = SphericalDirection(sinf(theta), cosf(theta), phi);
+            Vector w = SphericalDirection<float>(sinf(theta), cosf(theta), phi);
             SHEvaluate(w, lmax, Ylm);
             Spectrum val = 0.f;
             for (int i = 0; i < SHTerms(lmax); ++i)

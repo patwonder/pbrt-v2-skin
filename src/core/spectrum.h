@@ -509,10 +509,4 @@ Pow(const CoefficientSpectrum<nSamples> &s, float e) {
 }
 
 
-inline Spectrum Lerp(float t, const Spectrum &s1, const Spectrum &s2) {
-    return (1.f - t) * s1 + t * s2;
-}
-
-
-
 #endif // PBRT_CORE_SPECTRUM_H
