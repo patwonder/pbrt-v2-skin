@@ -81,7 +81,6 @@ public:
 		}
 	}
 	void clear() {
-		std::lock_guard<Mutex> lock(mtx);
 		for (auto& pair : cache)
 			for (auto& block : pair.second)
 				allocator.free(block);

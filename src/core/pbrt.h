@@ -243,7 +243,7 @@ public:
 		return std::numeric_limits<scalar>::lowest();
 	}
 	static bool isNaN(scalar value) {
-		return isnan(value);
+		return isnan(value) ? true : false;
 	}
 };
 
