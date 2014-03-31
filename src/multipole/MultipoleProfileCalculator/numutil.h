@@ -31,8 +31,9 @@
 
 #pragma once
 
-#include <cfloat>
 #include <cassert>
+#include "mpc-types.h"
+#include "cachedallocator.h"
 
 template <class T>
 inline T clamp(T value, T low, T high) {
@@ -56,21 +57,22 @@ const Type MTX_Traits<Type>::zero = 0;
 template<class Type>
 const Type MTX_Traits<Type>::one = 1;
 
+extern CachedAllocator<size_t, void*> mtxAlloc;
 
 template <class Type, class Type_traits=MTX_Traits<Type> >
 class Matrix {
 public:
 	Matrix(uint32 rows, uint32 cols) {
-		data = new Type[rows * cols];
+		data = (Type*)mtxAlloc.alloc(sizeof(Type) * rows * cols);
 		nRows = rows; nCols = cols;
 	}
 	~Matrix() {
-		delete [] data;
+		mtxAlloc.free(data);
 	}
 	Matrix(const Matrix& other) {
 		nRows = other.nRows;
 		nCols = other.nCols;
-		data = new Type[nRows * nCols];
+		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nRows * nCols);
 		memcpy(data, other.data, sizeof(Type) * nRows * nCols);
 	}
 	Matrix(Matrix&& other) {
@@ -84,8 +86,8 @@ public:
 
 		nRows = other.nRows;
 		nCols = other.nCols;
-		delete[] data;
-		data = new Type[nRows * nCols];
+		mtxAlloc.free(data);
+		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nRows * nCols);
 		memcpy(data, other.data, sizeof(Type) * nRows * nCols);
 
 		return *this;

@@ -29,41 +29,47 @@
 
  */
 
-#include "mpc-types.h"
+#pragma once
 
-typedef struct MPC_LayerSpec {
-	// Index of refraction
-	float ior;
-	// Layer thickness
-	float thickness;
-	// Absorption coefficient
-	float mua;
-	// Reduced scattering coefficient
-	float musp;
-	// Anisotropy for the HGPF (probably not needed)
-	float g_HG;
+#include "tools/kiss_fftndr.h"
+#include "cachedallocator.h"
 
-} MPC_LayerSpec;
+struct NDRParams {
+	int dims[2];
+	bool inverse;
+	NDRParams(int dim0, int dim1, bool inv) {
+		dims[0] = dim0;
+		dims[1] = dim1;
+		inverse = inv;
+	}
+	bool operator==(const NDRParams& p) const {
+		return dims[0] == p.dims[0] && dims[1] == p.dims[1] && inverse == p.inverse;
+	}
+};
 
-typedef struct MPC_Options {
-	// distance between adjacent samples
-	float desiredStepSize;
-	// number of samples in one direction
-	uint32 desiredLength;
-} MPC_Options;
+namespace std {
 
-typedef struct MPC_Output {
-	// number of samples
-	uint32 length;
-	// Profile data
-	float* pDistanceSquared;
-	float* pReflectance;
-	float* pTransmittance;
-} MPC_Output;
+	template<>
+	class hash<NDRParams> {
+	public:
+		size_t operator()(const NDRParams& key) const {
+			return inthasher(key.dims[0]) + inthasher(key.dims[1]) + boolhasher(key.inverse);
+		}
+	private:
+		static hash<int> inthasher;
+		static hash<bool> boolhasher;
+	};
 
-// Profile calculation
-MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
-	const MPC_Options* pOptions, MPC_Output** oppOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache();
+}
+
+class NDRAllocator {
+public:
+	kiss_fftndr_cfg alloc(const NDRParams& params) {
+		return kiss_fftndr_alloc(params.dims, 2, params.inverse, NULL, NULL);
+	}
+	void free(kiss_fftndr_cfg cfg) {
+		::kiss_fft_free(cfg);
+	}
+};
+
+typedef CachedAllocator<NDRParams, kiss_fftndr_cfg, NDRAllocator> NDRCache;

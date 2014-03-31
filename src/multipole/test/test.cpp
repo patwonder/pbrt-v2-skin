@@ -18,7 +18,7 @@ void computeGaussianFit(const MPC_Output* pOutput) {
 		float dsq = pOutput->pDistanceSquared[i];
 		distArray[i] = sqrt(dsq);
 	}
-	const uint32 nSigmas = 2;
+	const uint32 nSigmas = 4;
 	float sigmaArray[nSigmas];
 	for (uint32 i = 0; i < nSigmas; i++) {
 		sigmaArray[i] = (float)(mfp * pow(2, -((int)nSigmas / 2) + (int)i));
@@ -87,16 +87,16 @@ int _tmain(int argc, _TCHAR* argv[])
 	specs[0].thickness = 0.025f;
 	specs[0].ior = 1.4f;
 	specs[0].g_HG = 0.90f;
-	//specs[1].mua = 1.6f;
-	//specs[1].musp = 19.4879f;
-	//specs[1].thickness = 0.2f;
-	//specs[1].ior = 1.45f;
-	//specs[1].g_HG = 0.80f;
-	specs[1].mua = 0.1f;
-	specs[1].musp = 0.9f;
-	specs[1].thickness = 2.f;
-	specs[1].ior = 1.f;
+	specs[1].mua = 1.6f;
+	specs[1].musp = 19.4879f;
+	specs[1].thickness = 0.2f;
+	specs[1].ior = 1.45f;
 	specs[1].g_HG = 0.80f;
+	//specs[1].mua = 0.1f;
+	//specs[1].musp = 0.9f;
+	//specs[1].thickness = 2.f;
+	//specs[1].ior = 1.f;
+	//specs[1].g_HG = 0.80f;
 	MPC_Options options;
 	options.desiredLength = 512;
 	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
@@ -113,6 +113,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout << endl << "Combined Layer: " << endl;
 	options.desiredStepSize = 12.f * min(mfp0, mfp1) / (float)options.desiredLength;
 	computeConfiguration(2, &specs[0], &options);
+
+	MPC_ClearCache();
 
 	system("PAUSE");
 

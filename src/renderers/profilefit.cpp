@@ -305,6 +305,7 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 	for (Task* task : fitTasks) {
 		delete task;
 	}
+	MPC_ClearCache();
 	reporter.Done();
 
 	if (filename != "") {

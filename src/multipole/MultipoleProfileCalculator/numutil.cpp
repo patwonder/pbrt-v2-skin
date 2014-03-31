@@ -29,41 +29,8 @@
 
  */
 
-#include "mpc-types.h"
+#include "stdafx.h"
 
-typedef struct MPC_LayerSpec {
-	// Index of refraction
-	float ior;
-	// Layer thickness
-	float thickness;
-	// Absorption coefficient
-	float mua;
-	// Reduced scattering coefficient
-	float musp;
-	// Anisotropy for the HGPF (probably not needed)
-	float g_HG;
+#include "numutil.h"
 
-} MPC_LayerSpec;
-
-typedef struct MPC_Options {
-	// distance between adjacent samples
-	float desiredStepSize;
-	// number of samples in one direction
-	uint32 desiredLength;
-} MPC_Options;
-
-typedef struct MPC_Output {
-	// number of samples
-	uint32 length;
-	// Profile data
-	float* pDistanceSquared;
-	float* pReflectance;
-	float* pTransmittance;
-} MPC_Output;
-
-// Profile calculation
-MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
-	const MPC_Options* pOptions, MPC_Output** oppOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput);
-MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache();
+CachedAllocator<size_t, void*> mtxAlloc;

@@ -31,11 +31,12 @@
 
 #include "stdafx.h"
 #include "MultipoleProfileCalculator.h"
-#include <vector>
-#include <set>
 #include "DipoleCalculator.h"
 #include "numutil.h"
 #include "tools/kiss_fftndr.h"
+#include "fftndrcache.h"
+#include <vector>
+#include <set>
 #include <algorithm>
 
 using namespace std;
@@ -118,20 +119,22 @@ struct MatrixProfile {
 };
 
 
+static NDRCache fftndrCache;
+
 void FFT(const Matrix<kiss_fft_scalar>& profile, Matrix<kiss_fft_cpx>& out) {
-	int dims[2] = { profile.GetNumRows(), profile.GetNumCols() };
-	kiss_fftndr_cfg cfg = kiss_fftndr_alloc(dims, 2, 0, NULL, NULL);
+	NDRParams params(profile.GetNumRows(), profile.GetNumCols(), false);
+	kiss_fftndr_cfg cfg = fftndrCache.alloc(params);
 	kiss_fftndr(cfg, profile.GetData(), out.GetData());
-	kiss_fft_free(cfg);
+	fftndrCache.free(cfg);
 }
 
 
 void IFFT(const Matrix<kiss_fft_cpx>& profile, Matrix<kiss_fft_scalar>& out) {
-	int dims[2] = { out.GetNumRows(), out.GetNumCols() };
-	kiss_fftndr_cfg cfg = kiss_fftndr_alloc(dims, 2, 1, NULL, NULL);
+	NDRParams params(out.GetNumRows(), out.GetNumCols(), true);
+	kiss_fftndr_cfg cfg = fftndrCache.alloc(params);
 	kiss_fftndri(cfg, profile.GetData(), out.GetData());
-	kiss_fft_free(cfg);
-	out *= (kiss_fft_scalar)1 / (dims[0] * dims[1]);
+	fftndrCache.free(cfg);
+	out *= (kiss_fft_scalar)1 / (params.dims[0] * params.dims[1]);
 }
 
 
@@ -435,4 +438,9 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
 	delete [] pOutput->pReflectance;
 	delete [] pOutput->pTransmittance;
 	delete pOutput;
+}
+
+MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache() {
+	fftndrCache.clear();
+	mtxAlloc.clear();
 }

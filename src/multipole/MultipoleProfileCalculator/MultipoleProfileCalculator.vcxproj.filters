@@ -8,6 +8,8 @@
     <ClInclude Include="DipoleCalculator.h" />
     <ClInclude Include="numutil.h" />
     <ClInclude Include="gaussianfit.h" />
+    <ClInclude Include="fftndrcache.h" />
+    <ClInclude Include="cachedallocator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -15,5 +17,7 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="DipoleCalculator.cpp" />
     <ClCompile Include="gaussianfit.cpp" />
+    <ClCompile Include="fftndrcache.cpp" />
+    <ClCompile Include="numutil.cpp" />
   </ItemGroup>
 </Project>

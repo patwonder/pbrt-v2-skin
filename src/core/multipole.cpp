@@ -303,6 +303,7 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 	WaitForAllTasks();
 	for (Task* task : profileTasks)
 		delete task;
+	MPC_ClearCache();
 	reporter.Done();
 
 	Spectrum tr = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,

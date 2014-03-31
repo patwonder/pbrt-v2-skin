@@ -12,5 +12,6 @@ Renderer "multipoleprofilefit"
          "float f_ohg" [ 0.75 ]
          "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
          "string filename" "profilefit.txt"
+         "integer desiredProfileLength" 512
 WorldBegin
 WorldEnd
