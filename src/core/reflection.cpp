@@ -254,11 +254,12 @@ Spectrum MicrofacetTransmission::f(const Vector& wo, const Vector& wi) const {
 	bool entering = CosTheta(wo) > 0.f;
 	float_type et = (entering) ? ior : 1.f / ior;
 	Vector wh = -(wo + et * wi);
-	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return Spectrum(0.f);
 	float denominator = wh.LengthSquared();
+	if (denominator == 0.f) return Spectrum(0.f);
 	wh = Normalize(wh);
 	float cosThetaHI = Dot(wi, wh);
 	float cosThetaHO = Dot(wo, wh);
+	if (cosThetaHI == 0.f || cosThetaHO == 0.f) return Spectrum(0.f);
 	// Make sure fresnel->Evaluate gets the correct sign,
 	// as wh always points to the side with smaller ior
 	Spectrum F = fresnel->Evaluate(entering ? fabsf(cosThetaHO) : -fabsf(cosThetaHO));
@@ -428,6 +429,10 @@ Spectrum MicrofacetTransmission::Sample_f(const Vector& wo, Vector* wi,
 
 	// Correct pdf by transforming the Jacobian
 	float denominator = (wo + et * *wi).LengthSquared();
+	if (denominator == 0.f) {
+		*pdf = 0.f;
+		return Spectrum(0.f);
+	}
 	*pdf *= 4 * cosi * cosi * et * et / denominator;
 
 	if (SameHemisphere(wo, *wi)) return Spectrum(0.f);
@@ -557,7 +562,7 @@ void Beckmann::Sample_f(const Vector &wo, Vector *wi,
 
     // Compute PDF for $\wi$ from Beckmann distribution
     float beckmann_pdf = D(wh) * costheta / (4.f * Dot(wo, wh));
-    if (Dot(wo, wh) <= 0.f) beckmann_pdf = 0.f;
+    if (Dot(wo, wh) <= 0.f || beckmann_pdf < 1e-20f) beckmann_pdf = 0.f;
     *pdf = beckmann_pdf;
 }
 
@@ -567,7 +572,7 @@ float Beckmann::Pdf(const Vector &wo, const Vector &wi) const {
     float costheta = AbsCosTheta(wh);
     // Compute PDF for $\wi$ from Beckmann distribution
     float beckmann_pdf = D(wh) * costheta / (4.f * Dot(wo, wh));
-    if (Dot(wo, wh) <= 0.f) beckmann_pdf = 0.f;
+    if (Dot(wo, wh) <= 0.f || beckmann_pdf < 1e-20f) beckmann_pdf = 0.f;
     return beckmann_pdf;
 }
 

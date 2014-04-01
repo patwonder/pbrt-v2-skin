@@ -42,7 +42,8 @@ public:
 	LayeredSkin(const vector<SkinLayer>& layers, float roughness,
 		float_type nmperunit, const SkinCoefficients& coeff,
 		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo);
+		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
+		bool generateProfile);
 	~LayeredSkin();
 
 	vector<float_type> GetLayerThickness() const override;

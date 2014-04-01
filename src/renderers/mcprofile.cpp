@@ -475,7 +475,7 @@ MonteCarloProfileRenderer* CreateMonteCarloProfileRenderer(const ParamSet& param
 	int segments = params.FindOneInt("segments", 1024);
 	string strPhotons = params.FindOneString("photons", "100");
 	uint64_t photons = _strtoui64(strPhotons.c_str(), NULL, 10);
-	string filename = params.FindOneString("filename", "");
+	string filename = params.FindOneFilename("filename", "");
 
 	return new MonteCarloProfileRenderer(layers, nLayers, mfpRange, segments,
 		photons, filename);

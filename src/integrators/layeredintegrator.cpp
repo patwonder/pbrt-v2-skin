@@ -216,7 +216,7 @@ Spectrum LayeredIntegrator::Li(const Scene *scene, const Renderer *renderer,
         if (f.IsBlack() || pdf == 0.)
             break;
         specularBounce = (flags & BSDF_SPECULAR) != 0;
-        pathThroughput *= f * (AbsDot(wi, n) / pdf);
+        pathThroughput *= f / pdf * AbsDot(wi, n);
 
         // Possibly terminate the path
         if (bounces > TERM_DEPTH) {
@@ -333,7 +333,7 @@ float LayeredIntegrator::LiSpectral(uint32_t wlIndex, float pathThroughput, int 
 		if (f == 0. || pdf == 0.)
 			break;
 		specularBounce = (flags & BSDF_SPECULAR) != 0;
-		pathThroughput *= f * (AbsDot(wi, n) / pdf);
+		pathThroughput *= f / pdf * AbsDot(wi, n);
 
 		// Possibly terminate the path
 		if (bounces > TERM_DEPTH) {
@@ -376,16 +376,18 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 		float mua = lp.mua.getValueForWL(lambda);
 		float musp = lp.musp.getValueForWL(lambda);
 		float ga = lp.ga;
+		float mfps = 0.f;
 
 		while (currentLayer == targetLayer) {
 			// Sample mfp(s) according to the exponential distribution: musp * exp(-mfp * musp)
-			float mfps = -logf(rng.RandomFloat()) / musp;
+			if (mfps == 0.f)
+				mfps = min(-logf(rng.RandomFloat()), 1e7f) / musp;
 		
 			// Hit test, using rayEpsilon for double ensurance
 			ray.mint = min(ray.mint, min(lp.thickness, mfps) / 10.f);
 			if (hit)
 				ray.mint = max(ray.mint, lp.thickness / 100.f);
-			ray.maxt = mfps;
+			ray.maxt = max(mfps, ray.mint);
 
 			int layerIndex;
 			if (hit = lprim->IntersectInternal(ray, lastPrimitiveId, &isect, &layerIndex)) {
@@ -396,6 +398,9 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 				float distance = (p - ray.o).Length();
 				pathThroughput *= expf(-mua * distance);
 				numMFPa += mua * distance;
+
+				// Reduce mfps by distance
+				mfps = max(1e-7f / musp, mfps - distance);
 
 				Vector wo = -ray.d;
 				if (layerIndex == 0) {
@@ -420,7 +425,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 
 
 				// Update results
-				pathThroughput *= f * (AbsDot(wi, n) / pdf);
+				pathThroughput *= f / pdf * AbsDot(wi, n);
 				ray = RayDifferential(p, wi, ray, isect.rayEpsilon);
 				lastPrimitiveId = isect.primitiveId;
 
@@ -438,14 +443,17 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 				Vector wi = UniformSampleSphere(rng.RandomFloat(), rng.RandomFloat());
 				ray = RayDifferential(p, wi, ray, 0.f);
 
+				// Reset mfps
+				mfps = 0.f;
+
 				// Allow re-intersecting the same primitive due to scattering
 				lastPrimitiveId = 0;
 			}
 
 			// Possibly terminate the path
 			bounces++;
-			if (numMFPa > 10.f || bounces >= 100.f) {
-				float continueProbability = min(.9f, pathThroughput * 100.f);
+			if (pathThroughput < 1e-3f) {
+				float continueProbability = pathThroughput * 1e3f;
 				if (rng.RandomFloat() > continueProbability) {
 					probes.spectralRayOut(wlIndex, bounces, currentLayer, L, numMFPa);
 					pathThroughput = 0.f;

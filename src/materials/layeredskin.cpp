@@ -38,9 +38,9 @@
 
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo)
+	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, bool generateProfile)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
-	bumpMap(bumpMap), albedo(albedo)
+	  bumpMap(bumpMap), albedo(albedo)
 {
 	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
@@ -59,30 +59,34 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	lps[1].isotropicHGPF = true;
 	// The thing below...
 	lps[2].thickness = 2e6f / nmperunit; // 2mm
-	lps[2].mua = lps[1].mua * 3.f;
-	lps[2].musp = lps[1].musp * 0.333f;
+	lps[2].mua = lps[1].mua;
+	lps[2].musp = lps[1].musp;
 	lps[2].ga = 1.f;
 	lps[2].isotropicHGPF = false;
 
 	// Prepare BSSRDF for better performance
-	Spectrum mua[2];
-	Spectrum musp[2];
-	SampledSpectrum smua[2];
-	SampledSpectrum smusp[2];
+	if (generateProfile) {
+		Spectrum mua[2];
+		Spectrum musp[2];
+		SampledSpectrum smua[2];
+		SampledSpectrum smusp[2];
 
-	float eta[2];
-	float thickness[2];
-	for (int i = 0; i < 2; i++) {
-		mua[i] = lps[i].mua.toSpectrum();
-		musp[i] = lps[i].musp.toSpectrum();
-		smua[i] = lps[i].mua.toSampledSpectrum();
-		smusp[i] = lps[i].musp.toSampledSpectrum();
-		eta[i] = layers[i].ior;
-		thickness[i] = lps[i].thickness;
+		float eta[2];
+		float thickness[2];
+		for (int i = 0; i < 2; i++) {
+			mua[i] = lps[i].mua.toSpectrum();
+			musp[i] = lps[i].musp.toSpectrum();
+			smua[i] = lps[i].mua.toSampledSpectrum();
+			smusp[i] = lps[i].musp.toSampledSpectrum();
+			eta[i] = layers[i].ior;
+			thickness[i] = lps[i].thickness;
+		}
+
+		ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData);
+		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData);
+	} else {
+		preparedBSSRDFData = NULL;
 	}
-
-	ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData);
-	preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData);
 }
 
 LayeredSkin::~LayeredSkin() {
@@ -157,14 +161,13 @@ BSDF* LayeredSkin::GetLayeredBSDF(int layerIndex,
 
 	float ior;
 	if ((size_t)layerIndex == layers.size())
-		ior = 1.5f;
+		ior = 1.f;
 	else
 		ior = layers[layerIndex].ior / layers[layerIndex - 1].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgShading, dgGeom.nn, ior);
 	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
 	bsdf->Add(BSDF_ALLOC(arena, SpecularReflection)(Spectrum(1.f), fresnel));
-	if ((size_t)layerIndex != layers.size())
-		bsdf->Add(BSDF_ALLOC(arena, SpecularTransmission)(Spectrum(1.f), 1.f, ior));
+	bsdf->Add(BSDF_ALLOC(arena, SpecularTransmission)(Spectrum(1.f), 1.f, ior));
 	return bsdf;
 }
 
@@ -208,6 +211,7 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	Reference<Texture<Spectrum> > albedo = mp.GetSpectrumTexture("albedo", Spectrum(1.f));
+	bool generateProfile = ps.FindOneBool("genprofile", true);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
-		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo);
+		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, generateProfile);
 }
