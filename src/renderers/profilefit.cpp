@@ -310,7 +310,7 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 
 	if (filename != "") {
 		Info("Writing to file \"%s\"", filename.c_str());
-		fstream out(filename, ios::out | ios::trunc);
+		ofstream out(filename, ios::out | ios::trunc);
 		if (!out) {
 			Error("Cannot open %s", filename.c_str());
 			abort();

@@ -35,13 +35,27 @@
 #include "renderer.h"
 #include "layer.h"
 
+struct MCProfileEntry {
+	MCProfileEntry() {
+		reflectance = transmittance = 0.;
+	}
+	MCProfileEntry(double r, double t)
+		: reflectance(r), transmittance(t)
+	{
+	}
+	double reflectance;
+	double transmittance;
+};
+
+typedef vector<MCProfileEntry> MCProfile;
+
 class MonteCarloProfileRenderer : public Renderer {
 public:
-	// MultipoleProfileFitRenderer Public Methods
+	// MonteCarloProfileRenderer Public Methods
 	MonteCarloProfileRenderer(const Layer* layers, int nLayers, float mfpRange,
-		int segments, string filename)
+		int segments, uint64_t photons, string filename)
 		: layers(layers, layers + nLayers), mfpRange(mfpRange), nSegments(segments),
-		  filename(filename)
+		  nPhotons(photons), filename(filename)
 	{
 	}
 	void Render(const Scene* scene) override;
@@ -51,11 +65,14 @@ public:
 	Spectrum Transmittance(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena) const override;
 private:
-	// MultipoleProfileFitRenderer Private Data
+	// MonteCarloProfileRenderer Private Data
 	vector<Layer> layers;
 	float mfpRange;
 	int nSegments;
 	string filename;
+	uint64_t nPhotons;
+
+	// MonteCarloProfileRenderer Private Methods
 };
 
 MonteCarloProfileRenderer* CreateMonteCarloProfileRenderer(const ParamSet& params);

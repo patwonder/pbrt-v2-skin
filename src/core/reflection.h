@@ -47,6 +47,8 @@
 // Reflection Declarations
 Spectrum FrDiel(float cosi, float cost, const Spectrum &etai,
                 const Spectrum &etat);
+template <class scalar>
+scalar FrDiel(scalar cosi, scalar cost, scalar etai, scalar etat);
 Spectrum FrCond(float cosi, const Spectrum &n, const Spectrum &k);
 
 Point BRDFRemap(const Vector &wo, const Vector &wi);

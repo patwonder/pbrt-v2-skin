@@ -65,6 +65,14 @@ float RNG::RandomFloat() const
 }
 
 
+double RNG::RandomDouble() const
+{
+    PBRT_RNG_STARTED_RANDOM_FLOAT();
+    double v = (RandomUInt() & 0xffffffffu) / (2 * double(1u << 31));
+    PBRT_RNG_FINISHED_RANDOM_FLOAT();
+    return v;
+}
+
 
 // Random Number Functions
 uint32_t RNG::RandomUInt() const

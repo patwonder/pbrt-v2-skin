@@ -68,6 +68,21 @@ Spectrum FrDiel(float cosi, float cost, const Spectrum &etai,
 }
 
 
+template <class scalar>
+scalar FrDiel(scalar cosi, scalar cost, scalar etai, scalar etat) {
+    scalar Rparl = ((etat * cosi) - (etai * cost)) /
+                   ((etat * cosi) + (etai * cost));
+    scalar Rperp = ((etai * cosi) - (etat * cost)) /
+                   ((etai * cosi) + (etat * cost));
+    return (Rparl*Rparl + Rperp*Rperp) / 2.;
+}
+// Explicit instantiations for float & double
+template
+double FrDiel(double cosi, double cost, double etai, double etat);
+template
+float FrDiel(float cosi, float cost, float etai, float etat);
+
+
 Spectrum FrCond(float cosi, const Spectrum &eta, const Spectrum &k) {
     Spectrum tmp = (eta*eta + k*k) * cosi*cosi;
     Spectrum Rparl2 = (tmp - (2.f * eta * cosi) + 1) /
