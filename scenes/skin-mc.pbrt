@@ -1,0 +1,42 @@
+Film "image" "integer xresolution" [640] "integer yresolution" [480]
+    "string filename" "skin-mc.exr"
+LookAt 1.34671 -2.88802 0.292805 0 0 0 0 0 1
+Camera "perspective" "float fov" [30]
+
+Sampler "lowdiscrepancy" "integer pixelsamples" 16
+
+SurfaceIntegrator "layered"
+                  "integer maxdepth" 100
+
+WorldBegin
+
+  AttributeBegin
+    AreaLightSource "area" "color L" [ 6000 6000 6000 ] "integer nsamples" [4]
+    Translate 2.42104 6.58076 -0.214002
+    Shape "sphere" "float radius" 0.5
+  AttributeEnd
+
+  AttributeBegin
+    AreaLightSource "area" "color L" [ 3000 3000 3000 ] "integer nsamples" [4]
+    Translate -5.20969 -4.48896 2.20104
+    Shape "sphere" "float radius" 0.5
+  AttributeEnd
+ 
+  AttributeBegin
+    Translate 0 0 0.2
+    Rotate 90  1 0 0
+    Scale 10 10 10
+   Material "layeredskin" "float roughness" 1
+                          "float nmperunit" 80e6
+                          "color Kr" [1 1 1]
+                          "color Kt" [1 1 1]
+                          "skinlayer layers" [ 0.25e6 1.4 2e6 1.4]
+                          "float f_mel" 0.005
+                          "float f_eu" 0.7
+                          "float f_blood" 0.005
+                          "float f_ohg" 0.75
+                          "bool genprofile" "false"
+    Include "geometry/head.pbrt"
+  AttributeEnd
+  
+WorldEnd
