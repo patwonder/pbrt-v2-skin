@@ -148,6 +148,7 @@ void GaussianFitTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[nLayers];
 	MPC_Options options;
 	options.desiredLength = desiredLength;
+	options.lerpOnThinSlab = true;
 
 	// Compute mfp
 	float mfpMin = INFINITY;

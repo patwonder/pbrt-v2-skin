@@ -84,34 +84,35 @@ int _tmain(int argc, _TCHAR* argv[])
 	MPC_LayerSpec specs[2];
 	specs[0].mua = 13.8629f;
 	specs[0].musp = 19.4879f;
-	specs[0].thickness = 0.025f;
+	specs[0].thickness = 0.01f;
 	specs[0].ior = 1.4f;
 	specs[0].g_HG = 0.90f;
-	specs[1].mua = 1.6f;
-	specs[1].musp = 19.4879f;
-	specs[1].thickness = 0.2f;
-	specs[1].ior = 1.45f;
-	specs[1].g_HG = 0.80f;
-	//specs[1].mua = 0.1f;
-	//specs[1].musp = 0.9f;
-	//specs[1].thickness = 2.f;
-	//specs[1].ior = 1.f;
+	//specs[1].mua = 1.6f;
+	//specs[1].musp = 19.4879f;
+	//specs[1].thickness = 0.2f;
+	//specs[1].ior = 1.45f;
 	//specs[1].g_HG = 0.80f;
+	specs[1].mua = 0.f;
+	specs[1].musp = 1.f;
+	specs[1].thickness = 20.f;
+	specs[1].ior = 1.f;
+	specs[1].g_HG = 0.80f;
 	MPC_Options options;
 	options.desiredLength = 512;
+	options.lerpOnThinSlab = true;
 	float mfp0 = 1.f / (specs[0].mua + specs[0].musp);
 	float mfp1 = 1.f / (specs[1].mua + specs[1].musp);
 	
 	cout << "First layer: " << endl;
-	options.desiredStepSize = 12.f * mfp0 / (float)options.desiredLength;
+	options.desiredStepSize = 20.f * mfp0 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[0], &options);
 
 	cout << endl << "Second Layer: " << endl;
-	options.desiredStepSize = 12.f * mfp1 / (float)options.desiredLength;
+	options.desiredStepSize = 20.f * mfp1 / (float)options.desiredLength;
 	computeConfiguration(1, &specs[1], &options);
 
 	cout << endl << "Combined Layer: " << endl;
-	options.desiredStepSize = 12.f * min(mfp0, mfp1) / (float)options.desiredLength;
+	options.desiredStepSize = 20.f * min(mfp0, mfp1) / (float)options.desiredLength;
 	computeConfiguration(2, &specs[0], &options);
 
 	MPC_ClearCache();

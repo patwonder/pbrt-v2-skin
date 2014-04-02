@@ -234,6 +234,7 @@ void MultipoleProfileTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[layers];
 	MPC_Options options;
 	options.desiredLength = 512;
+	options.lerpOnThinSlab = true;
 
 	// Compute mfp
 	float mfpTotal = 0.f;

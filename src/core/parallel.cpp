@@ -253,7 +253,7 @@ void RWMutex::Destroy(RWMutex *m) {
 
 RWMutex::RWMutex() {
     numWritersWaiting = numReadersWaiting = activeWriterReaders = 0;
-    InitializeCriticalSection(&cs);
+    InitializeCriticalSectionAndSpinCount(&cs, 4096);
 
     hReadyToRead = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (hReadyToRead == NULL) {
@@ -636,8 +636,8 @@ void ConditionVariable::Signal() {
 
 ConditionVariable::ConditionVariable() {
     waitersCount = 0;
-    InitializeCriticalSection(&waitersCountMutex);
-    InitializeCriticalSection(&conditionMutex);
+    InitializeCriticalSectionAndSpinCount(&waitersCountMutex, 4096);
+    InitializeCriticalSectionAndSpinCount(&conditionMutex, 4096);
 
     events[SIGNAL] = CreateEvent (NULL,  // no security
                                FALSE, // auto-reset event

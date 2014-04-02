@@ -148,7 +148,7 @@ static inline uint32 RoundUpPow2(uint32 v) {
 
 
 void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLower,
-	float stepSize, MatrixProfile& profile)
+	float stepSize, bool lerpOnThinSlab, MatrixProfile& profile)
 {
 	profile.Clear();
 
@@ -158,10 +158,12 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	// For slabs thinner than that, light becomes less diffuse in the slab.
 	// Thus we lerp the reflectance to 0 and transmittance to delta distribution
 	// for slabs thinner than 2mfps.
-	kiss_fft_scalar lerp = (thickness < mfp2) ?
-		(1. - exp(-thickness * 2. / mfp2)) / (1. - exp(-2.)) : 1.;
-	thickness = max(thickness, (float)mfp2);
-
+	kiss_fft_scalar lerp = 1.;
+	if (lerpOnThinSlab) {
+		lerp = (thickness < mfp2) ?
+			(1. - exp(-thickness * 2. / mfp2)) / (1. - exp(-2.)) : 1.;
+		thickness = max(thickness, (float)mfp2);
+	}
 	uint32 length = profile.GetLength();
 	uint32 center = (length - 1) / 2;
 	uint32 extent = center;
@@ -243,23 +245,6 @@ Matrix<kiss_fft_scalar> ToTimeDomain(const Matrix<kiss_fft_cpx>& freq) {
 }
 
 
-Matrix<kiss_fft_scalar>& Convolution(Matrix<kiss_fft_scalar>& out, const Matrix<kiss_fft_scalar>& profile) {
-	uint32 length = out.GetNumRows();
-	uint32 cl = length * 2; // convolution length
-
-	Matrix<kiss_fft_scalar> cOut = out.ChangeSize(cl, cl, 0, 0, 0, 0);
-	Matrix<kiss_fft_scalar> cPro = profile.ChangeSize(cl, cl, 0, 0, 0, 0);
-	Matrix<kiss_fft_cpx> fout(cl, cl / 2 + 1); FFT(cOut, fout);
-	Matrix<kiss_fft_cpx> fpro(cl, cl / 2 + 1); FFT(cPro, fpro);
-	fout *= fpro;
-	IFFT(fout, cOut);
-	uint32 center = (length - 1) / 2;
-	out.ChangeSizeFrom(cOut, 0, 0, center, center);
-
-	return out;
-}
-
-
 void CombineLayerProfiles(const MatrixProfile& layer1, const MatrixProfile& layer2,
 	MatrixProfile& combined)
 {
@@ -311,11 +296,12 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 
 	MatrixProfile mp0(length * 2);
 	float iorLower = numLayers > 1 ? pLayerSpecs[0].ior / pLayerSpecs[1].ior : pLayerSpecs[0].ior;
-	ComputeLayerProfile(pLayerSpecs[0], pLayerSpecs[0].ior, iorLower, stepSize, mp0);
+	ComputeLayerProfile(pLayerSpecs[0], pLayerSpecs[0].ior, iorLower, stepSize, pOptions->lerpOnThinSlab, mp0);
 	for (uint32 i = 1; i < numLayers; i++) {
 		iorLower = numLayers > (i + 1) ? pLayerSpecs[i].ior / pLayerSpecs[i + 1].ior : pLayerSpecs[i].ior;
 		MatrixProfile mp1(length * 2);
-		ComputeLayerProfile(pLayerSpecs[i], pLayerSpecs[i].ior / pLayerSpecs[i - 1].ior, iorLower, stepSize, mp1);
+		ComputeLayerProfile(pLayerSpecs[i], pLayerSpecs[i].ior / pLayerSpecs[i - 1].ior, iorLower, stepSize,
+			pOptions->lerpOnThinSlab, mp1);
 		MatrixProfile combined(length * 2);
 		CombineLayerProfiles(mp0, mp1, combined);
 		mp0.reflectance = std::move(combined.reflectance);
@@ -427,6 +413,28 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistrib
 	delete [] pOutput->pTransmittance;
 
 	pOutput->length = targetLength;
+	pOutput->pDistanceSquared = newDistance;
+	pOutput->pReflectance = newReflectance;
+	pOutput->pTransmittance = newTransmittance;
+}
+
+
+MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleDistribution(MPC_Output* pOutput, uint32 nSamplePoints, float* samplePoints) {
+	float* newDistance = new float[nSamplePoints];
+	float* newReflectance = new float[nSamplePoints];
+	float* newTransmittance = new float[nSamplePoints];
+
+	for (uint32 i = 0; i < nSamplePoints; i++) {
+		float dsq = samplePoints[i] * samplePoints[i];
+		newDistance[i] = dsq;
+		resample(pOutput, dsq, newReflectance + i, newTransmittance + i);
+	}
+
+	delete [] pOutput->pDistanceSquared;
+	delete [] pOutput->pReflectance;
+	delete [] pOutput->pTransmittance;
+
+	pOutput->length = nSamplePoints;
 	pOutput->pDistanceSquared = newDistance;
 	pOutput->pReflectance = newReflectance;
 	pOutput->pTransmittance = newTransmittance;

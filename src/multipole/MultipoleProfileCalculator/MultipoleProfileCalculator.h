@@ -31,7 +31,7 @@
 
 #include "mpc-types.h"
 
-typedef struct MPC_LayerSpec {
+typedef struct {
 	// Index of refraction
 	float ior;
 	// Layer thickness
@@ -45,14 +45,16 @@ typedef struct MPC_LayerSpec {
 
 } MPC_LayerSpec;
 
-typedef struct MPC_Options {
+typedef struct {
 	// distance between adjacent samples
 	float desiredStepSize;
 	// number of samples in one direction
 	uint32 desiredLength;
+	// if lerping shoule be used when the slab is thin (< 2 mfp)
+	bool lerpOnThinSlab;
 } MPC_Options;
 
-typedef struct MPC_Output {
+typedef struct {
 	// number of samples
 	uint32 length;
 	// Profile data
@@ -65,5 +67,6 @@ typedef struct MPC_Output {
 MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	const MPC_Options* pOptions, MPC_Output** oppOutput);
 MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput);
+MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleDistribution(MPC_Output* pOutput, uint32 nSamplePoints, float* samplePoints);
 MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput);
 MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache();
