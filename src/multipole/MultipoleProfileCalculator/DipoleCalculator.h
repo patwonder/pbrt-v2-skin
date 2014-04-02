@@ -39,7 +39,7 @@ public:
 	float Rd(float distanceSquared) const;
 	float Td(float distanceSquared) const;
 	DipoleCalculator(float iorUpper, float iorLower, float thickness,
-		float mua, float musp, int32 zi);
+		float mua, float musp, int32 zi, bool lerpOnThinSlab);
 private:
 	float d, zpos, zneg, sigma_tr, alphap;
 };

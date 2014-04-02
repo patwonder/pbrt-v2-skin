@@ -71,8 +71,8 @@ void computeConfiguration(uint32 numLayers, const MPC_LayerSpec* pLayerSpecs,
 	if (pOutput->length > 32)
 		cout << " ...";
 	cout << endl;
-	cout << "Reflectance Integral: " << integralR << endl;
-	cout << "Transmittance Integral: " << integralT << endl;
+	cout << "Reflectance Integral: " << integralR << ", " << pOutput->totalReflectance << endl;
+	cout << "Transmittance Integral: " << integralT << ", " << pOutput->totalTransmittance << endl;
 
 	computeGaussianFit(pOutput);
 

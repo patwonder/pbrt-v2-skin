@@ -162,7 +162,7 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	if (lerpOnThinSlab) {
 		lerp = (thickness < mfp2) ?
 			(1. - exp(-thickness * 2. / mfp2)) / (1. - exp(-2.)) : 1.;
-		thickness = max(thickness, (float)mfp2);
+		//thickness = max(thickness, (float)mfp2);
 	}
 	uint32 length = profile.GetLength();
 	uint32 center = (length - 1) / 2;
@@ -173,7 +173,7 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 	const uint32 numDipolePairs = 11;
 	vector<DipoleCalculator> dcs;
 	for (int32 pair = -((int32)numDipolePairs - 1) / 2; pair <= (int)(numDipolePairs - 1) / 2; pair++)
-		dcs.push_back(DipoleCalculator(iorUpper, iorLower, thickness, spec.mua, spec.musp, pair));
+		dcs.push_back(DipoleCalculator(iorUpper, iorLower, thickness, spec.mua, spec.musp, pair, lerpOnThinSlab));
 	// Compute the discrete 2D profile
 	kiss_fft_scalar normalizeFactor = stepSize * stepSize;
 	for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
@@ -330,6 +330,8 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_ComputeDiffusionProfile(uint32 numLayers
 	pOut->pDistanceSquared = new float[pOut->length];
 	pOut->pReflectance = new float[pOut->length];
 	pOut->pTransmittance = new float[pOut->length];
+	pOut->totalReflectance = (float)mp0.reflectance.Sum();
+	pOut->totalTransmittance = (float)mp0.transmittance.Sum();
 
 	for (size_t i = 0; i < entries.size(); i++) {
 		pOut->pDistanceSquared[i] = entries[i].distanceSquared;

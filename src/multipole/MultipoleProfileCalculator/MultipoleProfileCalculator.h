@@ -61,6 +61,9 @@ typedef struct {
 	float* pDistanceSquared;
 	float* pReflectance;
 	float* pTransmittance;
+	// statistics
+	float totalReflectance;
+	float totalTransmittance;
 } MPC_Output;
 
 // Profile calculation

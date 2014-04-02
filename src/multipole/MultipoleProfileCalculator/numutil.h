@@ -235,6 +235,13 @@ public:
 			swap((*this)[i][nCol1], (*this)[i][nCol2]);
 		}
 	}
+	Type Sum() const {
+		Type sum = Type_traits::zero;
+		for (uint32 i = 0; i < nRows * nCols; i++) {
+			sum += data[i];
+		}
+		return sum;
+	}
 
 	Type* GetData() { return data; }
 	const Type* GetData() const { return data; }

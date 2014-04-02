@@ -49,7 +49,7 @@ static float A(float Fdr) {
 }
 
 DipoleCalculator::DipoleCalculator(float eta_0, float eta_d, float d,
-	float sigma_a, float sigmap_s, int32 zi)
+	float sigma_a, float sigmap_s, int32 zi, bool lerpOnThinSlab)
 {
 	this->d = d;
 	float sigmap_t = sigma_a + sigmap_s;
@@ -61,6 +61,9 @@ DipoleCalculator::DipoleCalculator(float eta_0, float eta_d, float d,
 	float D = 1.f / (3.f * sigmap_t);
 	float zb_0 = 2.f * A_0 * D, zb_d = 2.f * A_d * D;
 	float l = 1.f / sigmap_t;
+	if (lerpOnThinSlab && l > d * .5f) {
+		l = d * .5f;
+	}
 	zpos = 2.f * (float)zi * (d + zb_0 + zb_d) + l;
 	zneg = zpos - 2.f * (l + zb_0);
 }
