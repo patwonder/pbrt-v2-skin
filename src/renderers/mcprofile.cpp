@@ -237,7 +237,7 @@ void ProfileRendererTask::TraceSinglePhoton(MCProfile& profile, RNG& rng) {
 	// The core part of tracing a photon through the mini scene
 
 	// Setup
-	DVector d0 = DVector(0, 0, 1);CosineSampleHemisphereD(rng.RandomDouble(), rng.RandomDouble());
+	DVector d0 = DVector(0, 0, 1);
 	DRay ray(DPoint(0., 0., 0.), d0, 0.);
 	int currentLayerId = 0;
 	MiniIsect isect;
@@ -332,7 +332,7 @@ void ProfileRendererTask::TraceSinglePhoton(MCProfile& profile, RNG& rng) {
 		}
 
 		// convert remaining length to go
-		len /= scatterMfp;
+		len *= currentLayer.musp;
 	}
 }
 

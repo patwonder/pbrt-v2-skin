@@ -369,6 +369,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 	bool hit = true;
 	uint32_t lastPrimitiveId = primitiveId;
 	const LayeredMaterial* pmat = static_cast<const LayeredMaterial*>(lprim->GetMaterial());
+	float mfps = 0.f;
 
 	while (currentLayer >= 0) {
 		// Fetch params for current layer
@@ -376,7 +377,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 		float mua = lp.mua.getValueForWL(lambda);
 		float musp = lp.musp.getValueForWL(lambda);
 		float ga = lp.ga;
-		float mfps = 0.f;
+		mfps /= musp;
 
 		while (currentLayer == targetLayer) {
 			// Sample mfp(s) according to the exponential distribution: musp * exp(-mfp * musp)
@@ -464,6 +465,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 		} // Inner while loop
 
 		currentLayer = targetLayer;
+		mfps *= musp;
 	} // Outer while loop
 
 	probes.spectralRayOut(wlIndex, bounces, currentLayer, L, numMFPa);
