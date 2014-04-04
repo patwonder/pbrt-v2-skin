@@ -236,9 +236,14 @@ public:
 		}
 	}
 	Type Sum() const {
+		// Using Kahan Summation Algorithm for better accuracy
 		Type sum = Type_traits::zero;
+		Type c = Type_traits::zero;
 		for (uint32 i = 0; i < nRows * nCols; i++) {
-			sum += data[i];
+			Type y = data[i] - c;
+			Type t = sum + y;
+			c = (t - sum) - y;
+			sum = t;
 		}
 		return sum;
 	}
