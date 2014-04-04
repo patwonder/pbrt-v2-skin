@@ -219,7 +219,7 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
         // Use hierarchical integration to evaluate reflection from dipole model
         PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
 		MultipoleReflectance mr(bssrdf);
-        Spectrum Mo = octree->Mo(octreeBounds, p, mr, maxError);
+        Spectrum Mo = octree->Mo(octreeBounds, p, n, mr, maxError);
         FresnelDielectric fresnel(1.f, bssrdf->eta(0));
         Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
         float Fdt = 1.f - Fdr(bssrdf->eta(0));

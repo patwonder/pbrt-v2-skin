@@ -137,14 +137,18 @@ struct SubsurfaceOctreeNode {
             uint32_t i;
             for (i = 0; i < 8; ++i) {
                 if (!ips[i]) break;
-                float wt = ips[i]->E.y();
-                E += ips[i]->E;
+				Spectrum ipEt = ips[i]->E * ips[i]->area;
+                float wt = ipEt.y();
+                Et += ipEt;
                 p += wt * ips[i]->p;
+				n += wt * ips[i]->n;
                 sumWt += wt;
                 sumArea += ips[i]->area;
             }
-            if (sumWt > 0.f) p /= sumWt;
-            E /= i;
+            if (sumWt > 0.f) {
+				p /= sumWt;
+				n /= sumWt;
+			}
         }
         else {
             // Init interior _SubsurfaceOctreeNode_
@@ -154,22 +158,25 @@ struct SubsurfaceOctreeNode {
                 if (!children[i]) continue;
                 ++nChildren;
                 children[i]->InitHierarchy();
-                float wt = children[i]->E.y();
-                E += children[i]->E;
+                float wt = children[i]->Et.y();
+                Et += children[i]->Et;
                 p += wt * children[i]->p;
+				n += wt * children[i]->n;
                 sumWt += wt;
                 sumArea += children[i]->sumArea;
             }
-            if (sumWt > 0.f) p /= sumWt;
-            E /= nChildren;
+            if (sumWt > 0.f) {
+				p /= sumWt;
+				n /= sumWt;
+			}
         }
     }
 
 	template<class ReflectanceCalculator>
-	Spectrum Mo(const BBox &nodeBound, const Point &pt,
+	Spectrum Mo(const BBox &nodeBound, const Point &pt, const Normal& nn,
 			const ReflectanceCalculator &Rd, float maxError) {
 		// No irradiance in subtree
-		if (E.IsBlack())
+		if (Et.IsBlack())
 			return Spectrum(0.f);
 
 		// Compute $M_\roman{o}$ at node if error is low enough
@@ -177,7 +184,7 @@ struct SubsurfaceOctreeNode {
 		if (dw < maxError && !nodeBound.Inside(pt))
 		{
 			PBRT_SUBSURFACE_ADDED_INTERIOR_CONTRIBUTION(const_cast<SubsurfaceOctreeNode *>(this));
-			return Rd(DistanceSquared(pt, p)) * E * sumArea;
+			return Rd(ModifiedDistanceSquared(pt, nn, p, n)) * Et;
 		}
 
 		// Otherwise compute $M_\roman{o}$ from points in leaf or recursively visit children
@@ -188,7 +195,7 @@ struct SubsurfaceOctreeNode {
 				if (!ips[i]) break;
 				PBRT_SUBSURFACE_ADDED_POINT_CONTRIBUTION(const_cast<IrradiancePoint *>(ips[i]));
 				if (!ips[i]->E.IsBlack())
-					Mo += Rd(DistanceSquared(pt, ips[i]->p)) * ips[i]->E * ips[i]->area;
+					Mo += Rd(ModifiedDistanceSquared(pt, nn, ips[i]->p, ips[i]->n)) * ips[i]->E * ips[i]->area;
 			}
 		}
 		else {
@@ -197,7 +204,7 @@ struct SubsurfaceOctreeNode {
 			for (int child = 0; child < 8; ++child) {
 				if (!children[child]) continue;
 				BBox childBound = octreeChildBound(child, nodeBound, pMid);
-				Mo += children[child]->Mo(childBound, pt, Rd, maxError);
+				Mo += children[child]->Mo(childBound, pt, nn, Rd, maxError);
 			}
 		}
 		return Mo;
@@ -205,11 +212,24 @@ struct SubsurfaceOctreeNode {
 
     // SubsurfaceOctreeNode Public Data
     Point p;
+	Normal n;
     bool isLeaf;
-    Spectrum E;
+    Spectrum Et;
     float sumArea;
     union {
         SubsurfaceOctreeNode *children[8];
         IrradiancePoint *ips[8];
     };
+
+private:
+	static float ModifiedDistanceSquared(const Point& p, const Normal& n, const Point& ipp, const Normal& ipn) {
+#if 1
+		return DistanceSquared(p, ipp);
+#else
+		float lerpAmount = Clamp(0.3f - Dot(n, ipn), 0.f, 1.f);
+		const float scale = 0.5f;
+		// Lerp to scale * distance for opposing directions
+		return Lerp(lerpAmount, 1.f, scale) * Lerp(lerpAmount, 1.f, scale) * DistanceSquared(p, ipp);
+#endif
+	}
 };
