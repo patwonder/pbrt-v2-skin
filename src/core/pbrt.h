@@ -247,6 +247,8 @@ public:
 	}
 };
 
+#define ScaVal(v) ScalarTraits<scalar>::value(v)
+
 // Global Inline Functions
 inline float Lerp(float t, const float& v1, const float& v2) {
 	return (1.f - t) * v1 + t * v2;
@@ -274,8 +276,8 @@ inline int Clamp(int val, int low, int high) {
 
 template <class scalar, class scalar1, class scalar2>
 inline scalar Clamp(scalar val, scalar1 low, scalar2 high) {
-    if (val < ScalarTraits<scalar>::value(low)) return ScalarTraits<scalar>::value(low);
-    else if (val > ScalarTraits<scalar>::value(high)) return ScalarTraits<scalar>::value(high);
+    if (val < ScaVal(low)) return ScaVal(low);
+    else if (val > ScaVal(high)) return ScaVal(high);
     else return val;
 }
 

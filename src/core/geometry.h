@@ -577,8 +577,8 @@ inline PointBase<scalar> operator*(scalartype f, const PointBase<scalar> &p) {
 
 template <class scalar, class scalartype>
 inline NormalBase<scalar> operator*(scalartype f, const NormalBase<scalar> &n) {
-    return NormalBase<scalar>(ScalarTraits<scalar>::value(f)*n.x,
-		ScalarTraits<scalar>::value(f)*n.y, ScalarTraits<scalar>::value(f)*n.z);
+    return NormalBase<scalar>(ScaVal(f)*n.x,
+		ScaVal(f)*n.y, ScaVal(f)*n.z);
 }
 
 
@@ -681,9 +681,9 @@ inline PointBase<scalar> &BBoxBase<scalar>::operator[](int i) {
 template <class scalar, class scalar1, class scalar2, class scalar3>
 inline VectorBase<scalar> SphericalDirection(scalar1 sintheta,
                                  scalar2 costheta, scalar3 phi) {
-    return VectorBase<scalar>(ScalarTraits<scalar>::value(sintheta) * cos(ScalarTraits<scalar>::value(phi)),
-                  ScalarTraits<scalar>::value(sintheta) * sin(ScalarTraits<scalar>::value(phi)),
-                  ScalarTraits<scalar>::value(costheta));
+    return VectorBase<scalar>(ScaVal(sintheta) * cos(ScaVal(phi)),
+                  ScaVal(sintheta) * sin(ScaVal(phi)),
+                  ScaVal(costheta));
 }
 
 
@@ -691,9 +691,9 @@ template <class scalar, class scalar1, class scalar2, class scalar3>
 inline VectorBase<scalar> SphericalDirection(scalar1 sintheta, scalar2 costheta,
                                  scalar3 phi, const VectorBase<scalar> &x,
                                  const VectorBase<scalar> &y, const VectorBase<scalar> &z) {
-    return ScalarTraits<scalar>::value(sintheta) * cos(ScalarTraits<scalar>::value(phi)) * x +
-           ScalarTraits<scalar>::value(sintheta) * sin(ScalarTraits<scalar>::value(phi)) * y +
-		   ScalarTraits<scalar>::value(costheta) * z;
+    return ScaVal(sintheta) * cos(ScaVal(phi)) * x +
+           ScaVal(sintheta) * sin(ScaVal(phi)) * y +
+		   ScaVal(costheta) * z;
 }
 
 
@@ -706,7 +706,7 @@ inline scalar SphericalTheta(const VectorBase<scalar> &v) {
 template <class scalar>
 inline scalar SphericalPhi(const VectorBase<scalar> &v) {
     scalar p = atan2(v.y, v.x);
-    return (p < ScalarTraits<scalar>::zero()) ? p + ScalarTraits<scalar>::value(2*M_PI) : p;
+    return (p < ScalarTraits<scalar>::zero()) ? p + ScaVal(2*M_PI) : p;
 }
 
 

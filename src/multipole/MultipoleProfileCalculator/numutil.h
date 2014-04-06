@@ -48,14 +48,13 @@ static const float INV_FOURPI = 0.25f / PI;
 template<class Type>
 class MTX_Traits {
 public:
-	static const Type zero;
-	static const Type one;
+	static Type zero() {
+		return Type(0);
+	}
+	static Type one() {
+		return Type(1);
+	}
 };
-
-template<class Type>
-const Type MTX_Traits<Type>::zero = 0;
-template<class Type>
-const Type MTX_Traits<Type>::one = 1;
 
 extern CachedAllocator<size_t, void*> mtxAlloc;
 
@@ -72,8 +71,9 @@ public:
 	Matrix(const Matrix& other) {
 		nRows = other.nRows;
 		nCols = other.nCols;
-		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nRows * nCols);
-		memcpy(data, other.data, sizeof(Type) * nRows * nCols);
+		uint32 nSize = nRows * nCols;
+		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nSize);
+		memcpy(data, other.data, sizeof(Type) * nSize);
 	}
 	Matrix(Matrix&& other) {
 		nRows = other.nRows;
@@ -87,8 +87,9 @@ public:
 		nRows = other.nRows;
 		nCols = other.nCols;
 		mtxAlloc.free(data);
-		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nRows * nCols);
-		memcpy(data, other.data, sizeof(Type) * nRows * nCols);
+		uint32 nSize = nRows * nCols;
+		data = (Type*)mtxAlloc.alloc(sizeof(Type) * nSize);
+		memcpy(data, other.data, sizeof(Type) * nSize);
 
 		return *this;
 	}
@@ -112,70 +113,59 @@ public:
 		return data + row * nCols;
 	}
 	Matrix& operator+=(const Matrix& other) {
-		assert(nRows == other.nRows && nCols == other.nCols);
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] += other.data[i];
-		}
-		return *this;
+		return doAssignOp(other, [] (Type& th, const Type& oth) {
+			th += oth;
+		});
 	}
 	const Matrix operator+(const Matrix& other) const {
 		return Matrix(*this) += other;
 	}
 	Matrix& operator-=(const Matrix& other) {
-		assert(nRows == other.nRows && nCols == other.nCols);
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] -= other.data[i];
-		}
-		return *this;
+		return doAssignOp(other, [] (Type& th, const Type& oth) {
+			th -= oth;
+		});
 	}
 	const Matrix operator-(const Matrix& other) const {
 		return Matrix(*this) -= other;
 	}
 	// Component-wise multiplication
 	Matrix& operator*=(const Matrix& other) {
-		assert(nRows == other.nRows && nCols == other.nCols);
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] *= other.data[i];
-		}
-		return *this;
+		return doAssignOp(other, [] (Type& th, const Type& oth) {
+			th *= oth;
+		});
 	}
 	const Matrix operator*(const Matrix& other) const {
 		return Matrix(*this) *= other;
 	}
 	Matrix& operator*=(Type mul) {
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] *= mul;
-		}
-		return *this;
+		return doAssignOp([&] (Type& th) {
+			th *= mul;
+		});
 	}
 	const Matrix operator*(Type mul) const {
 		return Matrix(*this) *= mul;
 	}
 	// Component-wise division
 	Matrix& operator/=(const Matrix& other) {
-		assert(nRows == other.nRows && nCols == other.nCols);
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] /= other.data[i];
-		}
-		return *this;
+		return doAssignOp(other, [] (Type& th, const Type& oth) {
+			th /= oth;
+		});
 	}
 	const Matrix operator/(const Matrix& other) const {
 		return Matrix(*this) /= other;
 	}
 	Matrix& operator/=(Type div) {
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] /= div;
-		}
-		return *this;
+		return doAssignOp([&] (Type& th) {
+			th /= div;
+		});
 	}
 	const Matrix operator/(Type div) const {
 		return Matrix(*this) /= div;
 	}
 	Matrix& OneMinusSelf() {
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			data[i] = Type_traits::one - data[i];
-		}
-		return *this;
+		return doAssignOp([&] (Type& th) {
+			th = Type_traits::one() - th;
+		});
 	}
 
 	Matrix ChangeSize(uint32 newRows, uint32 newCols, uint32 baseRow, uint32 baseCol, uint32 startRow, uint32 startCol) const {
@@ -237,14 +227,14 @@ public:
 	}
 	Type Sum() const {
 		// Using Kahan Summation Algorithm for better accuracy
-		Type sum = Type_traits::zero;
-		Type c = Type_traits::zero;
-		for (uint32 i = 0; i < nRows * nCols; i++) {
-			Type y = data[i] - c;
+		Type sum = Type_traits::zero();
+		Type c = Type_traits::zero();
+		doReadOp([&] (const Type& th) {
+			Type y = th - c;
 			Type t = sum + y;
 			c = (t - sum) - y;
 			sum = t;
-		}
+		});
 		return sum;
 	}
 
@@ -253,10 +243,40 @@ public:
 	uint32 GetNumRows() const { return nRows; }
 	uint32 GetNumCols() const { return nCols; }
 	void Clear() {
-		for (uint32 i = 0; i < nRows * nCols; i++)
-			data[i] = Type_traits::zero;
+		doAssignOp([&] (Type& th) {
+			th = Type_traits::zero();
+		});
 	}
 private:
 	Type* data;
 	uint32 nRows, nCols;
+
+	template <class Op>
+	void doReadOp(const Op& op) const {
+		uint32 nSize = nRows * nCols;
+		const Type* ptr = data;
+		for (uint32 i = 0; i < nSize; i++) {
+			op(ptr[i]);
+		}
+	}
+	template <class Op>
+	Matrix& doAssignOp(const Op& op) {
+		uint32 nSize = nRows * nCols;
+		Type* ptr = data;
+		for (uint32 i = 0; i < nSize; i++) {
+			op(ptr[i]);
+		}
+		return *this;
+	}
+	template <class Op>
+	Matrix& doAssignOp(const Matrix& other, const Op& op) {
+		assert(nRows == other.nRows && nCols == other.nCols);
+		uint32 nSize = nRows * nCols;
+		Type* ptr = data;
+		Type* ptrOther = other.data;
+		for (uint32 i = 0; i < nSize; i++) {
+			op(ptr[i], ptrOther[i]);
+		}
+		return *this;
+	}
 };

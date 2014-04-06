@@ -102,12 +102,13 @@ kiss_fft_cpx makecpx(kiss_fft_scalar r, kiss_fft_scalar i = 0) {
 template <>
 class MTX_Traits<kiss_fft_cpx> {
 public:
-	static const kiss_fft_cpx one;
-	static const kiss_fft_cpx zero;
+	static kiss_fft_cpx zero() {
+		return makecpx(0);
+	}
+	static kiss_fft_cpx one() {
+		return makecpx(1);
+	}
 };
-
-const kiss_fft_cpx MTX_Traits<kiss_fft_cpx>::one = makecpx(1);
-const kiss_fft_cpx MTX_Traits<kiss_fft_cpx>::zero = makecpx(0);
 
 struct MatrixProfile {
 	MatrixProfile(uint32 length)
