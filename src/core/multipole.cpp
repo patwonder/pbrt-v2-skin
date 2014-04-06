@@ -36,104 +36,36 @@
 #include "parallel.h"
 #include "progressreporter.h"
 
+
 struct MultipoleProfileDataEntry {
-	float distanceSquared;
+	// omitted, assuming uniform distribution of dsq
+	//float distanceSquared;
 	float reflectance;
+#ifdef SAMPLE_TRANSMITTANCE
 	float transmittance;
+#endif
 };
 
 struct Profile {
-	static const uint32_t LUT_SIZE = 4096;
-
-	uint32_t lut[LUT_SIZE];
-	float rcpChunkLength;
 	vector<MultipoleProfileDataEntry> data;
+	float dsqSpacing;
+	float rcpDsqSpacing;
+	float totalReflectance;
+	float totalTransmittance;
 };
-
-
-static void generateLUT(Profile& profile) {
-	// divide extent of the profile into equal-sized chunks,
-	// saving a few binary search steps and reducing cache misses
-	uint32_t current = 0;
-	const auto& data = profile.data;
-	float chunkLength = data.back().distanceSquared / Profile::LUT_SIZE;
-	profile.rcpChunkLength = 1.f / chunkLength;
-	for (uint32_t i = 0; i < Profile::LUT_SIZE; i++) {
-		float target = chunkLength * (i + 1);
-		// find first entry out of the chunk
-		while (current < data.size() - 1 && data[current].distanceSquared < target)
-			current++;
-
-		profile.lut[i] = current;
-	}
-}
 
 
 static float sampleProfile(const Profile& profile, float distanceSquared, float MultipoleProfileDataEntry::* dataField) {
 	const auto& data = profile.data;
-	float extent = data.back().distanceSquared;
-	if (distanceSquared > extent)
+
+	float fSegId = distanceSquared * profile.rcpDsqSpacing;
+	uint32_t segId = (uint32_t)fSegId;
+	if (segId >= data.size() - 1)
 		return 0.f; // ensure integral convergence
 
-#if 1
-	uint32_t chunkId = min((uint32_t)(distanceSquared * profile.rcpChunkLength), Profile::LUT_SIZE - 1);
-	uint32_t lo = chunkId ? profile.lut[chunkId - 1] : 0;
-	uint32_t hi = profile.lut[chunkId];
-#else
-	uint32_t lo = 0;
-	uint32_t hi = data.size() - 1;
-#endif
-
-#define SEARCH_METHOD 0
-#if SEARCH_METHOD == 2
-	// binary-linear hybrid search to find the interval to interpolate
-	while (lo + 32 < hi) {
-		uint32_t mid = (lo + hi) / 2;
-		if (distanceSquared > data[mid].distanceSquared)
-			lo = mid + 1;
-		else
-			hi = mid;
-	}
-	while (lo < hi && distanceSquared > data[lo].distanceSquared) {
-		lo++;
-	}
-#elif SEARCH_METHOD == 1
-	// linear search to find the interval to interpolate
-	while (lo < hi && distanceSquared > data[lo].distanceSquared) {
-		lo++;
-	}
-#else
-	// intepolation-linear hybrid search to find the interval to interpolate
-	float d2lo = data[lo].distanceSquared;
-	if (lo + 32 < hi) {
-		float d2hi = data[hi].distanceSquared;
-		do {
-			uint32_t mid = Clamp((int)((distanceSquared - d2lo) / (d2hi - d2lo) * (hi - lo)), 0, (int)(hi - lo - 1)) + lo;
-			float d2mid = data[mid].distanceSquared;
-			if (distanceSquared > d2mid) {
-				lo = mid + 1;
-				d2lo = data[lo].distanceSquared;
-			} else {
-				hi = mid;
-				d2hi = d2mid;
-			}
-		} while (lo + 32 < hi);
-	}
-	while (lo < hi && distanceSquared > d2lo) {
-		lo++;
-		d2lo = data[lo].distanceSquared;
-	}
-#endif
-	// lo points to the entry with minimum dsq no less than distanceSquared
-	if (lo) {
-		float lerpAmount = Clamp((distanceSquared - data[lo - 1].distanceSquared) /
-			(data[lo].distanceSquared - data[lo - 1].distanceSquared), 0.f, 1.f);
-		if (isnan(lerpAmount))
-			lerpAmount = 0.5;
-		return Lerp(lerpAmount, data[lo - 1].*dataField, data[lo].*dataField);
-	} else {
-		return data[0].*dataField;
-	}
+	// segId points to the segment containing dsq
+	float lerpAmount = fSegId - (float)segId;
+	return Lerp(lerpAmount, data[segId].*dataField, data[segId + 1].*dataField);
 }
 
 static SampledSpectrum sampleSpectralProfile(const Profile spectralProfile[nSpectralSamples], float distanceSquared,
@@ -153,7 +85,12 @@ struct MultipoleProfileData {
 		return sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::reflectance);
 	}
 	SampledSpectrum transmittance(float distanceSquared) const {
+#ifdef SAMPLE_TRANSMITTANCE
 		return sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::transmittance);
+#else
+		Severe("Transmittance profile sampling not implemented.");
+		return 0.f;
+#endif
 	}
 };
 
@@ -171,14 +108,20 @@ Spectrum MultipoleBSSRDFData::transmittance(float distanceSquared) const {
 float integrateProfile(const Profile& profile, float MultipoleProfileDataEntry::* dataField) {
 	// Computes the integral {r,0,+inf}2*pi*r*Rd(r)dr = {r^2,0,+inf}pi*Rd(r)d(r^2) as total reflectance
 	// The integrals does not include delta distributions
+#if 0
 	const auto& data = profile.data;
-	float lastD2 = 0.f;
 	float integral = 0.f;
 	for (size_t i = 0; i < data.size(); i++) {
-		integral += M_PI * data[i].*dataField * (data[i].distanceSquared - lastD2);
-		lastD2 = data[i].distanceSquared;
+		integral += M_PI * data[i].*dataField;
 	}
-	return integral;
+	return integral * profile.dsqSpacing;
+#else
+	// The easy way...
+	if (dataField == &MultipoleProfileDataEntry::reflectance) {
+		return profile.totalReflectance;
+	}
+	return profile.totalTransmittance;
+#endif
 }
 
 
@@ -198,8 +141,13 @@ Spectrum MultipoleBSSRDFData::totalReflectance() const {
 
 
 Spectrum MultipoleBSSRDFData::totalTransmittance() const {
+#ifdef SAMPLE_TRANSMITTANCE
 	return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::transmittance));
+#else
+	Severe("Transmittance profile sampling not implemented.");
+	return 0.f;
+#endif
 }
 
 
@@ -258,26 +206,30 @@ void MultipoleProfileTask::Run() {
 	// Do the computation
 	MPC_Output* pOutput;
 	MPC_ComputeDiffusionProfile(layers, pLayerSpecs, &options, &pOutput);
+	MPC_ResampleForUniformDistanceSquaredDistribution(pOutput);
 
 	// Collect result
 	Profile& profile = pData->spectralProfile[sc];
+	uint32 length = pOutput->length;
+	profile.dsqSpacing = pOutput->pDistanceSquared[length - 1] / (float)(length - 1);
+	profile.rcpDsqSpacing = (float)(length - 1) / pOutput->pDistanceSquared[length - 1];
+	profile.totalReflectance = pOutput->totalReflectance;
+	profile.totalTransmittance = pOutput->totalTransmittance;
 	auto& data = profile.data;
 	data.clear();
-	data.reserve(pOutput->length);
+	data.reserve(length);
 
-	for (uint32 ri = 0; ri < pOutput->length; ri++) {
+	for (uint32 ri = 0; ri < length; ri++) {
 		MultipoleProfileDataEntry entry;
-		entry.distanceSquared = pOutput->pDistanceSquared[ri];
 		entry.reflectance = pOutput->pReflectance[ri];
+#ifdef SAMPLE_TRANSMITTANCE
 		entry.transmittance = pOutput->pTransmittance[ri];
+#endif
 		data.push_back(entry);
 	}
 
 	MPC_FreeOutput(pOutput);
 	delete [] pLayerSpecs;
-
-	// Generate lut for profile to accelerate lookup
-	generateLUT(profile);
 
 	reporter.Update();
 }
@@ -309,10 +261,13 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 
 	Spectrum tr = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::reflectance));
+	Info("Total Reflectance: %s", tr.ToString().c_str());
+
+#ifdef SAMPLE_TRANSMITTANCE
 	Spectrum tt = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::transmittance));
-	Info("Total Reflectance: %s", tr.ToString().c_str());
 	Info("Total Transmittance: %s", tt.ToString().c_str());
+#endif
 }
 
 void ReleaseMultipoleProfile(MultipoleProfileData* pData) {
