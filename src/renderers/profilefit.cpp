@@ -209,8 +209,8 @@ void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, flo
 	// Try sigmas between mfpMin / 2 and mfpMax * 2
 	for (int iSigmaCenter = sigmaNegExtent; iSigmaCenter < nSigmas - sigmaPosExtent; iSigmaCenter++) {
 		float sigma = sigmas[iSigmaCenter];
-		if (sigma < mfpMin / 2.f) continue;
-		if (sigma > mfpMax * 2.f) break;
+		if (sigma < mfpMin / 4.f) continue;
+		if (sigma > mfpMax * 4.f) break;
 		GF_FitSumGaussians(length, &distArray[0], pOutput->pReflectance,
 			nTargetSigmas, &sigmas[iSigmaCenter - sigmaNegExtent], &pGFOutput);
 		if (pGFOutput->overallError < minError) {
@@ -288,7 +288,7 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 
 	// Generate sigmas
 	vector<float> sigmas;
-	for (float sigma = minmfp / 4.f; sigma <= maxmfp * 4.f; sigma *= 2.f) {
+	for (float sigma = minmfp / 8.f; sigma <= maxmfp * 8.f; sigma *= 2.f) {
 		sigmas.push_back(sigma);
 	}
 	// Compute profiles and do fitting
