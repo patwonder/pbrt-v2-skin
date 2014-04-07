@@ -50,7 +50,8 @@ public:
 	// MultipoleProfileFitRenderer Public Methods
 	MultipoleProfileFitRenderer(const vector<SkinLayer>& layers,
 		ParamRange f_mel, ParamRange f_eu, ParamRange f_blood,
-		ParamRange f_ohg, uint32_t desiredLength, uint32_t segments, const string& filename);
+		ParamRange f_ohg, uint32_t desiredLength, uint32_t segments, const string& filename,
+		int idRange[2], int splitTasks, const string& pbrtFilePath);
 	void Render(const Scene* scene) override;
 	Spectrum Li(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena,
@@ -67,6 +68,9 @@ private:
 	uint32_t desiredLength;
 	uint32_t nSegments;
 	string filename;
+	int idRange[2];
+	int splitTasks;
+	string pbrtFilePath;
 
 	// MultipoleProfileFitRenderer Private Methods
 	template <class Processor>
@@ -78,6 +82,11 @@ private:
 	vector<Task*> CreateGaussianFitTasks(const SkinCoefficients& coeffs,
 		const vector<float>& sigmas, SpectralGaussianCoeffs& sgc,
 		ProgressReporter& reporter, uint32_t id) const;
+
+	int GetTotalNumTasks() const;
+
+	void DoProfileFit() const;
+	void DoPbrtFileSplit() const;
 };
 
-MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params);
+MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params, const string& pbrtFilePath);

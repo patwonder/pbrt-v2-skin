@@ -39,7 +39,9 @@
 #include "multipole/MultipoleProfileCalculator/MultipoleProfileCalculator.h"
 #include "multipole/MultipoleProfileCalculator/gaussianfit.h"
 #include <map>
+#include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 
 using namespace std;
@@ -85,6 +87,11 @@ void MultipoleProfileFitRenderer::ForRanges(const Processor& p) const {
 }
 
 
+int MultipoleProfileFitRenderer::GetTotalNumTasks() const {
+	return (int)(pr_f_mel.size() * pr_f_eu.size() * pr_f_blood.size() * pr_f_ohg.size());
+}
+
+
 float MultipoleProfileFitRenderer::NextParamFromId(uint32_t& id, ParamRange pr) {
 	uint32_t remainder = id % (uint32_t)pr.size();
 	id /= (uint32_t)pr.size();
@@ -101,10 +108,14 @@ VariableParams MultipoleProfileFitRenderer::ParamsFromId(uint32_t id) const {
 
 MultipoleProfileFitRenderer::MultipoleProfileFitRenderer(const vector<SkinLayer>& layers,
 	ParamRange f_mel, ParamRange f_eu, ParamRange f_blood, ParamRange f_ohg,
-	uint32_t desiredLength, uint32_t segments, const string& filename)
+	uint32_t desiredLength, uint32_t segments, const string& filename,
+	int idRange[2], int splitTasks, const string& pbrtFilePath)
 	: layers(layers), pr_f_mel(f_mel), pr_f_eu(f_eu), pr_f_blood(f_blood), pr_f_ohg(f_ohg),
-	  desiredLength(desiredLength), nSegments(segments), filename(filename)
+	  desiredLength(desiredLength), nSegments(segments), filename(filename),
+	  splitTasks(splitTasks), pbrtFilePath(pbrtFilePath)
 {
+	this->idRange[0] = idRange[0];
+	this->idRange[1] = idRange[1];
 }
 
 
@@ -177,7 +188,7 @@ void GaussianFitTask::Run() {
 	// Do the computation
 	MPC_Output* pOutput;
 	MPC_ComputeDiffusionProfile(nLayers, pLayerSpecs, &options, &pOutput);
-	MPC_ResampleForUniformDistanceSquaredDistribution(pOutput);
+	MPC_ResampleForUniformDistanceSquaredDistribution(pOutput, pOutput->length);
 
 	// Do gaussian fit
 	DoGaussianFit(pOutput, mfpMin, mfpMax);
@@ -191,7 +202,7 @@ void GaussianFitTask::Run() {
 
 void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, float mfpMax) {
 	int nSigmas = sigmas.size();
-	const int nTargetSigmas = 4;
+	const int nTargetSigmas = 5;
 	const int sigmaNegExtent = nTargetSigmas / 2;
 	const int sigmaPosExtent = nTargetSigmas - sigmaNegExtent - 1;
 
@@ -206,23 +217,26 @@ void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, flo
 
 	float minError = INFINITY;
 	int minErrorSigmaCenter = 0;
+	std::map<int, GF_Output*> oCache;
 	// Try sigmas between mfpMin / 2 and mfpMax * 2
 	for (int iSigmaCenter = sigmaNegExtent; iSigmaCenter < nSigmas - sigmaPosExtent; iSigmaCenter++) {
 		float sigma = sigmas[iSigmaCenter];
-		if (sigma < mfpMin / 4.f) continue;
-		if (sigma > mfpMax * 4.f) break;
+		if (sigma < mfpMin / 2.f) continue;
+		if (sigma > mfpMax * 2.f) break;
 		GF_FitSumGaussians(length, &distArray[0], pOutput->pReflectance,
 			nTargetSigmas, &sigmas[iSigmaCenter - sigmaNegExtent], &pGFOutput);
 		if (pGFOutput->overallError < minError) {
 			minError = pGFOutput->overallError;
 			minErrorSigmaCenter = iSigmaCenter;
 		}
-		GF_FreeOutput(pGFOutput);
+		oCache[iSigmaCenter] = pGFOutput;
+		pGFOutput = NULL;
 	}
 
 	// Use minErrorSigmaCenter to do fitting
-	GF_FitSumGaussians(length, &distArray[0], pOutput->pReflectance,
-		nTargetSigmas, &sigmas[minErrorSigmaCenter - sigmaNegExtent], &pGFOutput);
+	//GF_FitSumGaussians(length, &distArray[0], pOutput->pReflectance,
+	//	nTargetSigmas, &sigmas[minErrorSigmaCenter - sigmaNegExtent], &pGFOutput);
+	pGFOutput = oCache[minErrorSigmaCenter];
 
 	for (int iSigma = minErrorSigmaCenter - sigmaNegExtent;
 		iSigma <= minErrorSigmaCenter + sigmaPosExtent; iSigma++)
@@ -236,7 +250,8 @@ void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, flo
 			SampledSpectrum::WaveLength(sc), pGFOutput->overallError * 100.f);
 	}
 
-	GF_FreeOutput(pGFOutput);
+	for (auto& pair : oCache)
+		GF_FreeOutput(pair.second);
 }
 
 vector<Task*> MultipoleProfileFitRenderer::CreateGaussianFitTasks(const SkinCoefficients& coeffs,
@@ -244,18 +259,19 @@ vector<Task*> MultipoleProfileFitRenderer::CreateGaussianFitTasks(const SkinCoef
 {
 	sgc.coeffs.resize(sigmas.size(), SampledSpectrum(0.f));
 
-	SampledSpectrum mua[2];
-	mua[0] = coeffs.mua_epi().toSampledSpectrum() / 10.f;
-	mua[1] = coeffs.mua_derm().toSampledSpectrum() / 10.f;
-	SampledSpectrum musp[2];
-	musp[0] = coeffs.musp_epi().toSampledSpectrum() / 10.f;
-	musp[1] = coeffs.musp_derm().toSampledSpectrum() / 10.f;
-	float et[2];
-	et[0] = layers[0].ior;
-	et[1] = layers[1].ior;
-	float thickness[2];
-	thickness[0] = layers[0].thickness / 1e6f;
-	thickness[1] = layers[1].thickness / 1e6f;
+	SampledSpectrum mua[2] = {
+		coeffs.mua_epi().toSampledSpectrum() / 10.f,
+		coeffs.mua_derm().toSampledSpectrum() / 10.f
+	};
+	SampledSpectrum musp[2] = {
+		coeffs.musp_epi().toSampledSpectrum() / 10.f,
+		coeffs.musp_derm().toSampledSpectrum() / 10.f
+	};
+	float et[2] = { layers[0].ior, layers[1].ior };
+	float thickness[2] = {
+		layers[0].thickness / 1e6f,
+		layers[1].thickness / 1e6f
+	};
 
 	vector<Task*> tasks;
 	for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
@@ -265,13 +281,11 @@ vector<Task*> MultipoleProfileFitRenderer::CreateGaussianFitTasks(const SkinCoef
 	return tasks;
 }
 
-void MultipoleProfileFitRenderer::Render(const Scene* scene) {
-	Info("Computing using MultipoleProfileFitRenderer.");
-
+void MultipoleProfileFitRenderer::DoProfileFit() const {
 	// All the units here are based on mm (millimeter)
 	// Calculate min/max mfps
 	WLDValue mfp_min(INFINITY), mfp_max(0.f);
-	int nTasks = 0;
+	int nTotalTasks = 0;
 	ForRanges([&] (const VariableParams& vps, uint32_t id) {
 		SkinCoefficients coeffs(vps.f_mel, vps.f_eu, vps.f_blood, vps.f_ohg, 0.f, 0.f, 0.f);
 		WLDValue mutp_epi = coeffs.mua_epi() + coeffs.musp_epi();
@@ -280,7 +294,7 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 		WLDValue mfp_derm = WLDValue(10) / mutp_derm;
 		mfp_min = Min(Min(mfp_min, mfp_epi), mfp_derm);
 		mfp_max = Max(Max(mfp_max, mfp_epi), mfp_derm);
-		nTasks++;
+		nTotalTasks++;
 	});
 	float minmfp = mfp_min.Min();
 	float maxmfp = mfp_max.Max();
@@ -288,17 +302,24 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 
 	// Generate sigmas
 	vector<float> sigmas;
-	for (float sigma = minmfp / 8.f; sigma <= maxmfp * 8.f; sigma *= 2.f) {
+	for (float sigma = minmfp / 4.f; sigma <= maxmfp * 8.f; sigma *= 2.f) {
 		sigmas.push_back(sigma);
 	}
 	// Compute profiles and do fitting
+	uint32_t idMin = (uint32_t)max(0, idRange[0]);
+	uint32_t idMax = (uint32_t)(idRange[1] < 0 ? nTotalTasks : min(nTotalTasks, idRange[1]));
+	if (idMax <= idMin) return;
+	int nTasks = idMax - idMin;
+
 	vector<SpectralGaussianCoeffs> gaussianCoeffs(nTasks);
 	ProgressReporter reporter(nTasks * SampledSpectrum::nComponents, "Gaussian Fit");
 	vector<Task*> fitTasks;
 	fitTasks.reserve(nTasks * SampledSpectrum::nComponents);
 	ForRanges([&] (const VariableParams& vps, uint32_t id) {
+		if (id < idMin || id >= idMax) return;
+
 		SkinCoefficients coeffs(vps.f_mel, vps.f_eu, vps.f_blood, vps.f_ohg, 0.f, 0.f, 0.f);
-		vector<Task*> newTasks = CreateGaussianFitTasks(coeffs, sigmas, gaussianCoeffs[id], reporter, id);
+		vector<Task*> newTasks = CreateGaussianFitTasks(coeffs, sigmas, gaussianCoeffs[id - idMin], reporter, id);
 		fitTasks.insert(fitTasks.end(), newTasks.begin(), newTasks.end());
 	});
 	EnqueueTasks(fitTasks);
@@ -310,26 +331,31 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 	reporter.Done();
 
 	if (filename != "") {
+		string filename = AbsolutePath(ResolveFilename(this->filename));
 		Info("Writing to file \"%s\"", filename.c_str());
 		ofstream out(filename, ios::out | ios::trunc);
 		if (!out) {
 			Error("Cannot open %s", filename.c_str());
 			abort();
 		}
-		// Output _ParamRange_s
-		out << "Param\tNum Samples\tSample Points" << endl;
-		out << "f_mel\t" << pr_f_mel << endl;
-		out << "f_eu\t" << pr_f_eu << endl;
-		out << "f_blood\t" << pr_f_blood << endl;
-		out << "f_ohg\t" << pr_f_ohg << endl;
-		// Output sigmas
-		out << "ID\tf_mel\tf_eu\tf_blood\tf_ohg\tRGB";
-		for (float sigma : sigmas) {
-			out << "\t" << sigma;
+		// Only print the header when range contains id 0.
+		// This is to allow easier concatenation of results.
+		if (idMin == 0) {
+			// Output _ParamRange_s
+			out << "Param\tNum Samples\tSample Points" << endl;
+			out << "f_mel\t" << pr_f_mel << endl;
+			out << "f_eu\t" << pr_f_eu << endl;
+			out << "f_blood\t" << pr_f_blood << endl;
+			out << "f_ohg\t" << pr_f_ohg << endl;
+			// Output sigmas
+			out << "ID\tf_mel\tf_eu\tf_blood\tf_ohg\tRGB";
+			for (float sigma : sigmas) {
+				out << "\t" << sigma;
+			}
+			out << "\tError" << endl;
 		}
-		out << "\tError" << endl;
-		for (uint32_t id = 0; id < (uint32_t)nTasks; id++) {
-			const SpectralGaussianCoeffs& coeffs = gaussianCoeffs[id];
+		for (uint32_t id = idMin; id < idMax; id++) {
+			const SpectralGaussianCoeffs& coeffs = gaussianCoeffs[id - idMin];
 			VariableParams vps = ParamsFromId(id);
 			for (int sc = 0; sc < SampledSpectrum::nComponents; sc++) {
 				out << id << "\t" << vps << "\t" << SampledSpectrum::WaveLength(sc);
@@ -349,6 +375,111 @@ void MultipoleProfileFitRenderer::Render(const Scene* scene) {
 			}
 		}
 		out.close();
+	}
+}
+
+
+static string CombineFileName(const string& prefix, int id, const string& suffix) {
+	stringstream ss;
+	ss << prefix << id << suffix;
+	return ss.str();
+}
+
+
+static string GetParamRangeStringInPbrtFile(const ParamRange& pr) {
+	if (pr.size() == 0) return "";
+
+	stringstream ss;
+	ss << pr[0];
+	for (size_t i = 1; i < pr.size(); i++) {
+		ss << " " << pr[i];
+	}
+	return ss.str();
+}
+
+
+static ostream& operator<<(ostream& os, const SkinLayer& layer) {
+	return os << layer.thickness << " " << layer.ior;
+}
+
+static string GetSkinLayerStringInPbrtFile(const vector<SkinLayer>& layers) {
+	if (layers.size() == 0) return "";
+	
+	stringstream ss;
+	ss << layers[0];
+	for (size_t i = 1; i < layers.size(); i++) {
+		ss << " " << layers[i];
+	}
+	return ss.str();
+}
+
+
+void MultipoleProfileFitRenderer::DoPbrtFileSplit() const {
+	int nTotalTasks = GetTotalNumTasks();
+	int nSubPbrtFiles = (nTotalTasks + splitTasks - 1) / splitTasks;
+
+	if (nSubPbrtFiles <= 1) {
+		Warning("No need to split!");
+		return;
+	}
+
+	// Avoid doing stupid things...
+	if (nSubPbrtFiles > 20) {
+		char ch;
+		Warning("%d files will be generated. Are you sure? [Y/n]", nSubPbrtFiles);
+		cin >> ch;
+		if (ch != 'Y' && ch != 'y') {
+			Warning("Aborted.");
+			return;
+		}
+	}
+
+	string pbrtFilePrefix = AbsolutePath(ResolveFilename(FileNameWithoutExt(pbrtFilePath))) + "-";
+	string outFilePrefix = FileNameWithoutExt(filename) + "-";
+	string pbrtFileSuffix = ".pbrt";
+	string outFileSuffix = ".txt";
+
+	for (int i = 0; i < nSubPbrtFiles; i++) {
+		int idMin = i * splitTasks;
+		int idMax = min((i + 1) * splitTasks, nTotalTasks);
+
+		string pbrtFilename = CombineFileName(pbrtFilePrefix, i, pbrtFileSuffix);
+		string outFilename = CombineFileName(outFilePrefix, i, outFileSuffix);
+		
+		Info("%d - %d -> %s", idMin, idMax, pbrtFilename.c_str());
+
+		ofstream out(pbrtFilename, ios::out | ios::trunc);
+		if (!out) {
+			Error("Failed to open pbrt output file: %s", pbrtFilename.c_str());
+			continue;
+		}
+
+		// Print out parameters for the profile fit
+		out << "Renderer \"multipoleprofilefit\"" << endl
+			<< "         \"float f_mel\" [ " << GetParamRangeStringInPbrtFile(pr_f_mel) << " ]" << endl
+			<< "         \"float f_eu\" [ " << GetParamRangeStringInPbrtFile(pr_f_eu) << " ]" << endl
+			<< "         \"float f_blood\" [ " << GetParamRangeStringInPbrtFile(pr_f_blood) << " ]" << endl
+			<< "         \"float f_ohg\" [ " << GetParamRangeStringInPbrtFile(pr_f_ohg) << " ]" << endl
+			<< "         \"skinlayer layers\" [ " << GetSkinLayerStringInPbrtFile(layers) << " ]" << endl
+			<< "         \"string filename\" \"" << outFilename << "\"" << endl
+			<< "         \"integer desiredProfileLength\" " << desiredLength << endl
+			<< "         \"integer idrange\" [ " << idMin << " " << idMax << " ]" << endl
+			<< "WorldBegin" << endl
+			<< "WorldEnd" << endl;
+		out.close();
+	}
+
+	Info("Generated %d files.", nSubPbrtFiles);
+}
+
+
+void MultipoleProfileFitRenderer::Render(const Scene* scene) {
+	Info("Computing using MultipoleProfileFitRenderer.");
+
+	if (splitTasks) {
+		DoPbrtFileSplit();
+	} else {
+		DoProfileFit();
 	}
 }
 
@@ -381,7 +512,7 @@ static ParamRange FindParamRange(const ParamSet& params, const string& name) {
 	return pr;
 }
 
-MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params) {
+MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& params, const string& pbrtFilePath) {
 	int nLayers;
 	const SkinLayer* layers = params.FindSkinLayer("layers", &nLayers);
 	if (!layers) {
@@ -397,8 +528,22 @@ MultipoleProfileFitRenderer* CreateMultipoleProfileFitRenderer(const ParamSet& p
 	ParamRange pr_f_blood = FindParamRange(params, "f_blood");
 	ParamRange pr_f_ohg = FindParamRange(params, "f_ohg");
 	uint32_t segments = params.FindOneInt("segments", 10);
-    string filename = params.FindOneFilename("filename", "");
+    string filename = params.FindOneString("filename", "");
 	uint32_t desiredLength = params.FindOneInt("desiredProfileLength", 256);
+	int nRanges;
+	const int* idRanges = params.FindInt("idrange", &nRanges);
+	int idRangesArray[2];
+	if (!idRanges || nRanges != 2) {
+		if (idRanges)
+			Warning("Param \"idrange\" ignored: incorrect number of items, 2 expected.");
+		idRangesArray[0] = 0;
+		idRangesArray[1] = -1;
+	} else {
+		idRangesArray[0] = idRanges[0];
+		idRangesArray[1] = idRanges[1];
+	}
+	int splitTasks = params.FindOneInt("splittasks", 0);
 	return new MultipoleProfileFitRenderer(vector<SkinLayer>(layers, layers + nLayers),
-		pr_f_mel, pr_f_eu, pr_f_blood, pr_f_ohg, desiredLength, segments, filename);
+		pr_f_mel, pr_f_eu, pr_f_blood, pr_f_ohg, desiredLength, segments, filename,
+		idRangesArray, splitTasks, pbrtFilePath);
 }

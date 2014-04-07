@@ -45,6 +45,7 @@ bool IsAbsolutePath(const string &filename);
 string AbsolutePath(const string &filename);
 string ResolveFilename(const string &filename);
 string DirectoryContaining(const string &filename);
+string FileNameWithoutExt(const string& filename);
 void SetSearchDirectory(const string &dirname);
 
 #endif // PBRT_CORE_FILEUTIL_H

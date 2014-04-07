@@ -1260,7 +1260,8 @@ Renderer *RenderOptions::MakeRenderer() const {
 		RendererParams.ReportUnused();
 	}
 	else if (RendererName == "multipoleprofilefit") {
-		renderer = CreateMultipoleProfileFitRenderer(RendererParams);
+		extern string current_file;
+		renderer = CreateMultipoleProfileFitRenderer(RendererParams, current_file);
 		RendererParams.ReportUnused();
 	}
 	else if (RendererName == "montecarloprofile") {

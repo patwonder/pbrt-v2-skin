@@ -397,10 +397,10 @@ static void resample(const MPC_Output* pOutput, float distanceSquared, float* re
 	}
 }
 
-MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput) {
+MULTIPOLEPROFILECALCULATOR_API void MPC_ResampleForUniformDistanceSquaredDistribution(MPC_Output* pOutput, uint32 target) {
 	uint32 length = pOutput->length;
 	float extent = pOutput->pDistanceSquared[length - 1];
-	uint32 targetLength = length * 2; // Nyquist rate
+	uint32 targetLength = target ? target : length * 2; // Nyquist rate
 	float* newDistance = new float[targetLength];
 	float* newReflectance = new float[targetLength];
 	float* newTransmittance = new float[targetLength];

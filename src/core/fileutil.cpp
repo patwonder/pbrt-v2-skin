@@ -92,6 +92,22 @@ string DirectoryContaining(const string &filename)
     return filename;
 }
 
+
+string FileNameWithoutExt(const string& filename)
+{
+    // This code isn't tested but I believe it should work. Might need to add
+    // some const_casts to make it compile though.
+	char name[_MAX_FNAME];
+
+    errno_t err = _splitpath_s( filename.c_str(),
+                                NULL, 0, NULL, 0, name, _MAX_FNAME, NULL, 0 );
+    if (err == 0) {
+		return string(name);
+    }
+    return filename;
+}
+
+
 #else
 
 bool IsAbsolutePath(const string &filename)
@@ -129,6 +145,11 @@ string DirectoryContaining(const string &filename)
     // doesn't modify it though (according to the docs on OS X).
     string result = dirname(const_cast<char*>(filename.c_str()));
     return result;
+}
+
+string FileNameWithoutExt(const string& filename)
+{
+	Severe("Unimplemented method \"FileNameWithoutExt\" called.");
 }
 
 #endif
