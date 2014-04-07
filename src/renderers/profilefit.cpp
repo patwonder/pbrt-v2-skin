@@ -202,7 +202,7 @@ void GaussianFitTask::Run() {
 
 void GaussianFitTask::DoGaussianFit(const MPC_Output* pOutput, float mfpMin, float mfpMax) {
 	int nSigmas = sigmas.size();
-	const int nTargetSigmas = 5;
+	const int nTargetSigmas = 6;
 	const int sigmaNegExtent = nTargetSigmas / 2;
 	const int sigmaPosExtent = nTargetSigmas - sigmaNegExtent - 1;
 
@@ -302,7 +302,7 @@ void MultipoleProfileFitRenderer::DoProfileFit() const {
 
 	// Generate sigmas
 	vector<float> sigmas;
-	for (float sigma = minmfp / 4.f; sigma <= maxmfp * 8.f; sigma *= 2.f) {
+	for (float sigma = minmfp / 8.f; sigma <= maxmfp * 8.f; sigma *= 2.f) {
 		sigmas.push_back(sigma);
 	}
 	// Compute profiles and do fitting
