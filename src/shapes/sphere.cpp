@@ -81,29 +81,29 @@ bool Sphere::Intersect(const Ray &r, float *tHit, float *rayEpsilon,
         if (thit > ray.maxt) return false;
     }
 
-	if (dg) {
+	// Compute sphere hit position and $\phi$
+	Point phit = ray(thit);
+	if (phit.x == 0.f && phit.y == 0.f) phit.x = 1e-5f * radius;
+	float phi = atan2f(phit.y, phit.x);
+	if (phi < 0.) phi += 2.f*M_PI;
+
+	// Test sphere intersection against clipping parameters
+	if ((zmin > -radius && phit.z < zmin) ||
+		(zmax <  radius && phit.z > zmax) || phi > phiMax) {
+		if (thit == t1) return false;
+		if (t1 > ray.maxt) return false;
+		thit = t1;
 		// Compute sphere hit position and $\phi$
-		Point phit = ray(thit);
+		phit = ray(thit);
 		if (phit.x == 0.f && phit.y == 0.f) phit.x = 1e-5f * radius;
-		float phi = atan2f(phit.y, phit.x);
+		phi = atan2f(phit.y, phit.x);
 		if (phi < 0.) phi += 2.f*M_PI;
-
-		// Test sphere intersection against clipping parameters
 		if ((zmin > -radius && phit.z < zmin) ||
-			(zmax <  radius && phit.z > zmax) || phi > phiMax) {
-			if (thit == t1) return false;
-			if (t1 > ray.maxt) return false;
-			thit = t1;
-			// Compute sphere hit position and $\phi$
-			phit = ray(thit);
-			if (phit.x == 0.f && phit.y == 0.f) phit.x = 1e-5f * radius;
-			phi = atan2f(phit.y, phit.x);
-			if (phi < 0.) phi += 2.f*M_PI;
-			if ((zmin > -radius && phit.z < zmin) ||
-				(zmax <  radius && phit.z > zmax) || phi > phiMax)
-				return false;
-		}
+			(zmax <  radius && phit.z > zmax) || phi > phiMax)
+			return false;
+	}
 
+	if (dg) {
 		// Find parametric representation of sphere hit
 		float u = phi / phiMax;
 		float theta = acosf(Clamp(phit.z / radius, -1.f, 1.f));
