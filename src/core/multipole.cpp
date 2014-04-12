@@ -58,17 +58,19 @@ struct Profile {
 static float sampleProfile(const Profile& profile, float distanceSquared, float MultipoleProfileDataEntry::* dataField) {
 	const auto& data = profile.data;
 
-	float fSegId = distanceSquared * profile.rcpDsqSpacing;
-	uint32_t segId = (uint32_t)fSegId;
-	if (segId >= data.size() - 1)
+	double fSegId = distanceSquared * profile.rcpDsqSpacing;
+	// Use double to compare - prevent overflowing the uint32_t
+	if (fSegId > (double)(data.size() - 1))
 		return 0.f; // ensure integral convergence
 
+	uint32_t segId = (uint32_t)fSegId;
+
 	// segId points to the segment containing dsq
-	float lerpAmount = fSegId - (float)segId;
+	float lerpAmount = (float)(fSegId - (double)segId);
 	return Lerp(lerpAmount, data[segId].*dataField, data[segId + 1].*dataField);
 }
 
-static SampledSpectrum sampleSpectralProfile(const Profile spectralProfile[nSpectralSamples], float distanceSquared,
+static SampledSpectrum sampleSpectralProfile(const Profile* spectralProfile, float distanceSquared,
 	float MultipoleProfileDataEntry::* dataField)
 {
 	SampledSpectrum result;
