@@ -60,7 +60,7 @@ static float sampleProfile(const Profile& profile, float distanceSquared, float 
 
 	double fSegId = distanceSquared * profile.rcpDsqSpacing;
 	// Use double to compare - prevent overflowing the uint32_t
-	if (fSegId > (double)(data.size() - 1))
+	if (fSegId >= (double)(data.size() - 1))
 		return 0.f; // ensure integral convergence
 
 	uint32_t segId = (uint32_t)fSegId;
