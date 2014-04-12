@@ -78,7 +78,13 @@ public:
 		auto iter = paramMap.find(p);
 		if (iter != paramMap.end()) {
 			cache[iter->second].push_back(p);
+		} else {
+			allocator.free(p);
 		}
+	}
+	void safeClear() {
+		std::lock_guard<Mutex> lock(mtx);
+		clear();
 	}
 	void clear() {
 		for (auto& pair : cache)

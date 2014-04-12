@@ -452,6 +452,6 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
 }
 
 MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache() {
-	fftndrCache.clear();
-	mtxAlloc.clear();
+	fftndrCache.safeClear();
+	mtxAlloc.safeClear();
 }
