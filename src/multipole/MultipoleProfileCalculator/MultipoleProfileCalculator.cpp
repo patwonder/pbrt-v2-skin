@@ -190,6 +190,10 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 			}
 		}
 	}
+	if (thickness == 0.f) {
+		// fix for the central point
+		profile.reflectance[center][center] = profile.transmittance[center][center] = 0.;
+	}
 	if (lerp < 1.) {
 		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
 			for (uint32 sampleCol = sampleRow; sampleCol <= extent; sampleCol++) {
