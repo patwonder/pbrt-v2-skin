@@ -945,6 +945,9 @@
     <ClInclude Include="..\core\layer.h">
       <Filter>Header Files\core</Filter>
     </ClInclude>
+    <ClInclude Include="..\renderers\batchmcprofile.h">
+      <Filter>Header Files\renderers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\ilmbase-1.0.2\half.cpp">
@@ -1737,6 +1740,9 @@
       <Filter>Source Files\materials</Filter>
     </ClCompile>
     <ClCompile Include="..\renderers\mcprofile.cpp">
+      <Filter>Source Files\renderers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\renderers\batchmcprofile.cpp">
       <Filter>Source Files\renderers</Filter>
     </ClCompile>
   </ItemGroup>

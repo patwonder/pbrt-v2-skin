@@ -256,6 +256,7 @@
     <ClInclude Include="..\materials\translucent.h" />
     <ClInclude Include="..\materials\uber.h" />
     <ClInclude Include="..\renderers\aggregatetest.h" />
+    <ClInclude Include="..\renderers\batchmcprofile.h" />
     <ClInclude Include="..\renderers\createprobes.h" />
     <ClInclude Include="..\renderers\mcprofile.h" />
     <ClInclude Include="..\renderers\metropolis.h" />
@@ -1225,6 +1226,7 @@
     <ClCompile Include="..\materials\translucent.cpp" />
     <ClCompile Include="..\materials\uber.cpp" />
     <ClCompile Include="..\renderers\aggregatetest.cpp" />
+    <ClCompile Include="..\renderers\batchmcprofile.cpp" />
     <ClCompile Include="..\renderers\createprobes.cpp" />
     <ClCompile Include="..\renderers\metropolis.cpp" />
     <ClCompile Include="..\renderers\profilefit.cpp" />

@@ -1,8 +1,8 @@
 
 /*
-    pbrt source code Copyright(c) 1998-2012 Matt Pharr and Greg Humphreys.
+    Copyright(c) 2013-2014 Yifan Wu.
 
-    This file is part of pbrt.
+    This file is part of fork of pbrt (pbrt-v2-skin).
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are
@@ -29,53 +29,40 @@
 
  */
 
-#if defined(_MSC_VER)
 #pragma once
-#endif
 
-#ifndef PBRT_CORE_PROGRESSREPORTER_H
-#define PBRT_CORE_PROGRESSREPORTER_H
-
-// core/progressreporter.h*
 #include "pbrt.h"
+#include "renderer.h"
+#include "layer.h"
 
-// IProgressReporter Interface
-class IProgressReporter {
+class BatchMCProfileRenderer : public Renderer {
 public:
-    // IProgressReporter Public Methods
-    virtual ~IProgressReporter() = 0;
-	virtual void Update(int num = 1) {};
-	virtual void Done() {};
-};
-
-// PseudoProgressReporter Interface
-class PseudoProgressReporter : public IProgressReporter {
-public:
-	static IProgressReporter& GetInstance() { return instance; }
+	// BatchMCProfileRenderer Public Methods
+	BatchMCProfileRenderer(const Layer* layers, int nLayers, float mfpRange,
+		int segments, uint64_t photons, float thicknessMin, float thicknessMax,
+		int thicknessSegments, string filename)
+		: layers(layers, layers + nLayers), mfpRange(mfpRange), nSegments(segments),
+		  thicknessMin(thicknessMin), thicknessMax(thicknessMax),
+		  nThicknessSegments(thicknessSegments), nPhotons(photons), filename(filename)
+	{
+	}
+	void Render(const Scene* scene) override;
+	Spectrum Li(const Scene* scene, const RayDifferential& ray,
+		const Sample* sample, RNG& rng, MemoryArena& arena,
+		Intersection* isect, Spectrum* T) const override;
+	Spectrum Transmittance(const Scene* scene, const RayDifferential& ray,
+		const Sample* sample, RNG& rng, MemoryArena& arena) const override;
 private:
-	static PseudoProgressReporter instance;
+	// BatchMCProfileRenderer Private Data
+	vector<Layer> layers;
+	float mfpRange;
+	int nSegments;
+	float thicknessMin, thicknessMax;
+	int nThicknessSegments;
+	uint64_t nPhotons;
+	string filename;
+	
+	// BatchMCProfileRenderer Private Methods
 };
 
-// ProgressReporter Declarations
-class ProgressReporter : public IProgressReporter {
-public:
-    // ProgressReporter Public Methods
-    ProgressReporter(int totalWork, const string &title,
-                     int barLength = -1);
-    ~ProgressReporter();
-    void Update(int num = 1) override;
-    void Done() override;
-private:
-    // ProgressReporter Private Data
-    const int totalWork;
-    int workDone, plussesPrinted, totalPlusses;
-    Timer *timer;
-    FILE *outFile;
-    char *buf, *curSpace;
-    Mutex *mutex;
-};
-
-
-extern int TerminalWidth();
-
-#endif // PBRT_CORE_PROGRESSREPORTER_H
+BatchMCProfileRenderer* CreateBatchMCProfileRenderer(const ParamSet& params);

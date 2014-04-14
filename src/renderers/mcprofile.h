@@ -49,13 +49,32 @@ struct MCProfileEntry {
 
 typedef vector<MCProfileEntry> MCProfile;
 
+struct MCProfileResult {
+	double totalMCReflectance;
+	double totalMCTransmittance;
+	double totalNoLerpReflectance;
+	double totalNoLerpTransmittance;
+	double totalLerpReflectance;
+	double totalLerpTransmittance;
+
+	MCProfileResult() {
+		totalMCReflectance = 0.;
+		totalMCTransmittance = 0.;
+		totalNoLerpReflectance = 0.;
+		totalNoLerpTransmittance = 0.;
+		totalLerpReflectance = 0.;
+		totalLerpTransmittance = 0.;
+	}
+};
+
 class MonteCarloProfileRenderer : public Renderer {
 public:
 	// MonteCarloProfileRenderer Public Methods
 	MonteCarloProfileRenderer(const Layer* layers, int nLayers, float mfpRange,
-		int segments, uint64_t photons, string filename)
+		int segments, uint64_t photons, string filename,
+		bool noClearCache = false, bool silent = false)
 		: layers(layers, layers + nLayers), mfpRange(mfpRange), nSegments(segments),
-		  nPhotons(photons), filename(filename)
+		  nPhotons(photons), filename(filename), noClearCache(noClearCache), silent(silent)
 	{
 	}
 	void Render(const Scene* scene) override;
@@ -64,6 +83,9 @@ public:
 		Intersection* isect, Spectrum* T) const override;
 	Spectrum Transmittance(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena) const override;
+	MCProfileResult GetResult() const { return result; }
+
+	static void ClearCache();
 private:
 	// MonteCarloProfileRenderer Private Data
 	vector<Layer> layers;
@@ -71,6 +93,10 @@ private:
 	int nSegments;
 	string filename;
 	uint64_t nPhotons;
+	bool noClearCache;
+	bool silent;
+	
+	MCProfileResult result;
 
 	// MonteCarloProfileRenderer Private Methods
 };

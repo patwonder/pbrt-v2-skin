@@ -43,6 +43,9 @@
 #include <errno.h>
 #endif // !PBRT_IS_WINDOWS
 
+IProgressReporter::~IProgressReporter() {}
+PseudoProgressReporter PseudoProgressReporter::instance;
+
 // ProgressReporter Method Definitions
 ProgressReporter::ProgressReporter(int tw, const string &title, int barLength)
     : totalWork(tw) {

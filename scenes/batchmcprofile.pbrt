@@ -1,0 +1,12 @@
+# layer: 4 parameters consisting of mua, musp, ior and thickness
+Renderer "batchmcprofile"
+         # "layer layers" [ 13.8629 19.4879 1.4 0.01 1.6 19.4879 1.45 0.2 ]
+         "layer layers" [ 0.05 0.95 1.0 20 ]
+         "float mfprange" 20.0 # gather samples within 16 mean free paths
+         "integer segments" 1024 # number of segments within mfprange
+         "float thicknessrange" [ 0 2 ]
+         "integer thicknesssegments" 1024
+         "string photons" "100000000" # number of photons to trace
+         "string filename" "batchmcoutput.txt" # output file
+WorldBegin
+WorldEnd

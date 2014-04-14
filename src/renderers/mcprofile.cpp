@@ -196,7 +196,7 @@ class ProfileRendererTask : public Task {
 public:
 	ProfileRendererTask(const MiniScene* scene, MCProfile& profile,
 		uint64_t photons, double extent, int segments, Mutex& mtx,
-		ProgressReporter& pr, int taskId)
+		IProgressReporter& pr, int taskId)
 		: scene(scene), profile(profile), nPhotons(photons),
 		  extent(extent), nSegments(segments), mutex(mtx),
 		  reporter(pr), taskId(taskId)
@@ -211,7 +211,7 @@ private:
 	double extent;
 	int nSegments;
 	Mutex& mutex;
-	ProgressReporter& reporter;
+	IProgressReporter& reporter;
 	int taskId;
 
 	void TraceSinglePhoton(MCProfile& profile, RNG& rng);
@@ -353,7 +353,7 @@ class MultipoleReferenceTask : public Task {
 public:
 	MultipoleReferenceTask(const Layer* pLayer, int nLayers, MCProfile& profile,
 		double* ref, double* trans, double extent, int nSegments, bool lerpOnThinSlab,
-		ProgressReporter& pr)
+		IProgressReporter& pr)
 		: layers(pLayer, pLayer + nLayers), profile(profile), ref(ref), trans(trans),
 		  extent(extent), nSegments(nSegments), lerpOnThinSlab(lerpOnThinSlab),
 		  reporter(pr)
@@ -370,7 +370,7 @@ private:
 	double extent;
 	int nSegments;
 	bool lerpOnThinSlab;
-	ProgressReporter& reporter;
+	IProgressReporter& reporter;
 };
 
 
@@ -437,15 +437,17 @@ static ostream& printProfile(ostream& os, const MCProfile& p, const double MCPro
 
 
 void MonteCarloProfileRenderer::Render(const Scene* scene) {
-	Info("Monte Carlo Profile Renderer");
-	for (int i = 0; i < layers.size(); i++) {
-		const Layer& l = layers[i];
-		Info("Layer %d: mua=%f, musp=%f, ior=%f, thickness=%f",
-			i, l.mua, l.musp, l.ior, l.thickness);
+	if (!silent) {
+		Info("Monte-Carlo Profile Renderer");
+		for (int i = 0; i < layers.size(); i++) {
+			const Layer& l = layers[i];
+			Info("Layer %d: mua=%f, musp=%f, ior=%f, thickness=%f",
+				i, l.mua, l.musp, l.ior, l.thickness);
+		}
+		Info("Gather samples within %f mean-free-paths, divided into %d segments.",
+			mfpRange, nSegments);
+		Info("Output filename: %s", filename.c_str());
 	}
-	Info("Gather samples within %f mean-free-paths, divided into %d segments.",
-		mfpRange, nSegments);
-	Info("Output filename: %s", filename.c_str());
 
 	// Compute extent of the profile
 	double mfpTotal = 0.;
@@ -465,18 +467,20 @@ void MonteCarloProfileRenderer::Render(const Scene* scene) {
 	Mutex* mutex = Mutex::Create();
 	vector<Task*> tasks;
 	tasks.reserve(nTasks);
-	ProgressReporter reporter(nTasks, "Random Walk");
+	IProgressReporter* reporter =
+		silent ? &PseudoProgressReporter::GetInstance() : new ProgressReporter(nTasks, "Random Walk");
 	for (int i = 0; i < nTasks; i++) {
 		tasks.push_back(new ProfileRendererTask(&miniScene, profile,
 			(uint64_t)(i + 1) * nPhotons / nTasks - (uint64_t)i * nPhotons / nTasks,
-			extent, nSegments, *mutex, reporter, i));
+			extent, nSegments, *mutex, *reporter, i));
 	}
 	EnqueueTasks(tasks);
 	WaitForAllTasks();
 	for (Task* task : tasks)
 		delete task;
 	Mutex::Destroy(mutex);
-	reporter.Done();
+	reporter->Done();
+	if (!silent) delete reporter;
 
 	// Compute reference profiles genereated by multipole
 	MCProfile noLerpProfile, lerpProfile;
@@ -484,23 +488,27 @@ void MonteCarloProfileRenderer::Render(const Scene* scene) {
 	double totalNoLerpTransmittance = 0.;
 	double totalLerpReflectance = 0.;
 	double totalLerpTransmittance = 0.;
-	ProgressReporter multipoleReporter(2, "Profile");
+	IProgressReporter* multipoleReporter =
+		silent ? &PseudoProgressReporter::GetInstance() : new ProgressReporter(2, "Profile");
 	vector<Task*> multipoleTasks;
 	multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
 		noLerpProfile, &totalNoLerpReflectance, &totalNoLerpTransmittance,
-		extent, nSegments, false, multipoleReporter));
+		extent, nSegments, false, *multipoleReporter));
 	multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
 		lerpProfile, &totalLerpReflectance, &totalLerpTransmittance,
-		extent, nSegments, true, multipoleReporter));
+		extent, nSegments, true, *multipoleReporter));
 	EnqueueTasks(multipoleTasks);
 	WaitForAllTasks();
 	for (Task* task : multipoleTasks)
 		delete task;
-	MPC_ClearCache();
-	multipoleReporter.Done();
+	if (!noClearCache)
+		ClearCache();
+	multipoleReporter->Done();
+	if (!silent) delete multipoleReporter;
 
 	// Normalize result
-	Info("Gathering results...");
+	if (!silent)
+		Info("Gathering results...");
 	double totalReflectance = 0.;
 	double totalTransmittance = 0.;
 	for (int i = 0; i < nSegments; i++) {
@@ -518,49 +526,59 @@ void MonteCarloProfileRenderer::Render(const Scene* scene) {
 	totalReflectance /= (double)nPhotons;
 	totalTransmittance /= (double)nPhotons;
 
+	// Record result in data members
+	result.totalMCReflectance = totalReflectance;
+	result.totalMCTransmittance = totalTransmittance;
+	result.totalNoLerpReflectance = totalNoLerpReflectance;
+	result.totalNoLerpTransmittance = totalNoLerpTransmittance;
+	result.totalLerpReflectance = totalLerpReflectance;
+	result.totalLerpTransmittance = totalLerpTransmittance;
+
 	// Output result
-	ofstream out(filename, ios::out | ios::trunc);
-	if (!out) {
-		Error("Failed to open output file: %s", filename.c_str());
-		abort();
+	if (filename != "") {
+		ofstream out(filename, ios::out | ios::trunc);
+		if (!out) {
+			Error("Failed to open output file: %s", filename.c_str());
+			abort();
+		}
+		// header
+		out << "Name\tTotal";
+		vector<double> rarray;
+		rarray.reserve(nSegments);
+		for (int i = 0; i < nSegments; i++) {
+			double distance = (i + .5) * extent / nSegments;
+			out << "\t" << distance;
+			rarray.push_back(distance);
+		}
+		out << endl;
+		// content
+		out << "Monte-Carlo Reflectance\t" << totalReflectance << "\t";
+		printProfile(out, profile, &MCProfileEntry::reflectance) << endl;
+		out << "Monte-Carlo Transmittance\t" << totalTransmittance << "\t";
+		printProfile(out, profile, &MCProfileEntry::transmittance) << endl;
+		out << "Multipole Reflectance\t" << totalNoLerpReflectance << "\t";
+		printProfile(out, noLerpProfile, &MCProfileEntry::reflectance) << endl;
+		out << "Multipole Transmittance\t" << totalNoLerpTransmittance << "\t";
+		printProfile(out, noLerpProfile, &MCProfileEntry::transmittance) << endl;
+		out << "Lerped Reflectance\t" << totalLerpReflectance << "\t";
+		printProfile(out, lerpProfile, &MCProfileEntry::reflectance) << endl;
+		out << "Lerped Transmittance\t" << totalLerpTransmittance << "\t";
+		printProfile(out, lerpProfile, &MCProfileEntry::transmittance) << endl;
+		// print again as r*Rd(r)
+		out << "Monte-Carlo Reflectance\t" << totalReflectance << "\t";
+		printProfile(out, profile, &MCProfileEntry::reflectance, &rarray) << endl;
+		out << "Monte-Carlo Transmittance\t" << totalTransmittance << "\t";
+		printProfile(out, profile, &MCProfileEntry::transmittance, &rarray) << endl;
+		out << "Multipole Reflectance\t" << totalNoLerpReflectance << "\t";
+		printProfile(out, noLerpProfile, &MCProfileEntry::reflectance, &rarray) << endl;
+		out << "Multipole Transmittance\t" << totalNoLerpTransmittance << "\t";
+		printProfile(out, noLerpProfile, &MCProfileEntry::transmittance, &rarray) << endl;
+		out << "Lerped Reflectance\t" << totalLerpReflectance << "\t";
+		printProfile(out, lerpProfile, &MCProfileEntry::reflectance, &rarray) << endl;
+		out << "Lerped Transmittance\t" << totalLerpTransmittance << "\t";
+		printProfile(out, lerpProfile, &MCProfileEntry::transmittance, &rarray) << endl;
+		out.close();
 	}
-	// header
-	out << "Name\tTotal";
-	vector<double> rarray;
-	rarray.reserve(nSegments);
-	for (int i = 0; i < nSegments; i++) {
-		double distance = (i + .5) * extent / nSegments;
-		out << "\t" << distance;
-		rarray.push_back(distance);
-	}
-	out << endl;
-	// content
-	out << "Monte-Carlo Reflectance\t" << totalReflectance << "\t";
-	printProfile(out, profile, &MCProfileEntry::reflectance) << endl;
-	out << "Monte-Carlo Transmittance\t" << totalTransmittance << "\t";
-	printProfile(out, profile, &MCProfileEntry::transmittance) << endl;
-	out << "Multipole Reflectance\t" << totalNoLerpReflectance << "\t";
-	printProfile(out, noLerpProfile, &MCProfileEntry::reflectance) << endl;
-	out << "Multipole Transmittance\t" << totalNoLerpTransmittance << "\t";
-	printProfile(out, noLerpProfile, &MCProfileEntry::transmittance) << endl;
-	out << "Lerped Reflectance\t" << totalLerpReflectance << "\t";
-	printProfile(out, lerpProfile, &MCProfileEntry::reflectance) << endl;
-	out << "Lerped Transmittance\t" << totalLerpTransmittance << "\t";
-	printProfile(out, lerpProfile, &MCProfileEntry::transmittance) << endl;
-	// print again as r*Rd(r)
-	out << "Monte-Carlo Reflectance\t" << totalReflectance << "\t";
-	printProfile(out, profile, &MCProfileEntry::reflectance, &rarray) << endl;
-	out << "Monte-Carlo Transmittance\t" << totalTransmittance << "\t";
-	printProfile(out, profile, &MCProfileEntry::transmittance, &rarray) << endl;
-	out << "Multipole Reflectance\t" << totalNoLerpReflectance << "\t";
-	printProfile(out, noLerpProfile, &MCProfileEntry::reflectance, &rarray) << endl;
-	out << "Multipole Transmittance\t" << totalNoLerpTransmittance << "\t";
-	printProfile(out, noLerpProfile, &MCProfileEntry::transmittance, &rarray) << endl;
-	out << "Lerped Reflectance\t" << totalLerpReflectance << "\t";
-	printProfile(out, lerpProfile, &MCProfileEntry::reflectance, &rarray) << endl;
-	out << "Lerped Transmittance\t" << totalLerpTransmittance << "\t";
-	printProfile(out, lerpProfile, &MCProfileEntry::transmittance, &rarray) << endl;
-	out.close();
 }
 
 Spectrum MonteCarloProfileRenderer::Li(const Scene* scene, const RayDifferential& ray,
@@ -574,6 +592,10 @@ Spectrum MonteCarloProfileRenderer::Transmittance(const Scene* scene, const RayD
 	const Sample* sample, RNG& rng, MemoryArena& arena) const
 {
 	return Spectrum(0.f);
+}
+
+void MonteCarloProfileRenderer::ClearCache() {
+	MPC_ClearCache();
 }
 
 MonteCarloProfileRenderer* CreateMonteCarloProfileRenderer(const ParamSet& params) {

@@ -62,7 +62,11 @@ void exitBackgroundMode() {
 
 // main program
 int main(int argc, char *argv[]) {
-#ifdef _DEBUG
+#ifdef PBRT_IS_WINDOWS
+	_set_abort_behavior(0, _CALL_REPORTFAULT);
+#endif
+
+#ifndef NDEBUG
 	// Wait for debugger to attach
 	printf("Please attach debugger. Press Enter to continue...");
 	getchar();
@@ -84,7 +88,7 @@ int main(int argc, char *argv[]) {
 		else if (!strcmp(argv[i], "--foreground")) options.foreground = true;
         else filenames.push_back(argv[i]);
     }
-#ifdef _DEBUG
+#ifndef NDEBUG
 	// Use single thread for debugging
 	//options.nCores = 1;
 	//Warning("Using 1 working thread for debugging sessions.");

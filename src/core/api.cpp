@@ -98,6 +98,7 @@
 #include "renderers/surfacepoints.h"
 #include "renderers/profilefit.h"
 #include "renderers/mcprofile.h"
+#include "renderers/batchmcprofile.h"
 #include "samplers/adaptive.h"
 #include "samplers/bestcandidate.h"
 #include "samplers/halton.h"
@@ -1266,6 +1267,10 @@ Renderer *RenderOptions::MakeRenderer() const {
 	}
 	else if (RendererName == "montecarloprofile") {
 		renderer = CreateMonteCarloProfileRenderer(RendererParams);
+		RendererParams.ReportUnused();
+	}
+	else if (RendererName == "batchmcprofile") {
+		renderer = CreateBatchMCProfileRenderer(RendererParams);
 		RendererParams.ReportUnused();
 	}
     else {

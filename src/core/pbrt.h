@@ -114,6 +114,7 @@ typedef unsigned __int64 uint64_t;
 // Global Forward Declarations
 class RNG;
 class Timer;
+class IProgressReporter;
 class ProgressReporter;
 class MemoryArena;
 template <typename T, int logBlockSize = 2> class BlockedArray;
