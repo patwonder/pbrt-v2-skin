@@ -35,6 +35,7 @@
 #include "multipole/MultipoleProfileCalculator/MultipoleProfileCalculator.h"
 #include "parallel.h"
 #include "progressreporter.h"
+#include "renderers/mcprofile.h"
 
 
 struct MultipoleProfileDataEntry {
@@ -157,7 +158,8 @@ class MultipoleProfileTask : public Task {
 public:
 	MultipoleProfileTask(int spectralChannel, int layers, const SampledSpectrum mua[],
 		const SampledSpectrum musp[], float et[], float thickness[],
-		MultipoleProfileData* pData, ProgressReporter& pr) : reporter(pr)
+		MultipoleProfileData* pData, ProgressReporter& pr, bool lerpOnThinSlab)
+		: reporter(pr)
 	{
 		sc = spectralChannel;
 		this->layers = layers;
@@ -166,6 +168,7 @@ public:
 		this->et = et;
 		this->thickness = thickness;
 		this->pData = pData;
+		this->lerpOnThinSlab = lerpOnThinSlab;
 	}
 
 	void Run() override;
@@ -178,13 +181,14 @@ private:
 	float* thickness;
 	MultipoleProfileData* pData;
 	ProgressReporter& reporter;
+	bool lerpOnThinSlab;
 };
 
 void MultipoleProfileTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[layers];
 	MPC_Options options;
 	options.desiredLength = 512;
-	options.lerpOnThinSlab = true;
+	options.lerpOnThinSlab = lerpOnThinSlab;
 
 	// Compute mfp
 	float mfpTotal = 0.f;
@@ -237,8 +241,81 @@ void MultipoleProfileTask::Run() {
 }
 
 
+static void ComputeMonteCarloProfile(int nLayers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
+	MultipoleProfileData* pData)
+{
+	ProgressReporter reporter(nSpectralSamples, "MC Profile");
+
+	// Prepare layers
+	vector<Layer> layers(nLayers);
+	for (int i = 0; i < nLayers; i++) {
+		layers[i].ior = et[i];
+		layers[i].thickness = thickness[i];
+	}
+
+	// Compute spectral MC profile
+	for (int sc = 0; sc < nSpectralSamples; sc++) {
+		// Compute mfp
+		double mfpTotal = 0.;
+		for (int i = 0; i < nLayers; i++) {
+			layers[i].mua = mua[i][sc];
+			layers[i].musp = musp[i][sc];
+			mfpTotal += 1. / (mua[i][sc] + musp[i][sc]);
+		}
+		double mfp = mfpTotal / (double)layers.size();
+
+		// Do random walk
+		const uint32 nSegments = 4096;
+		const double mfpRange = 12.0f;
+		double extent = mfpRange * mfp;
+		MonteCarloProfileRenderer renderer(&layers[0], nLayers, mfpRange, nSegments, 10000000, "", true, true, true);
+		renderer.Render(NULL);
+		MCProfile mcprofile = renderer.GetProfile();
+
+		// Convert to MPC_Output*
+		MPC_Output* pOutput;
+		MPC_CreateOutput(nSegments, &pOutput);
+		for (int i = 0; i < nSegments; i++) {
+			pOutput->pDistanceSquared[i] = (float)(((i + 0.5) * extent / (double)nSegments)
+										 * ((i + 0.5) * extent / (double)nSegments));
+			pOutput->pReflectance[i] = mcprofile[i].reflectance;
+			pOutput->pTransmittance[i] = mcprofile[i].transmittance;
+		}
+		pOutput->totalReflectance = renderer.GetResult().totalMCReflectance;
+		pOutput->totalTransmittance = renderer.GetResult().totalMCTransmittance;
+		MPC_ResampleForUniformDistanceSquaredDistribution(pOutput, nSegments * 16);
+
+		// Collect result
+		Profile& profile = pData->spectralProfile[sc];
+		uint32 length = pOutput->length;
+		profile.dsqSpacing = pOutput->pDistanceSquared[length - 1] / (float)(length - 1);
+		profile.rcpDsqSpacing = (float)(length - 1) / pOutput->pDistanceSquared[length - 1];
+		profile.totalReflectance = pOutput->totalReflectance;
+		profile.totalTransmittance = pOutput->totalTransmittance;
+		auto& data = profile.data;
+		data.clear();
+		data.reserve(length);
+
+		for (uint32 ri = 0; ri < length; ri++) {
+			MultipoleProfileDataEntry entry;
+			entry.reflectance = pOutput->pReflectance[ri];
+#ifdef SAMPLE_TRANSMITTANCE
+			entry.transmittance = pOutput->pTransmittance[ri];
+#endif
+			data.push_back(entry);
+		}
+
+		MPC_FreeOutput(pOutput);
+		reporter.Update();
+	}
+
+	MonteCarloProfileRenderer::ClearCache();
+	reporter.Done();
+}
+
+
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData** oppData)
+	MultipoleProfileData** oppData, bool useMonteCarlo, bool lerpOnThinSlab)
 {
 	if (!oppData) {
 		Error("Cannot output multipole profile.");
@@ -246,20 +323,24 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 
 	MultipoleProfileData* pData = *oppData = new MultipoleProfileData;
 
-	int nTasks = nSpectralSamples;
-    ProgressReporter reporter(nTasks, "Profile");
-	vector<Task*> profileTasks;
-	profileTasks.reserve(nTasks);
-	for (int i = 0; i < nTasks; ++i) {
-		profileTasks.push_back(new MultipoleProfileTask(i, layers, mua,
-			musp, et, thickness, pData, reporter));
+	if (useMonteCarlo) {
+		ComputeMonteCarloProfile(layers, mua, musp, et, thickness, pData);
+	} else {
+		int nTasks = nSpectralSamples;
+		ProgressReporter reporter(nTasks, "Profile");
+		vector<Task*> profileTasks;
+		profileTasks.reserve(nTasks);
+		for (int i = 0; i < nTasks; ++i) {
+			profileTasks.push_back(new MultipoleProfileTask(i, layers, mua,
+				musp, et, thickness, pData, reporter, lerpOnThinSlab));
+		}
+		EnqueueTasks(profileTasks);
+		WaitForAllTasks();
+		for (Task* task : profileTasks)
+			delete task;
+		MPC_ClearCache();
+		reporter.Done();
 	}
-	EnqueueTasks(profileTasks);
-	WaitForAllTasks();
-	for (Task* task : profileTasks)
-		delete task;
-	MPC_ClearCache();
-	reporter.Done();
 
 	Spectrum tr = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
 		&MultipoleProfileDataEntry::reflectance));

@@ -72,9 +72,10 @@ public:
 	// MonteCarloProfileRenderer Public Methods
 	MonteCarloProfileRenderer(const Layer* layers, int nLayers, float mfpRange,
 		int segments, uint64_t photons, string filename,
-		bool noClearCache = false, bool silent = false)
+		bool noClearCache = false, bool silent = false, bool noCompare = false)
 		: layers(layers, layers + nLayers), mfpRange(mfpRange), nSegments(segments),
-		  nPhotons(photons), filename(filename), noClearCache(noClearCache), silent(silent)
+		  nPhotons(photons), filename(filename), noClearCache(noClearCache), silent(silent),
+		  noCompare(noCompare)
 	{
 	}
 	void Render(const Scene* scene) override;
@@ -83,7 +84,8 @@ public:
 		Intersection* isect, Spectrum* T) const override;
 	Spectrum Transmittance(const Scene* scene, const RayDifferential& ray,
 		const Sample* sample, RNG& rng, MemoryArena& arena) const override;
-	MCProfileResult GetResult() const { return result; }
+	const MCProfileResult& GetResult() const { return result; }
+	const MCProfile& GetProfile() const { return resultProfile; }
 
 	static void ClearCache();
 private:
@@ -95,8 +97,10 @@ private:
 	uint64_t nPhotons;
 	bool noClearCache;
 	bool silent;
+	bool noCompare;
 	
 	MCProfileResult result;
+	MCProfile resultProfile;
 
 	// MonteCarloProfileRenderer Private Methods
 };

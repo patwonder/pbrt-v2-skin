@@ -222,8 +222,10 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
         Spectrum Mo = octree->Mo(octreeBounds, p, n, mr, maxError);
         FresnelDielectric fresnel(1.f, bssrdf->eta(0));
         Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
-        float Fdt = 1.f - Fdr(bssrdf->eta(0));
-		L += (INV_PI * Ft) * (Fdt * Mo) * bssrdf->albedo();
+		// Bypass outgoing fresnel term if it's a Monte-Carlo profile,
+		// because the term is already included in the profile
+        float Fdt = bssrdf->IsMonteCarlo() ? 1.f : (1.f - Fdr(bssrdf->eta(0)));
+		L += ((INV_PI * Ft) * (Fdt * Mo) * bssrdf->albedo()).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
     L += UniformSampleAllLights(scene, renderer, arena, p, n,

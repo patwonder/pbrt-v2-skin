@@ -824,6 +824,10 @@ Spectrum MultipoleBSSRDF::sigma_prime_s(int layer) const {
 	return pData->sigma_prime_s(layer);
 }
 
+bool MultipoleBSSRDF::IsMonteCarlo() const {
+	return pData->IsMonteCarlo();
+}
+
 Spectrum MultipoleBSSRDF::reflectance(float distanceSquared) const {
 	return pData->reflectance(distanceSquared);
 }

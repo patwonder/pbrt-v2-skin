@@ -579,6 +579,7 @@ public:
     float eta(int layer) const;
     Spectrum sigma_a(int layer) const;
     Spectrum sigma_prime_s(int layer) const;
+	bool IsMonteCarlo() const;
 	Spectrum albedo() const { return al; }
 
 	Spectrum reflectance(float distanceSquared) const;

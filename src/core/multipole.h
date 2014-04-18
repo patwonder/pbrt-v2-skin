@@ -37,7 +37,7 @@ class MultipoleBSSRDFData {
 public:
 	// MultipoleBSSRDF Public Methods
     MultipoleBSSRDFData(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
-		const MultipoleProfileData* pData) {
+		const MultipoleProfileData* pData, bool isMonteCarlo = false) {
 		if (layers > MAX_LAYERS)
 			layers = MAX_LAYERS;
 		nLayers = layers;
@@ -48,12 +48,14 @@ public:
 			d[i] = thickness[i];
 		}
 		this->pData = pData;
+		this->isMonteCarlo = isMonteCarlo;
 	}
 	int numLayers() const { return nLayers; }
 	float thickness(int layer) const { return d[layer]; }
     float eta(int layer) const { return e[layer]; }
     Spectrum sigma_a(int layer) const { return sig_a[layer]; }
     Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
+	bool IsMonteCarlo() const { return isMonteCarlo; }
 
 	Spectrum reflectance(float distanceSquared) const;
 	Spectrum transmittance(float distanceSquared) const;
@@ -70,8 +72,9 @@ private:
     Spectrum sig_a[MAX_LAYERS];
 	Spectrum sigp_s[MAX_LAYERS];
 	const MultipoleProfileData* pData;
+	bool isMonteCarlo;
 };
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-							 MultipoleProfileData** oppData);
+							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);

@@ -38,7 +38,8 @@
 
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, bool generateProfile)
+	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
+	bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
 	  bumpMap(bumpMap), albedo(albedo)
 {
@@ -82,8 +83,8 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			thickness[i] = lps[i].thickness;
 		}
 
-		ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData);
-		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData);
+		ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab);
+		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData, useMonteCarloProfile);
 	} else {
 		preparedBSSRDFData = NULL;
 	}
@@ -212,6 +213,8 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	Reference<Texture<Spectrum> > albedo = mp.GetSpectrumTexture("albedo", Spectrum(1.f));
 	bool generateProfile = ps.FindOneBool("genprofile", true);
+	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
+	bool lerpOnThinSlab = ps.FindOneBool("lerponthinslab", true);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
-		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, generateProfile);
+		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, generateProfile, useMonteCarloProfile, lerpOnThinSlab);
 }

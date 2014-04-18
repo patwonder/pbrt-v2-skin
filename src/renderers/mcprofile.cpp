@@ -488,23 +488,25 @@ void MonteCarloProfileRenderer::Render(const Scene* scene) {
 	double totalNoLerpTransmittance = 0.;
 	double totalLerpReflectance = 0.;
 	double totalLerpTransmittance = 0.;
-	IProgressReporter* multipoleReporter =
-		silent ? &PseudoProgressReporter::GetInstance() : new ProgressReporter(2, "Profile");
-	vector<Task*> multipoleTasks;
-	multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
-		noLerpProfile, &totalNoLerpReflectance, &totalNoLerpTransmittance,
-		extent, nSegments, false, *multipoleReporter));
-	multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
-		lerpProfile, &totalLerpReflectance, &totalLerpTransmittance,
-		extent, nSegments, true, *multipoleReporter));
-	EnqueueTasks(multipoleTasks);
-	WaitForAllTasks();
-	for (Task* task : multipoleTasks)
-		delete task;
-	if (!noClearCache)
-		ClearCache();
-	multipoleReporter->Done();
-	if (!silent) delete multipoleReporter;
+	if (filename != "" || !noCompare) {
+		IProgressReporter* multipoleReporter =
+			silent ? &PseudoProgressReporter::GetInstance() : new ProgressReporter(2, "Profile");
+		vector<Task*> multipoleTasks;
+		multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
+			noLerpProfile, &totalNoLerpReflectance, &totalNoLerpTransmittance,
+			extent, nSegments, false, *multipoleReporter));
+		multipoleTasks.push_back(new MultipoleReferenceTask(&layers[0], (int)layers.size(),
+			lerpProfile, &totalLerpReflectance, &totalLerpTransmittance,
+			extent, nSegments, true, *multipoleReporter));
+		EnqueueTasks(multipoleTasks);
+		WaitForAllTasks();
+		for (Task* task : multipoleTasks)
+			delete task;
+		if (!noClearCache)
+			ClearCache();
+		multipoleReporter->Done();
+		if (!silent) delete multipoleReporter;
+	}
 
 	// Normalize result
 	if (!silent)
@@ -579,6 +581,8 @@ void MonteCarloProfileRenderer::Render(const Scene* scene) {
 		printProfile(out, lerpProfile, &MCProfileEntry::transmittance, &rarray) << endl;
 		out.close();
 	}
+
+	resultProfile = std::move(profile);
 }
 
 Spectrum MonteCarloProfileRenderer::Li(const Scene* scene, const RayDifferential& ray,

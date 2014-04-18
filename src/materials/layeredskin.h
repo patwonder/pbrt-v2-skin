@@ -43,7 +43,7 @@ public:
 		float_type nmperunit, const SkinCoefficients& coeff,
 		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
-		bool generateProfile);
+		bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab);
 	~LayeredSkin();
 
 	vector<float_type> GetLayerThickness() const override;

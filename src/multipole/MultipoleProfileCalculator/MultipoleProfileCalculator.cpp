@@ -164,6 +164,10 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 		lerp = (thickness < mfp2) ?
 			(1. - exp(-thickness * 2. / mfp2)) / (1. - exp(-2.)) : 1.;
 		//thickness = max(thickness, (float)mfp2);
+		// Ill-formed source placement when thickness less than 0.02 mfp
+		// We just set the minumum thickness to 0.02mfp
+		if (thickness < 0.01 * mfp2)
+			thickness = (float)(0.01 * mfp2);
 	}
 	uint32 length = profile.GetLength();
 	uint32 center = (length - 1) / 2;
@@ -189,10 +193,6 @@ void ComputeLayerProfile(const MPC_LayerSpec& spec, float iorUpper, float iorLow
 				profile.transmittance[center + sampleRow][center + sampleCol] += td;
 			}
 		}
-	}
-	if (thickness == 0.f) {
-		// fix for the central point
-		profile.reflectance[center][center] = profile.transmittance[center][center] = 0.;
 	}
 	if (lerp < 1.) {
 		for (uint32 sampleRow = 0; sampleRow <= extent; sampleRow++) {
@@ -458,4 +458,14 @@ MULTIPOLEPROFILECALCULATOR_API void MPC_FreeOutput(MPC_Output* pOutput) {
 MULTIPOLEPROFILECALCULATOR_API void MPC_ClearCache() {
 	fftndrCache.safeClear();
 	mtxAlloc.safeClear();
+}
+
+MULTIPOLEPROFILECALCULATOR_API void MPC_CreateOutput(uint32 length, MPC_Output** oppOutput) {
+	if (!oppOutput) return;
+
+	MPC_Output* pOutput = *oppOutput = new MPC_Output;
+	pOutput->length = length;
+	pOutput->pDistanceSquared = new float[length];
+	pOutput->pReflectance = new float[length];
+	pOutput->pTransmittance = new float[length];
 }
