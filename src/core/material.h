@@ -60,6 +60,7 @@ private:
 class Material : public ReferenceCounted {
 public:
     // Material Interface
+	Material() : materialId(nextMaterialId++) {}
     virtual BSDF *GetBSDF(const DifferentialGeometry &dgGeom,
                           const DifferentialGeometry &dgShading,
                           MemoryArena &arena) const = 0;
@@ -69,7 +70,7 @@ public:
         return NULL;
     }
 	virtual const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
-		const DifferentialGeometry &dgShading, MemoryArena &arena) const
+		const DifferentialGeometry &dgShading, MemoryArena &arena, bool bump = true) const
 	{
 		return NULL;
 	}
@@ -83,6 +84,11 @@ public:
 	virtual ~Material();
     static void Bump(const Reference<Texture<float> > &d, const DifferentialGeometry &dgGeom,
         const DifferentialGeometry &dgShading, DifferentialGeometry *dgBump);
+    // Material Public Data
+    const uint32_t materialId;
+protected:
+    // Material Protected Data
+    static uint32_t nextMaterialId;
 };
 
 

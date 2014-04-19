@@ -197,6 +197,7 @@ struct RenderOptions {
     mutable vector<VolumeRegion *> volumeRegions;
     map<string, vector<Reference<Primitive> > > instances;
     vector<Reference<Primitive> > *currentInstance;
+	vector<Reference<Material> > materials;
 };
 
 
@@ -415,6 +416,7 @@ Reference<Material> MakeMaterial(const string &name,
         Warning("Material \"%s\" unknown.", name.c_str());
     mp.ReportUnused();
     if (!material) Error("Unable to create material \"%s\"", name.c_str());
+	renderOptions->materials.push_back(material);
     return material;
 }
 
@@ -1212,9 +1214,12 @@ Scene *RenderOptions::MakeScene() {
     if (!accelerator)
         Severe("Unable to create \"bvh\" accelerator.");
     Scene *scene = new Scene(accelerator, lights, volumeRegion);
-    // Erase lights, and volume regions from _RenderOptions_
+	for (const Reference<Material>& mat : materials)
+		scene->materials.insert(std::make_pair(mat->materialId, mat));
+    // Erase lights, materials and volume regions from _RenderOptions_
     lights.erase(lights.begin(), lights.end());
     volumeRegions.erase(volumeRegions.begin(), volumeRegions.end());
+	materials.erase(materials.begin(), materials.end());
     return scene;
 }
 

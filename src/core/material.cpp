@@ -42,6 +42,7 @@
 Material::~Material() {
 }
 
+uint32_t Material::nextMaterialId = 0;
 
 void Material::Bump(const Reference<Texture<float> > &d,
                     const DifferentialGeometry &dgGeom,

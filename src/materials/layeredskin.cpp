@@ -145,9 +145,15 @@ BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
 
 
 const MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
-	const DifferentialGeometry &dgShading, MemoryArena &arena) const
+	const DifferentialGeometry &dgShading, MemoryArena &arena, bool bump) const
 {
-	Spectrum al = albedo->Evaluate(dgShading);
+	DifferentialGeometry dgs;
+	if (bump && bumpMap)
+		Bump(bumpMap, dgGeom, dgShading, &dgs);
+	else
+		dgs = dgShading;
+
+	Spectrum al = albedo->Evaluate(dgs);
 	return BSDF_ALLOC(arena, MultipoleBSSRDF)(preparedBSSRDFData, al);
 }
 

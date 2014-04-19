@@ -56,7 +56,7 @@ public:
 	const MultipoleBSSRDF* GetMultipoleBSSRDF(
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,
-		MemoryArena &arena) const override;
+		MemoryArena &arena, bool bump = true) const override;
 	bool HasSubsurfaceScattering() const override { return true; }
 	BumpMapping GetBumpMapping() const override {
 		return BumpMapping(bumpMap);

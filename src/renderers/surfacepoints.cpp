@@ -315,7 +315,7 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 	for (auto tessellatablePair : tessellatables) {
 		const Tessellatable* tessellatable = tessellatablePair.first;
 		const Material* mat = tessellatablePair.second;
-		tessellatable->TessellateSurfacePoints(minDist, mat->GetBumpMapping(), points, &pr);
+		tessellatable->TessellateSurfacePoints(minDist, mat->GetBumpMapping(), mat->materialId, points, &pr);
 	}
 	pr.Done();
 

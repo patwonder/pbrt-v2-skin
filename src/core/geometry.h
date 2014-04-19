@@ -135,7 +135,13 @@ public:
 
     // VectorBase Public Data
     scalar x, y, z;
+
+	// VectorBase Public Static Data
+	static const VectorBase Zero;
 };
+
+template<class scalar>
+const VectorBase<scalar> VectorBase<scalar>::Zero(Traits::zero(), Traits::zero(), Traits::zero());
 
 template <class scalar>
 class PointBase {
@@ -236,7 +242,13 @@ public:
 
     // PointBase Public Data
     scalar x, y, z;
+
+	// PointBase Public Static Data
+	static const PointBase Zero;
 };
+
+template<class scalar>
+const PointBase<scalar> PointBase<scalar>::Zero(Traits::zero(), Traits::zero(), Traits::zero());
 
 template <class scalar>
 class NormalBase {
@@ -335,7 +347,13 @@ public:
 
     // NormalBase Public Data
     scalar x, y, z;
+
+	// NormalBase Public Static Data
+	static const NormalBase Zero;
 };
+
+template<class scalar>
+const NormalBase<scalar> NormalBase<scalar>::Zero(Traits::zero(), Traits::zero(), Traits::zero());
 
 template <class scalar>
 class RayBase {

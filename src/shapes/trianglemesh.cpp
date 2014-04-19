@@ -185,7 +185,7 @@ struct BarycentricCoordinate {
 const BarycentricCoordinate BarycentricCoordinate::baryCentric(1.f / 3.f, 1.f / 3.f, 1.f / 3.f);
 
 void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bump,
-	vector<SurfacePoint>& points, ProgressReporter* pr) const
+	uint32_t materialId, vector<SurfacePoint>& points, ProgressReporter* pr) const
 {
 	// Assume tessellator splits a triangle into tf^2 pieces,
 	// That's roughtly 1 point per 1/2*(l/tf)^2 area (assume right triangles)
@@ -223,6 +223,9 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bum
 			triangle.GetDifferentialGeometries(bc, &dgGeom, &dgShading);
 			bump.Bump(dgGeom, dgShading, &dgBump);
 			sp.n = dgBump.nn;
+			sp.u = dgBump.u;
+			sp.v = dgBump.v;
+			sp.materialId = materialId;
 			// Compute triangle area
 			Point sv0 = bv0.Evaluate(v0, v1, v2);
 			Point sv1 = bv1.Evaluate(v0, v1, v2);

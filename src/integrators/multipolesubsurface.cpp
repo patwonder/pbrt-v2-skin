@@ -43,13 +43,13 @@ class IrradianceTask : public Task {
 public:
 	IrradianceTask(const Scene* sc, const Renderer* ren,
 		const Camera* c, ProgressReporter& pr,
-		const vector<SurfacePoint>& pts,
+		const vector<SurfacePoint>& pts, float mix,
 		vector<IrradiancePoint>& irpts, Mutex& mt,
 		int tn, int tc)
 		: reporter(pr), surfacePoints(pts), irradiancePoints(irpts),
 		  mutex(mt)
 	{
-		scene = sc; renderer = ren; camera = c;
+		scene = sc; renderer = ren; camera = c; this->mix = mix;
 		taskNum = tn; taskCount = tc;
 	}
 	void Run() override;
@@ -59,6 +59,7 @@ private:
 	const Camera* camera;
 	ProgressReporter& reporter;
 	const vector<SurfacePoint>& surfacePoints;
+	float mix;
 	vector<IrradiancePoint>& irradiancePoints;
 	Mutex& mutex;
 	int taskNum;
@@ -110,6 +111,17 @@ void IrradianceTask::Run() {
             }
             E += Elight / nSamples;
         }
+		// Add half contribution of albedo map
+		auto itermat = scene->materials.find(sp.materialId);
+		if (itermat != scene->materials.end()) {
+			const Material* mat = itermat->second.GetPtr();
+			Vector dpdu, dpdv;
+			CoordinateSystem(Vector(sp.n), &dpdu, &dpdv);
+			DifferentialGeometry dgs(sp.p, dpdu, dpdv, Normal::Zero, Normal::Zero, sp.u, sp.v, NULL);
+			const MultipoleBSSRDF* bssrdf = mat->GetMultipoleBSSRDF(dgs, dgs, arena, false);
+			if (bssrdf)
+				E *= Pow(bssrdf->albedo(), mix);
+		}
         localIrradiancePoints.push_back(IrradiancePoint(sp, E));
         PBRT_SUBSURFACE_COMPUTED_IRRADIANCE_AT_POINT(&sp, &E);
         arena.FreeAll();
@@ -168,7 +180,7 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 	renderTasks.reserve(nTasks);
 	for (int i = 0; i < nTasks; ++i) {
 		renderTasks.push_back(new IrradianceTask(scene, renderer,
-		camera, reporter, pts, irradiancePoints, *mutex, i, nTasks));
+		camera, reporter, pts, mix, irradiancePoints, *mutex, i, nTasks));
 	}
 	EnqueueTasks(renderTasks);
 	WaitForAllTasks();
@@ -225,7 +237,7 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
 		// Bypass outgoing fresnel term if it's a Monte-Carlo profile,
 		// because the term is already included in the profile
         float Fdt = bssrdf->IsMonteCarlo() ? 1.f : (1.f - Fdr(bssrdf->eta(0)));
-		L += ((INV_PI * Ft) * (Fdt * Mo) * bssrdf->albedo()).Clamp(0.f);
+		L += ((INV_PI * Ft) * (Fdt * Mo) * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
     L += UniformSampleAllLights(scene, renderer, arena, p, n,
@@ -248,7 +260,8 @@ MultipoleSubsurfaceIntegrator *CreateMultipoleSubsurfaceIntegrator(const ParamSe
     float maxError = params.FindOneFloat("maxerror", .05f);
     float minDist = params.FindOneFloat("minsampledistance", .25f);
     string pointsfile = params.FindOneString("pointsfile", "");
+	float mix = params.FindOneFloat("mix", .5f);
     if (PbrtOptions.quickRender) { maxError *= 4.f; minDist *= 4.f; }
     return new MultipoleSubsurfaceIntegrator(maxDepth, maxError, minDist, pointsfile,
-		originalPrimitives);
+		originalPrimitives, mix);
 }

@@ -40,6 +40,7 @@
 #include "pbrt.h"
 #include "primitive.h"
 #include "integrator.h"
+#include <map>
 
 // Scene Declarations
 class Scene {
@@ -70,6 +71,7 @@ public:
     // Scene Public Data
     Primitive *aggregate;
     vector<Light *> lights;
+	std::map<uint32_t, Reference<Material> > materials;
     VolumeRegion *volumeRegion;
     BBox bound;
 };

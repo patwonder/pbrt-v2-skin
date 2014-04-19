@@ -44,8 +44,8 @@ public:
 		const RayDifferential &ray, const Intersection &isect,
 		const Sample *sample, RNG &rng, MemoryArena &arena) const override;
 	MultipoleSubsurfaceIntegrator(int mdepth, float merror, float mindist,
-		const string &fn, const vector<Reference<Primitive> >* ops)
-		: originalPrimitives(*ops)
+		const string &fn, const vector<Reference<Primitive> >* ops, float mix)
+		: originalPrimitives(*ops), mix(mix)
 	{
 		maxSpecularDepth = mdepth;
 		maxError = merror;
@@ -63,6 +63,7 @@ private:
 	// MultipoleSubsurfaceIntegrator Private Data
 	int maxSpecularDepth;
 	float maxError, minSampleDist;
+	float mix;
 	string filename;
 	vector<IrradiancePoint> irradiancePoints;
 	BBox octreeBounds;
