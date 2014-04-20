@@ -356,3 +356,88 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 void ReleaseMultipoleProfile(MultipoleProfileData* pData) {
 	delete pData;
 }
+
+
+Spectrum MultipoleBSSRDFData::rho(const Vector& wo) const {
+	float costheta = AbsCosTheta(wo);
+	float fid = costheta * (rhoData.size() - 1);
+	int id = Clamp((int)fid, 0, (int)(rhoData.size() - 2));
+	float lerp = fid - id;
+	return Lerp(lerp, rhoData[id], rhoData[id + 1]);
+}
+
+
+void MultipoleBSSRDFData::computeRhoIntegral() {
+	Spectrum integral(0.f);
+	for (size_t id = 0; id < rhoData.size(); id++) {
+		float costheta = (float)id / (rhoData.size() - 1);
+		integral += costheta * rhoData[id];
+	}
+	rhoIntegral = integral * (2.f / rhoData.size() - 1);
+}
+
+
+Spectrum MultipoleBSSRDFData::rho() const {
+	return rhoIntegral;
+}
+
+
+class RhoTask : public Task {
+public:
+	RhoTask(Spectrum& dest, const BxDF* bxdf, float costheta, ProgressReporter& pr, int id)
+		: destination(dest), bxdf(bxdf), costheta(costheta), reporter(pr), id(id)
+	{
+
+	}
+
+	void Run() override;
+private:
+	Spectrum& destination;
+	const BxDF* bxdf;
+	float costheta;
+	ProgressReporter& reporter;
+	int id;
+};
+
+
+void RhoTask::Run() {
+	RNG rng(6428263 * id);
+
+	int sqrtSamples = 1024;
+	int nSamples = sqrtSamples * sqrtSamples;
+	float* s1 = (float*)malloc(sizeof(float) * 2 * nSamples);
+	StratifiedSample2D(s1, sqrtSamples, sqrtSamples, rng);
+	Vector wo = SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f);
+	destination = bxdf->rho(wo, nSamples, s1);
+	free(s1);
+
+	reporter.Update();
+}
+
+
+vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf) {
+	vector<Spectrum> result;
+
+	const int rhoDataSize = 1024;
+	result.resize(rhoDataSize + 1, Spectrum(0.f));
+
+	int nTasks = rhoDataSize + 1;
+	vector<Task*> tasks;
+	tasks.reserve(nTasks);
+
+	ProgressReporter reporter(nTasks, "Rho Data");
+	for (int taskId = 0; taskId < nTasks; taskId++) {
+		float costheta = (float)taskId / rhoDataSize;
+		if (costheta == 0.f)
+			costheta = 0.01f / rhoDataSize;
+		tasks.push_back(new RhoTask(result[taskId], bxdf,
+			costheta, reporter, taskId));
+	}
+	EnqueueTasks(tasks);
+	WaitForAllTasks();
+	for (Task* task : tasks)
+		delete task;
+	reporter.Done();
+
+	return result;
+}

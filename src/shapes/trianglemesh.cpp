@@ -109,7 +109,7 @@ void TriangleMesh::Refine(vector<Reference<Shape> > &refined) const {
 TriangleMesh::TriangleMesh(const TriangleMesh& mesh)
 	: ShrinkableShape(mesh) { }
 
-Reference<ShrinkableShape> TriangleMesh::Shrink(float_type distance) const {
+Reference<ShrinkableShape> TriangleMesh::Shrink(float distance) const {
 	// Copy Shape subobject
 	TriangleMesh* pNewMesh = new TriangleMesh(*this);
 
@@ -221,7 +221,11 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bum
 			sp.p = bc.Evaluate(v0, v1, v2);
 			DifferentialGeometry dgGeom, dgShading, dgBump;
 			triangle.GetDifferentialGeometries(bc, &dgGeom, &dgShading);
+#if 1
 			bump.Bump(dgGeom, dgShading, &dgBump);
+#else
+			dgBump = dgShading;
+#endif
 			sp.n = dgBump.nn;
 			sp.u = dgBump.u;
 			sp.v = dgBump.v;

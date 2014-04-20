@@ -299,6 +299,19 @@ private:
 };
 
 
+class LerpedFresnelDielectric : public FresnelDielectric {
+public:
+    // LerpedFresnelDielectric Public Methods
+	LerpedFresnelDielectric(float ei, float et, float lerpAmount)
+		: FresnelDielectric(ei, et), lerpAmount(lerpAmount) { }
+    Spectrum Evaluate(float cosi) const override {
+		return Lerp(lerpAmount, Spectrum(1.f), FresnelDielectric::Evaluate(cosi));
+	}
+private:
+	float lerpAmount;
+};
+
+
 class FresnelNoOp : public Fresnel {
 public:
     Spectrum Evaluate(float) const { return Spectrum(1.); }
@@ -425,7 +438,7 @@ class MicrofacetTransmission : public BxDF {
 public:
 	// MicrofacetTransmission Public Methods
 	MicrofacetTransmission(const Spectrum& transmission, Fresnel* f,
-		MicrofacetDistribution* d, float_type ior);
+		MicrofacetDistribution* d, float ior);
 	Spectrum f(const Vector& wo, const Vector& wi) const override;
     static float G(const Vector &wo, const Vector &wi, const Vector &wh);
 	Spectrum Sample_f(const Vector& wo, Vector* wi,
@@ -434,7 +447,7 @@ public:
 private:
 	// MicrofacetTransmission Private Data
 	Spectrum T;
-	float_type ior;
+	float ior;
 	MicrofacetDistribution* distribution;
 	Fresnel* fresnel;
 };
@@ -580,6 +593,8 @@ public:
     Spectrum sigma_a(int layer) const;
     Spectrum sigma_prime_s(int layer) const;
 	bool IsMonteCarlo() const;
+	Spectrum rho(const Vector& wo) const;
+	Spectrum rho() const;
 	Spectrum albedo() const { return al; }
 
 	Spectrum reflectance(float distanceSquared) const;

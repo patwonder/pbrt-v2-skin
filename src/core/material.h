@@ -70,7 +70,7 @@ public:
         return NULL;
     }
 	virtual const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
-		const DifferentialGeometry &dgShading, MemoryArena &arena, bool bump = true) const
+		const DifferentialGeometry &dgShading, MemoryArena &arena) const
 	{
 		return NULL;
 	}
@@ -176,7 +176,7 @@ struct LayerParam {
 class LayeredMaterial : public Material {
 public:
     // LayeredMaterial Interface
-	virtual vector<float_type> GetLayerThickness() const = 0;
+	virtual vector<float> GetLayerThickness() const = 0;
 	virtual BSDF* GetLayeredBSDF(int layerIndex,
 		const DifferentialGeometry &dgGeom,
 		const DifferentialGeometry &dgShading,

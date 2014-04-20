@@ -68,6 +68,11 @@ const MultipoleBSSRDF* Intersection::GetMultipoleBSSRDF(const RayDifferential &r
 }
 
 
+void Intersection::GetShadingGeometry(DifferentialGeometry& dgShading) const {
+	primitive->GetShadingGeometry(dg, ObjectToWorld, dgShading);
+}
+
+
 Spectrum Intersection::Le(const Vector &w) const {
     const AreaLight *area = primitive->GetAreaLight();
     return area ? area->L(dg.p, dg.nn, w) : Spectrum(0.);

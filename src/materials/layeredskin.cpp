@@ -38,10 +38,10 @@
 
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
+	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, float specularLerp,
 	bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
-	  bumpMap(bumpMap), albedo(albedo)
+	  bumpMap(bumpMap), albedo(albedo), specularLerp(specularLerp)
 {
 	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
@@ -84,7 +84,21 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 		}
 
 		ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab);
-		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData, useMonteCarloProfile);
+
+		MemoryArena arena;
+		Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, layers[0].ior, specularLerp);
+		BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
+			BSDF_ALLOC(arena, Beckmann)(roughness));
+		vector<Spectrum> rhoData = ComputeRhoDataFromBxDF(bxdf);
+		arena.FreeAll();
+
+		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData, rhoData, useMonteCarloProfile);
+
+		//for (int i = 0; i < 11; i++) {
+		//	float cost = (float)i / 10;
+		//	float val = preparedBSSRDFData->rho(SphericalDirection<float>(sqrt(1 - cost * cost), cost, 0.f))[0];
+		//	Info("Rho[%f]=%f", cost, val);
+		//}
 	} else {
 		preparedBSSRDFData = NULL;
 	}
@@ -96,8 +110,8 @@ LayeredSkin::~LayeredSkin() {
 	delete preparedBSSRDFData;
 }
 
-vector<float_type> LayeredSkin::GetLayerThickness() const {
-	vector<float_type> ret;
+vector<float> LayeredSkin::GetLayerThickness() const {
+	vector<float> ret;
 	for (const auto& layer : layers) {
 		ret.push_back(layer.thickness / nmperunit);
 	}
@@ -117,7 +131,7 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	float ior = layers[0].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgs, dgGeom.nn, ior);
 	float rough = roughness;
-	Fresnel *fresnel = BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
+	Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, ior, specularLerp);
 	Spectrum R = Kr->Evaluate(dgs);
 	Spectrum T = Kt->Evaluate(dgs);
 	if (!R.IsBlack())
@@ -145,15 +159,9 @@ BSSRDF* LayeredSkin::GetBSSRDF(const DifferentialGeometry &dgGeom,
 
 
 const MultipoleBSSRDF* LayeredSkin::GetMultipoleBSSRDF(const DifferentialGeometry &dgGeom,
-	const DifferentialGeometry &dgShading, MemoryArena &arena, bool bump) const
+	const DifferentialGeometry &dgShading, MemoryArena &arena) const
 {
-	DifferentialGeometry dgs;
-	if (bump && bumpMap)
-		Bump(bumpMap, dgGeom, dgShading, &dgs);
-	else
-		dgs = dgShading;
-
-	Spectrum al = albedo->Evaluate(dgs);
+	Spectrum al = albedo->Evaluate(dgShading);
 	return BSDF_ALLOC(arena, MultipoleBSSRDF)(preparedBSSRDFData, al);
 }
 
@@ -218,9 +226,11 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	Reference<Texture<Spectrum> > albedo = mp.GetSpectrumTexture("albedo", Spectrum(1.f));
+	float specularLerp = ps.FindOneFloat("specularlerp", 1.f);
 	bool generateProfile = ps.FindOneBool("genprofile", true);
 	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
 	bool lerpOnThinSlab = ps.FindOneBool("lerponthinslab", true);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
-		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, generateProfile, useMonteCarloProfile, lerpOnThinSlab);
+		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, specularLerp,
+		generateProfile, useMonteCarloProfile, lerpOnThinSlab);
 }

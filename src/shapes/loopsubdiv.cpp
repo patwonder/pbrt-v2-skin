@@ -445,7 +445,7 @@ void LoopSubdiv::Refine(vector<Reference<Shape> > &refined) const {
 }
 
 
-Reference<ShrinkableShape> LoopSubdiv::Shrink(float_type distance) const {
+Reference<ShrinkableShape> LoopSubdiv::Shrink(float distance) const {
 	vector<Reference<Shape> > refined;
 	Refine(refined);
 	return dynamic_cast<ShrinkableShape*>(refined[0].GetPtr())->Shrink(distance);

@@ -37,7 +37,7 @@ class MultipoleBSSRDFData {
 public:
 	// MultipoleBSSRDF Public Methods
     MultipoleBSSRDFData(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
-		const MultipoleProfileData* pData, bool isMonteCarlo = false) {
+		const MultipoleProfileData* pData, const vector<Spectrum>& rhoData, bool isMonteCarlo = false) {
 		if (layers > MAX_LAYERS)
 			layers = MAX_LAYERS;
 		nLayers = layers;
@@ -49,6 +49,8 @@ public:
 		}
 		this->pData = pData;
 		this->isMonteCarlo = isMonteCarlo;
+		this->rhoData = rhoData;
+		computeRhoIntegral();
 	}
 	int numLayers() const { return nLayers; }
 	float thickness(int layer) const { return d[layer]; }
@@ -56,6 +58,8 @@ public:
     Spectrum sigma_a(int layer) const { return sig_a[layer]; }
     Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
 	bool IsMonteCarlo() const { return isMonteCarlo; }
+	Spectrum rho(const Vector& wo) const;
+	Spectrum rho() const;
 
 	Spectrum reflectance(float distanceSquared) const;
 	Spectrum transmittance(float distanceSquared) const;
@@ -73,8 +77,16 @@ private:
 	Spectrum sigp_s[MAX_LAYERS];
 	const MultipoleProfileData* pData;
 	bool isMonteCarlo;
+
+	vector<Spectrum> rhoData;
+	Spectrum rhoIntegral;
+
+	// MultipoleBSSRDF Private Methods
+	void computeRhoIntegral();
 };
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
 							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);
+
+vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf);

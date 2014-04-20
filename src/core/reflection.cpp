@@ -240,7 +240,7 @@ Spectrum Microfacet::f(const Vector &wo, const Vector &wi) const {
 
 MicrofacetTransmission::MicrofacetTransmission(const Spectrum& transmission,
 	Fresnel* f,
-	MicrofacetDistribution* d, float_type ior)
+	MicrofacetDistribution* d, float ior)
 	: BxDF(BxDFType(BSDF_TRANSMISSION | BSDF_GLOSSY)),
 	T(transmission), distribution(d), fresnel(f), ior(ior)
 {
@@ -252,7 +252,7 @@ Spectrum MicrofacetTransmission::f(const Vector& wo, const Vector& wi) const {
     float cosThetaO = AbsCosTheta(wo);
     if (cosThetaI == 0.f || cosThetaO == 0.f) return Spectrum(0.f);
 	bool entering = CosTheta(wo) > 0.f;
-	float_type et = (entering) ? ior : 1.f / ior;
+	float et = (entering) ? ior : 1.f / ior;
 	Vector wh = -(wo + et * wi);
 	float denominator = wh.LengthSquared();
 	if (denominator == 0.f) return Spectrum(0.f);
@@ -408,7 +408,7 @@ Spectrum MicrofacetTransmission::Sample_f(const Vector& wo, Vector* wi,
 
 	// Compute transmitted ray direction
 	bool entering = CosTheta(wo) > 0.f;
-	float_type et = (entering) ? ior : 1.f / ior;
+	float et = (entering) ? ior : 1.f / ior;
 	Vector wh = wo + *wi;
  	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return Spectrum(0.f);
 	wh = Normalize(wh);
@@ -445,7 +445,7 @@ float MicrofacetTransmission::Pdf(const Vector& wo, const Vector& wi) const {
 
 	// Compute reflected ray direction
 	bool entering = CosTheta(wo) > 0.f;
-	float_type et = (entering) ? ior : 1.f / ior;
+	float et = (entering) ? ior : 1.f / ior;
 	Vector wh = -(wo + et * wi);
 	if (wh.x == 0.f && wh.y == 0.f && wh.z == 0.f) return 0.f;
 	float denominator = wh.LengthSquared();
@@ -551,7 +551,7 @@ void Beckmann::Sample_f(const Vector &wo, Vector *wi,
 	// We sample according to D()cos(NdotH) instead
 
     // Compute sampled half-angle vector $\wh$ for Beckmann distribution
-    float costheta = atanf(sqrtf(-rms2 * logf(u1)));
+    float costheta = cos(atanf(sqrtf(-rms2 * logf(u1))));
     float sintheta = sqrtf(max(0.f, 1.f - costheta*costheta));
     float phi = u2 * 2.f * M_PI;
     Vector wh = SphericalDirection<float>(sintheta, costheta, phi);
@@ -826,6 +826,14 @@ Spectrum MultipoleBSSRDF::sigma_prime_s(int layer) const {
 
 bool MultipoleBSSRDF::IsMonteCarlo() const {
 	return pData->IsMonteCarlo();
+}
+
+Spectrum MultipoleBSSRDF::rho(const Vector& wo) const {
+	return pData->rho(wo);
+}
+
+Spectrum MultipoleBSSRDF::rho() const {
+	return pData->rho();
 }
 
 Spectrum MultipoleBSSRDF::reflectance(float distanceSquared) const {

@@ -101,6 +101,14 @@ const MultipoleBSSRDF* Aggregate::GetMultipoleBSSRDF(const DifferentialGeometry 
 }
 
 
+void Aggregate::GetShadingGeometry(const DifferentialGeometry& dg,
+		const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const
+{
+    Severe("Aggregate::GetShadingGeometry() method"
+        "called; should have gone to GeometricPrimitive");
+}
+
+
 // TransformedPrimitive Method Definitions
 bool TransformedPrimitive::Intersect(const Ray &r,
                                      Intersection *isect) const {
@@ -217,6 +225,13 @@ const MultipoleBSSRDF* GeometricPrimitive::GetMultipoleBSSRDF(const Differential
 }
 
 
+void GeometricPrimitive::GetShadingGeometry(const DifferentialGeometry& dg,
+	const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const
+{
+    shape->GetShadingGeometry(ObjectToWorld, dg, &dgShading);
+}
+
+
 const Shape* GeometricPrimitive::GetShape() const {
 	return shape.GetPtr();
 }
@@ -283,13 +298,13 @@ LayeredGeometricPrimitiveMain::LayeredGeometricPrimitiveMain(
 	const Reference<LayeredMaterial>& m, const AreaLight* a)
 	: LayeredGeometricPrimitive(s, m, a)
 {
-	vector<float_type> thicknesses = m->GetLayerThickness();
+	vector<float> thicknesses = m->GetLayerThickness();
 	// Add shrinked primitives for internal intersection test
 	this->FullyRefine(fullyRefined);
 	vector<Reference<Primitive> > internalPrimitives(fullyRefined);
 	internalShapes.push_back(s);
 
-	float_type thickness = 0;
+	float thickness = 0;
 	for (size_t i = 0; i < thicknesses.size(); i++) {
 		thickness += thicknesses[i];
 		Reference<ShrinkableShape> shrinked = s->Shrink(thickness);

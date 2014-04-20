@@ -86,6 +86,15 @@ void IrradianceTask::Run() {
     for (size_t i = idxStart; i < idxEnd; ++i) {
         const SurfacePoint &sp = surfacePoints[i];
         Spectrum E(0.f);
+		const MultipoleBSSRDF* bssrdf = NULL;
+		auto itermat = scene->materials.find(sp.materialId);
+		if (itermat != scene->materials.end()) {
+			const Material* mat = itermat->second.GetPtr();
+			Vector dpdu, dpdv;
+			CoordinateSystem(Vector(sp.n), &dpdu, &dpdv);
+			DifferentialGeometry dgs(sp.p, dpdu, dpdv, Normal::Zero, Normal::Zero, sp.u, sp.v, NULL);
+			bssrdf = mat->GetMultipoleBSSRDF(dgs, dgs, arena);
+		}
         for (uint32_t j = 0; j < scene->lights.size(); ++j) {
             // Add irradiance from light at point
             const Light *light = scene->lights[j];
@@ -106,22 +115,19 @@ void IrradianceTask::Run() {
                 if (Dot(wi, sp.n) <= 0.) continue;
                 if (Li.IsBlack() || lightPdf == 0.f) continue;
                 Li *= visibility.Transmittance(scene, renderer, NULL, rng, arena);
-                if (visibility.Unoccluded(scene))
-                    Elight += Li * AbsDot(wi, sp.n) / lightPdf;
+                if (visibility.Unoccluded(scene)) {
+					float costheta = min(AbsDot(wi, sp.n), 1.f);
+					Spectrum Ft = bssrdf
+						? Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f))
+						: Spectrum(1.f);
+                    Elight += Ft * Li * costheta / lightPdf;
+				}
             }
             E += Elight / nSamples;
         }
 		// Add half contribution of albedo map
-		auto itermat = scene->materials.find(sp.materialId);
-		if (itermat != scene->materials.end()) {
-			const Material* mat = itermat->second.GetPtr();
-			Vector dpdu, dpdv;
-			CoordinateSystem(Vector(sp.n), &dpdu, &dpdv);
-			DifferentialGeometry dgs(sp.p, dpdu, dpdv, Normal::Zero, Normal::Zero, sp.u, sp.v, NULL);
-			const MultipoleBSSRDF* bssrdf = mat->GetMultipoleBSSRDF(dgs, dgs, arena, false);
-			if (bssrdf)
-				E *= Pow(bssrdf->albedo(), mix);
-		}
+		if (bssrdf)
+			E *= Pow(bssrdf->albedo(), mix);
         localIrradiancePoints.push_back(IrradiancePoint(sp, E));
         PBRT_SUBSURFACE_COMPUTED_IRRADIANCE_AT_POINT(&sp, &E);
         arena.FreeAll();
@@ -172,7 +178,7 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
     PBRT_SUBSURFACE_STARTED_COMPUTING_IRRADIANCE_VALUES();
 	int nPoints = pts.size();
 	irradiancePoints.reserve(nPoints);
-	int nTasks = max(32 * NumSystemCores(), nPoints / 1024);
+	int nTasks = max(32 * NumSystemCores(), nPoints / 4096);
 	nTasks = RoundUpPow2(nTasks);
     ProgressReporter reporter(nTasks, "Computing Irradiances");
 	Mutex* mutex = Mutex::Create();
@@ -228,16 +234,24 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
     // Evaluate MultipoleBSSRDF and possibly compute subsurface scattering
     const MultipoleBSSRDF *bssrdf = isect.GetMultipoleBSSRDF(ray, arena);
     if (bssrdf && octree) {
+#if 1
+		// Obtain "smooth" shading geometry to avoid aliases when using bump mapping
+		DifferentialGeometry dgNoBump;
+		isect.GetShadingGeometry(dgNoBump);
+		const Normal& nn = dgNoBump.nn;
+#else
+		const Normal& nn = n;
+#endif
         // Use hierarchical integration to evaluate reflection from dipole model
         PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
 		MultipoleReflectance mr(bssrdf);
-        Spectrum Mo = octree->Mo(octreeBounds, p, n, mr, maxError);
-        FresnelDielectric fresnel(1.f, bssrdf->eta(0));
-        Spectrum Ft = Spectrum(1.f) - fresnel.Evaluate(AbsDot(wo, n));
+        Spectrum Mo = octree->Mo(octreeBounds, p, nn, mr, maxError);
 		// Bypass outgoing fresnel term if it's a Monte-Carlo profile,
 		// because the term is already included in the profile
-        float Fdt = bssrdf->IsMonteCarlo() ? 1.f : (1.f - Fdr(bssrdf->eta(0)));
-		L += ((INV_PI * Ft) * (Fdt * Mo) * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
+		float costheta = min(AbsDot(wo, nn), 1.f);
+		Spectrum Ft = bssrdf->IsMonteCarlo() ? Spectrum(1.f)
+			: (Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f)));
+		L += ((INV_PI * Ft) * Mo * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
     L += UniformSampleAllLights(scene, renderer, arena, p, n,

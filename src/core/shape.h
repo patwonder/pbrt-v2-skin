@@ -88,7 +88,7 @@ protected:
 class ShrinkableShape: public Shape {
 public:
 	ShrinkableShape(const Transform *o2w, const Transform *w2o, bool ro);
-	virtual Reference<ShrinkableShape> Shrink(float_type distance) const = 0;
+	virtual Reference<ShrinkableShape> Shrink(float distance) const = 0;
 };
 
 

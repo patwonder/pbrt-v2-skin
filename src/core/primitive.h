@@ -66,6 +66,8 @@ public:
         const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
     virtual const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const = 0;
+	virtual void GetShadingGeometry(const DifferentialGeometry& dg, 
+		const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const = 0;
  	// Low-cost RTTI
 	virtual LayeredGeometricPrimitive* ToLayered() { return NULL; }
 	virtual const LayeredGeometricPrimitive* ToLayered() const { return NULL; }
@@ -95,6 +97,8 @@ public:
                       const Transform &ObjectToWorld, MemoryArena &arena) const;
     const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+	void GetShadingGeometry(const DifferentialGeometry& dg,
+		const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const override;
 	const Shape* GetShape() const;
 	const Material* GetMaterial() const;
 protected:
@@ -149,6 +153,11 @@ public:
 	{
 		return NULL;
 	}
+	void GetShadingGeometry(const DifferentialGeometry& dg,
+		const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const override
+	{
+		primitive->GetShadingGeometry(dg, ObjectToWorld, dgShading);
+	}
     BBox WorldBound() const {
         return WorldToPrimitive.MotionBounds(primitive->WorldBound(), true);
     }
@@ -171,6 +180,8 @@ public:
                   const Transform &, MemoryArena &) const;
     const MultipoleBSSRDF* GetMultipoleBSSRDF(const DifferentialGeometry &dg,
 		const Transform &ObjectToWorld, MemoryArena &arena) const override;
+	void GetShadingGeometry(const DifferentialGeometry& dg,
+		const Transform &ObjectToWorld, DifferentialGeometry& dgShading) const override;
 };
 
 

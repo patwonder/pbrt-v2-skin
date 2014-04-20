@@ -51,7 +51,7 @@ public:
     ~LoopSubdiv();
     bool CanIntersect() const;
     void Refine(vector<Reference<Shape> > &refined) const;
-	Reference<ShrinkableShape> Shrink(float_type distance) const override;
+	Reference<ShrinkableShape> Shrink(float distance) const override;
     BBox ObjectBound() const;
     BBox WorldBound() const;
 private:
