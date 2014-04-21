@@ -198,17 +198,22 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
     PBRT_SUBSURFACE_FINISHED_COMPUTING_IRRADIANCE_VALUES();
 
     // Create octree of clustered irradiance samples
-	int totalWork = (int)(irradiancePoints.size() + IrradiancePointsSlice - 1) / IrradiancePointsSlice + 1;
+	const int OTIrradiancePointsSlice = 65536;
+	int totalWork = (int)(irradiancePoints.size() + OTIrradiancePointsSlice - 1) / OTIrradiancePointsSlice + 2;
 	ProgressReporter octreeReporter(totalWork, "Building Octree");
-    octree = octreeArena.Alloc<SubsurfaceOctreeNode>();
-    for (uint32_t i = 0; i < irradiancePoints.size(); ++i)
-        octreeBounds = Union(octreeBounds, irradiancePoints[i].p);
+
+	octree = octreeArena.Alloc<SubsurfaceOctreeNode>();
     for (uint32_t i = 0; i < irradiancePoints.size(); ++i) {
+        octreeBounds = Union(octreeBounds, irradiancePoints[i].p);
+	}
+	octreeReporter.Update();
+
+	for (uint32_t i = 0; i < irradiancePoints.size(); ++i) {
 		octree->Insert(octreeBounds, &irradiancePoints[i], octreeArena);
-		if ((i + 1) % IrradiancePointsSlice == 0)
+		if ((i + 1) % OTIrradiancePointsSlice == 0)
 			octreeReporter.Update();
 	}
-	if (irradiancePoints.size() % IrradiancePointsSlice)
+	if (irradiancePoints.size() % OTIrradiancePointsSlice)
 		octreeReporter.Update();
 
     octree->InitHierarchy();
