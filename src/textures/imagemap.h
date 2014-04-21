@@ -45,17 +45,18 @@
 
 // TexInfo Declarations
 struct TexInfo {
-    TexInfo(const string &f, bool dt, float ma, ImageWrap wm, float sc, float ga)
-        : filename(f), doTrilinear(dt), maxAniso(ma), wrapMode(wm), scale(sc), gamma(ga) { }
+    TexInfo(const string &f, bool dt, float ma, ImageWrap wm, float sh, float sc, float ga)
+        : filename(f), doTrilinear(dt), maxAniso(ma), wrapMode(wm), shift(sh), scale(sc), gamma(ga) { }
     string filename;
     bool doTrilinear;
     float maxAniso;
     ImageWrap wrapMode;
-    float scale, gamma;
+    float shift, scale, gamma;
     bool operator<(const TexInfo &t2) const {
         if (filename != t2.filename) return filename < t2.filename;
         if (doTrilinear != t2.doTrilinear) return doTrilinear < t2.doTrilinear;
         if (maxAniso != t2.maxAniso) return maxAniso < t2.maxAniso;
+		if (shift != t2.shift) return shift < t2.shift;
         if (scale != t2.scale) return scale < t2.scale;
         if (gamma != t2.gamma) return gamma < t2.gamma;
         return wrapMode < t2.wrapMode;
@@ -70,7 +71,7 @@ template <typename Tmemory, typename Treturn>
 public:
     // ImageTexture Public Methods
     ImageTexture(TextureMapping2D *m, const string &filename, bool doTri,
-                 float maxAniso, ImageWrap wm, float scale, float gamma);
+                 float maxAniso, ImageWrap wm, float shift, float scale, float gamma);
     Treturn Evaluate(const DifferentialGeometry &) const;
     ~ImageTexture();
     static void ClearCache() {
@@ -85,14 +86,14 @@ public:
 private:
     // ImageTexture Private Methods
     static MIPMap<Tmemory> *GetTexture(const string &filename,
-        bool doTrilinear, float maxAniso, ImageWrap wm, float scale, float gamma);
+        bool doTrilinear, float maxAniso, ImageWrap wm, float shift, float scale, float gamma);
     static void convertIn(const RGBSpectrum &from, RGBSpectrum *to,
-                          float scale, float gamma) {
-        *to = Pow(scale * from, gamma);
+                          float shift, float scale, float gamma) {
+        *to = Pow(scale * (from + shift), gamma);
     }
     static void convertIn(const RGBSpectrum &from, float *to,
-                          float scale, float gamma) {
-        *to = powf(scale * from.y(), gamma);
+                          float shift, float scale, float gamma) {
+        *to = powf(scale * (from.y() + shift), gamma);
     }
     static void convertOut(const RGBSpectrum &from, Spectrum *to) {
         float rgb[3];

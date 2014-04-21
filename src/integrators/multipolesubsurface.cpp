@@ -175,10 +175,11 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 
     // Compute irradiance values at sample points
     // Create and launch _IrradianceTask_s for rendering image
+	const int IrradiancePointsSlice = 4096;
     PBRT_SUBSURFACE_STARTED_COMPUTING_IRRADIANCE_VALUES();
 	int nPoints = pts.size();
 	irradiancePoints.reserve(nPoints);
-	int nTasks = max(32 * NumSystemCores(), nPoints / 4096);
+	int nTasks = max(32 * NumSystemCores(), nPoints / IrradiancePointsSlice);
 	nTasks = RoundUpPow2(nTasks);
     ProgressReporter reporter(nTasks, "Computing Irradiances");
 	Mutex* mutex = Mutex::Create();
@@ -197,12 +198,22 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
     PBRT_SUBSURFACE_FINISHED_COMPUTING_IRRADIANCE_VALUES();
 
     // Create octree of clustered irradiance samples
+	int totalWork = (int)(irradiancePoints.size() + IrradiancePointsSlice - 1) / IrradiancePointsSlice + 1;
+	ProgressReporter octreeReporter(totalWork, "Building Octree");
     octree = octreeArena.Alloc<SubsurfaceOctreeNode>();
     for (uint32_t i = 0; i < irradiancePoints.size(); ++i)
         octreeBounds = Union(octreeBounds, irradiancePoints[i].p);
-    for (uint32_t i = 0; i < irradiancePoints.size(); ++i)
-        octree->Insert(octreeBounds, &irradiancePoints[i], octreeArena);
+    for (uint32_t i = 0; i < irradiancePoints.size(); ++i) {
+		octree->Insert(octreeBounds, &irradiancePoints[i], octreeArena);
+		if ((i + 1) % IrradiancePointsSlice == 0)
+			octreeReporter.Update();
+	}
+	if (irradiancePoints.size() % IrradiancePointsSlice)
+		octreeReporter.Update();
+
     octree->InitHierarchy();
+	octreeReporter.Update();
+	octreeReporter.Done();
 }
 
 
@@ -234,7 +245,7 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
     // Evaluate MultipoleBSSRDF and possibly compute subsurface scattering
     const MultipoleBSSRDF *bssrdf = isect.GetMultipoleBSSRDF(ray, arena);
     if (bssrdf && octree) {
-#if 1
+#if 0
 		// Obtain "smooth" shading geometry to avoid aliases when using bump mapping
 		DifferentialGeometry dgNoBump;
 		isect.GetShadingGeometry(dgNoBump);

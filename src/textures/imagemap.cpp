@@ -39,10 +39,10 @@
 template <typename Tmemory, typename Treturn>
 ImageTexture<Tmemory, Treturn>::ImageTexture(TextureMapping2D *m,
         const string &filename, bool doTrilinear, float maxAniso,
-        ImageWrap wrapMode, float scale, float gamma) {
+        ImageWrap wrapMode, float shift, float scale, float gamma) {
     mapping = m;
     mipmap = GetTexture(filename, doTrilinear, maxAniso,
-                        wrapMode, scale, gamma);
+                        wrapMode, shift, scale, gamma);
 }
 
 
@@ -55,9 +55,9 @@ template <typename Tmemory, typename Treturn>
 template <typename Tmemory, typename Treturn> MIPMap<Tmemory> *
 ImageTexture<Tmemory, Treturn>::GetTexture(const string &filename,
         bool doTrilinear, float maxAniso, ImageWrap wrap,
-        float scale, float gamma) {
+        float shift, float scale, float gamma) {
     // Look for texture in texture cache
-    TexInfo texInfo(filename, doTrilinear, maxAniso, wrap, scale, gamma);
+    TexInfo texInfo(filename, doTrilinear, maxAniso, wrap, shift, scale, gamma);
     if (textures.find(texInfo) != textures.end())
         return textures[texInfo];
     int width, height;
@@ -67,7 +67,7 @@ ImageTexture<Tmemory, Treturn>::GetTexture(const string &filename,
         // Convert texels to type _Tmemory_ and create _MIPMap_
         Tmemory *convertedTexels = new Tmemory[width*height];
         for (int i = 0; i < width*height; ++i)
-            convertIn(texels[i], &convertedTexels[i], scale, gamma);
+            convertIn(texels[i], &convertedTexels[i], shift, scale, gamma);
         ret = new MIPMap<Tmemory>(width, height, convertedTexels, doTrilinear,
                                   maxAniso, wrap);
         delete[] texels;
@@ -76,7 +76,7 @@ ImageTexture<Tmemory, Treturn>::GetTexture(const string &filename,
     else {
         // Create one-valued _MIPMap_
         Tmemory *oneVal = new Tmemory[1];
-        oneVal[0] = powf(scale, gamma);
+        oneVal[0] = powf(scale * (1 + shift), gamma);
         ret = new MIPMap<Tmemory>(1, 1, oneVal);
         delete[] oneVal;
     }
@@ -131,10 +131,11 @@ ImageTexture<float, float> *CreateImageFloatTexture(const Transform &tex2world,
     ImageWrap wrapMode = TEXTURE_REPEAT;
     if (wrap == "black") wrapMode = TEXTURE_BLACK;
     else if (wrap == "clamp") wrapMode = TEXTURE_CLAMP;
+	float shift = tp.FindFloat("shift", 0.f);
     float scale = tp.FindFloat("scale", 1.f);
     float gamma = tp.FindFloat("gamma", 1.f);
     return new ImageTexture<float, float>(map, tp.FindFilename("filename"),
-        trilerp, maxAniso, wrapMode, scale, gamma);
+        trilerp, maxAniso, wrapMode, shift, scale, gamma);
 }
 
 
@@ -169,10 +170,11 @@ ImageTexture<RGBSpectrum, Spectrum> *CreateImageSpectrumTexture(const Transform 
     ImageWrap wrapMode = TEXTURE_REPEAT;
     if (wrap == "black") wrapMode = TEXTURE_BLACK;
     else if (wrap == "clamp") wrapMode = TEXTURE_CLAMP;
+	float shift = tp.FindFloat("shift", 0.f);
     float scale = tp.FindFloat("scale", 1.f);
     float gamma = tp.FindFloat("gamma", 1.f);
     return new ImageTexture<RGBSpectrum, Spectrum>(map, tp.FindFilename("filename"),
-        trilerp, maxAniso, wrapMode, scale, gamma);
+        trilerp, maxAniso, wrapMode, shift, scale, gamma);
 }
 
 

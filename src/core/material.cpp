@@ -52,30 +52,48 @@ void Material::Bump(const Reference<Texture<float> > &d,
     DifferentialGeometry dgEval = dgs;
 
     // Shift _dgEval_ _du_ in the $u$ direction
-    float du = .5f * (fabsf(dgs.dudx) + fabsf(dgs.dudy));
+    float du = /*.5f * */(fabsf(dgs.dudx) + fabsf(dgs.dudy));
     if (du == 0.f) du = .01f;
     dgEval.p = dgs.p + du * dgs.dpdu;
     dgEval.u = dgs.u + du;
     dgEval.nn = Normalize((Normal)Cross(dgs.dpdu, dgs.dpdv) +
                           du * dgs.dndu);
-    float uDisplace = d->Evaluate(dgEval);
+    float upDisplace = d->Evaluate(dgEval);
 
     // Shift _dgEval_ _dv_ in the $v$ direction
-    float dv = .5f * (fabsf(dgs.dvdx) + fabsf(dgs.dvdy));
+    float dv = /*.5f * */(fabsf(dgs.dvdx) + fabsf(dgs.dvdy));
     if (dv == 0.f) dv = .01f;
     dgEval.p = dgs.p + dv * dgs.dpdv;
     dgEval.u = dgs.u;
     dgEval.v = dgs.v + dv;
     dgEval.nn = Normalize((Normal)Cross(dgs.dpdu, dgs.dpdv) +
                           dv * dgs.dndv);
-    float vDisplace = d->Evaluate(dgEval);
+    float vpDisplace = d->Evaluate(dgEval);
     float displace = d->Evaluate(dgs);
+
+    // Shift _dgEval_ _du_ in the $-u$ direction
+    du = -du;
+    dgEval.p = dgs.p + du * dgs.dpdu;
+    dgEval.u = dgs.u + du;
+    dgEval.nn = Normalize((Normal)Cross(dgs.dpdu, dgs.dpdv) +
+                          du * dgs.dndu);
+    float unDisplace = d->Evaluate(dgEval);
+
+    // Shift _dgEval_ _dv_ in the $-v$ direction
+	dv = -dv;
+    dgEval.p = dgs.p + dv * dgs.dpdv;
+    dgEval.u = dgs.u;
+    dgEval.v = dgs.v + dv;
+    dgEval.nn = Normalize((Normal)Cross(dgs.dpdu, dgs.dpdv) +
+                          dv * dgs.dndv);
+    float vnDisplace = d->Evaluate(dgEval);
+    //float displace = d->Evaluate(dgs);
 
     // Compute bump-mapped differential geometry
     *dgBump = dgs;
-    dgBump->dpdu = dgs.dpdu + (uDisplace - displace) / du * Vector(dgs.nn) +
+    dgBump->dpdu = dgs.dpdu + (upDisplace - unDisplace) / (2 * du) * Vector(dgs.nn) +
                    displace * Vector(dgs.dndu);
-    dgBump->dpdv = dgs.dpdv + (vDisplace - displace) / dv * Vector(dgs.nn) +
+    dgBump->dpdv = dgs.dpdv + (vpDisplace - vnDisplace) / (2 * dv) * Vector(dgs.nn) +
                    displace * Vector(dgs.dndv);
     dgBump->nn = Normal(Normalize(Cross(dgBump->dpdu, dgBump->dpdv)));
     if (dgs.shape->ReverseOrientation ^ dgs.shape->TransformSwapsHandedness)

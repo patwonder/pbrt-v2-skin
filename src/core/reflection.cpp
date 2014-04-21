@@ -37,6 +37,7 @@
 #include "sampler.h"
 #include "montecarlo.h"
 #include "multipole.h"
+#include "kahansum.h"
 #include <stdarg.h>
 
 // BxDF Local Definitions
@@ -620,7 +621,7 @@ float FresnelBlend::Pdf(const Vector &wo, const Vector &wi) const {
 
 Spectrum BxDF::rho(const Vector &w, int nSamples,
                    const float *samples) const {
-    Spectrum r = 0.;
+    KahanSum<Spectrum> r = 0.;
     for (int i = 0; i < nSamples; ++i) {
         // Estimate one term of $\rho_\roman{hd}$
         Vector wi;
@@ -628,13 +629,13 @@ Spectrum BxDF::rho(const Vector &w, int nSamples,
         Spectrum f = Sample_f(w, &wi, samples[2*i], samples[2*i+1], &pdf);
         if (pdf > 0.) r += f * AbsCosTheta(wi) / pdf;
     }
-    return r / float(nSamples);
+	return r.Value() / float(nSamples);
 }
 
 
 Spectrum BxDF::rho(int nSamples, const float *samples1,
                    const float *samples2) const {
-    Spectrum r = 0.;
+    KahanSum<Spectrum> r = 0.;
     for (int i = 0; i < nSamples; ++i) {
         // Estimate one term of $\rho_\roman{hh}$
         Vector wo, wi;
@@ -644,7 +645,7 @@ Spectrum BxDF::rho(int nSamples, const float *samples1,
         if (pdf_i > 0.)
             r += f * AbsCosTheta(wi) * AbsCosTheta(wo) / (pdf_o * pdf_i);
     }
-    return r / (M_PI*nSamples);
+	return r.Value() / (M_PI*nSamples);
 }
 
 

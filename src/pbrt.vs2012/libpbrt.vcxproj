@@ -176,6 +176,7 @@
     <ClInclude Include="..\core\floatfile.h" />
     <ClInclude Include="..\core\geometry.h" />
     <ClInclude Include="..\core\imageio.h" />
+    <ClInclude Include="..\core\kahansum.h" />
     <ClInclude Include="..\core\layer.h" />
     <ClInclude Include="..\core\multipole.h" />
     <ClInclude Include="..\core\skinlayer.h" />
