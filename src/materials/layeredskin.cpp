@@ -39,7 +39,7 @@
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, float specularLerp,
-	bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab,
+	bool generateProfile, bool useMonteCarloProfile, uint64_t nPhotons, bool lerpOnThinSlab,
 	bool showIrradiancePoints, float irradiancePointSize)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
 	  bumpMap(bumpMap), albedo(albedo), specularLerp(specularLerp)
@@ -90,7 +90,7 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			ComputeIrradiancePointsProfile(&profileData, irradiancePointSize);
 			rhoData = ComputeRoughRhoData();
 		} else {
-			ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab);
+			ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons);
 			MemoryArena arena;
 			Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, layers[0].ior, specularLerp);
 			BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
@@ -236,11 +236,13 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	float specularLerp = ps.FindOneFloat("specularlerp", 1.f);
 	bool generateProfile = ps.FindOneBool("genprofile", true);
 	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
+	string strPhotons = ps.FindOneString("photons", "10000000");
+	uint64_t photons = _strtoui64(strPhotons.c_str(), NULL, 10);
 	bool lerpOnThinSlab = ps.FindOneBool("lerponthinslab", true);
 	bool showIrradiancePoints = ps.FindOneBool("showirradiancepoints", false);
 	float irradiancePointSize = ps.FindOneFloat("irradiancepointsize", 0.002f);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
 		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, specularLerp,
-		generateProfile, useMonteCarloProfile, lerpOnThinSlab,
+		generateProfile, useMonteCarloProfile, photons, lerpOnThinSlab,
 		showIrradiancePoints, irradiancePointSize);
 }

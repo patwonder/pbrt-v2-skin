@@ -86,7 +86,7 @@ private:
 };
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true);
+							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true, uint64_t nPhotons = 10000000);
 void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);
 

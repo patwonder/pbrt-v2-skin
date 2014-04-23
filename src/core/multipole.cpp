@@ -243,7 +243,7 @@ void MultipoleProfileTask::Run() {
 
 
 static void ComputeMonteCarloProfile(int nLayers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData* pData)
+	uint64_t nPhotons, MultipoleProfileData* pData)
 {
 	ProgressReporter reporter(nSpectralSamples, "MC Profile");
 
@@ -269,7 +269,7 @@ static void ComputeMonteCarloProfile(int nLayers, const SampledSpectrum mua[], c
 		const uint32 nSegments = 4096;
 		const double mfpRange = 12.0f;
 		double extent = mfpRange * mfp;
-		MonteCarloProfileRenderer renderer(&layers[0], nLayers, mfpRange, nSegments, 10000000, "", true, true, true);
+		MonteCarloProfileRenderer renderer(&layers[0], nLayers, mfpRange, nSegments, nPhotons, "", true, true, true);
 		renderer.Render(NULL);
 		MCProfile mcprofile = renderer.GetProfile();
 
@@ -316,7 +316,7 @@ static void ComputeMonteCarloProfile(int nLayers, const SampledSpectrum mua[], c
 
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData** oppData, bool useMonteCarlo, bool lerpOnThinSlab)
+	MultipoleProfileData** oppData, bool useMonteCarlo, bool lerpOnThinSlab, uint64_t nPhotons)
 {
 	if (!oppData) {
 		Error("Cannot output multipole profile.");
@@ -325,7 +325,7 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 	MultipoleProfileData* pData = *oppData = new MultipoleProfileData;
 
 	if (useMonteCarlo) {
-		ComputeMonteCarloProfile(layers, mua, musp, et, thickness, pData);
+		ComputeMonteCarloProfile(layers, mua, musp, et, thickness, nPhotons, pData);
 	} else {
 		int nTasks = nSpectralSamples;
 		ProgressReporter reporter(nTasks, "Profile");
@@ -405,7 +405,7 @@ private:
 void RhoTask::Run() {
 	RNG rng(6428263 * id);
 
-	int sqrtSamples = 1024;
+	int sqrtSamples = 256;
 	int nSamples = sqrtSamples * sqrtSamples;
 	float* s1 = (float*)malloc(sizeof(float) * 2 * nSamples);
 	StratifiedSample2D(s1, sqrtSamples, sqrtSamples, rng);
