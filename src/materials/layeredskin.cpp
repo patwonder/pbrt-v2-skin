@@ -39,7 +39,8 @@
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, float specularLerp,
-	bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab)
+	bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab,
+	bool showIrradiancePoints, float irradiancePointSize)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
 	  bumpMap(bumpMap), albedo(albedo), specularLerp(specularLerp)
 {
@@ -83,14 +84,20 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			thickness[i] = lps[i].thickness;
 		}
 
-		ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab);
+		vector<Spectrum> rhoData;
 
-		MemoryArena arena;
-		Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, layers[0].ior, specularLerp);
-		BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
-			BSDF_ALLOC(arena, Beckmann)(roughness));
-		vector<Spectrum> rhoData = ComputeRhoDataFromBxDF(bxdf);
-		arena.FreeAll();
+		if (showIrradiancePoints) {
+			ComputeIrradiancePointsProfile(&profileData, irradiancePointSize);
+			rhoData = ComputeRoughRhoData();
+		} else {
+			ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab);
+			MemoryArena arena;
+			Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, layers[0].ior, specularLerp);
+			BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
+				BSDF_ALLOC(arena, Beckmann)(roughness));
+			rhoData = ComputeRhoDataFromBxDF(bxdf);
+			arena.FreeAll();
+		}
 
 		preparedBSSRDFData = new MultipoleBSSRDFData(2, mua, musp, eta, thickness, profileData, rhoData, useMonteCarloProfile);
 
@@ -230,7 +237,10 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	bool generateProfile = ps.FindOneBool("genprofile", true);
 	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
 	bool lerpOnThinSlab = ps.FindOneBool("lerponthinslab", true);
+	bool showIrradiancePoints = ps.FindOneBool("showirradiancepoints", false);
+	float irradiancePointSize = ps.FindOneFloat("irradiancepointsize", 0.002f);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
 		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, specularLerp,
-		generateProfile, useMonteCarloProfile, lerpOnThinSlab);
+		generateProfile, useMonteCarloProfile, lerpOnThinSlab,
+		showIrradiancePoints, irradiancePointSize);
 }

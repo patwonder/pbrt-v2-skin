@@ -87,6 +87,8 @@ private:
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
 							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true);
+void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);
 
 vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf);
+vector<Spectrum> ComputeRoughRhoData();

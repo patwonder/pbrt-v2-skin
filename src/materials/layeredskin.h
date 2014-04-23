@@ -43,7 +43,8 @@ public:
 		float nmperunit, const SkinCoefficients& coeff,
 		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
-		float specularLerp, bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab);
+		float specularLerp, bool generateProfile, bool useMonteCarloProfile, bool lerpOnThinSlab,
+		bool showIrradiancePoints, float irradiancePointSize);
 	~LayeredSkin();
 
 	vector<float> GetLayerThickness() const override;

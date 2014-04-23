@@ -215,8 +215,20 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bum
 		TempTriangle triangle(ObjectToWorld, WorldToObject, ReverseOrientation, this, itri);
 		// Let tessellator do the work
 		tessellator(tfe0, tfe1, tfe2, tfc, [&] (BarycentricCoordinate bv0, BarycentricCoordinate bv1, BarycentricCoordinate bv2) {
+			Point sv0 = bv0.Evaluate(v0, v1, v2);
+			Point sv1 = bv1.Evaluate(v0, v1, v2);
+			Point sv2 = bv2.Evaluate(v0, v1, v2);
+#if 1
 			// Compute information about barycentric point
 			BarycentricCoordinate bc = BarycentricCoordinate::baryCentric.Evaluate(bv0, bv1, bv2);
+#else
+			// Compute information about incenter point
+			float l0 = (sv1 - sv2).Length();
+			float l1 = (sv2 - sv0).Length();
+			float l2 = (sv0 - sv1).Length();
+			BarycentricCoordinate bic(l0 / (l0 + l1 + l2), l1 / (l0 + l1 + l2), l2 / (l0 + l1 + l2));
+			BarycentricCoordinate bc = bic.Evaluate(bv0, bv1, bv2);
+#endif
 			SurfacePoint sp;
 			sp.p = bc.Evaluate(v0, v1, v2);
 			DifferentialGeometry dgGeom, dgShading, dgBump;
@@ -231,9 +243,6 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bum
 			sp.v = dgBump.v;
 			sp.materialId = materialId;
 			// Compute triangle area
-			Point sv0 = bv0.Evaluate(v0, v1, v2);
-			Point sv1 = bv1.Evaluate(v0, v1, v2);
-			Point sv2 = bv2.Evaluate(v0, v1, v2);
 			sp.area = .5f * Cross(sv1 - sv0, sv2 - sv0).Length();
 			sp.rayEpsilon = minDist / 10.f;
 			// Add barycentric point of the subdivided triangle to the collection of surface points

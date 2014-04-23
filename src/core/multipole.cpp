@@ -36,6 +36,7 @@
 #include "parallel.h"
 #include "progressreporter.h"
 #include "renderers/mcprofile.h"
+#include "kahansum.h"
 
 
 struct MultipoleProfileDataEntry {
@@ -368,12 +369,13 @@ Spectrum MultipoleBSSRDFData::rho(const Vector& wo) const {
 
 
 void MultipoleBSSRDFData::computeRhoIntegral() {
-	Spectrum integral(0.f);
-	for (size_t id = 0; id < rhoData.size(); id++) {
-		float costheta = (float)id / (rhoData.size() - 1);
-		integral += costheta * rhoData[id];
+	KahanSum<Spectrum> integral(0.f);
+	for (size_t id = 0; id < rhoData.size() - 1; id++) {
+		float costhetaLow = (float)id / (rhoData.size() - 1);
+		float costhetaHigh = (float)(id + 1) / (rhoData.size() - 1);
+		integral += costhetaLow * rhoData[id] + costhetaHigh * rhoData[id + 1];
 	}
-	rhoIntegral = integral * (2.f / rhoData.size() - 1);
+	rhoIntegral = integral.Value() / (rhoData.size() - 1);
 }
 
 
@@ -440,4 +442,26 @@ vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf) {
 	reporter.Done();
 
 	return result;
+}
+
+void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius) {
+	if (!oppData) return;
+
+	MultipoleProfileData* pData = *oppData = new MultipoleProfileData;
+	SampledSpectrum fullSpectrum(1.f);
+	for (int i = 0; i < SampledSpectrum::nComponents; i++) {
+		Profile& profile = pData->spectralProfile[i];
+		float area = M_PI * radius * radius;
+		MultipoleProfileDataEntry entry = { fullSpectrum[i] / area };
+		profile.data.push_back(entry);
+		profile.data.push_back(entry);
+		profile.dsqSpacing = radius * radius;
+		profile.rcpDsqSpacing = 1.f / profile.dsqSpacing;
+		profile.totalReflectance = fullSpectrum[i];
+		profile.totalTransmittance = 0.f;
+	}
+}
+
+vector<Spectrum> ComputeRoughRhoData() {
+	return vector<Spectrum>(2, Spectrum(0.f));
 }

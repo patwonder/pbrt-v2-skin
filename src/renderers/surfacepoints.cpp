@@ -149,6 +149,7 @@ void SurfacePointsRenderer::Render(const Scene *scene) {
     prog.Done();
     PBRT_SUBSURFACE_FINISHED_RAYS_FOR_POINTS(totalRaysTraced, numPointsAdded);
     if (filename != "") {
+		Info("Obtained %d surface points, writing to file \"%s\"", points.size(), filename.c_str());
         // Write surface points to file
         FILE *f = fopen(filename.c_str(), "w");
         if (!f) {
@@ -165,7 +166,9 @@ void SurfacePointsRenderer::Render(const Scene *scene) {
                 sp.n.x, sp.n.y, sp.n.z, sp.area, sp.rayEpsilon);
         }
         fclose(f);
-    }
+    } else {
+		Info("Obtained %d surface points. (Not writing to file)", points.size());
+	}
 }
 
 
@@ -197,8 +200,11 @@ void SurfacePointTask::Run() {
                 if (!hitOnSphere && ray.depth >= 3 &&
                     isect.GetBSSRDF(RayDifferential(ray), arena) != NULL) {
                     float area = M_PI * (minSampleDist / 2.f) * (minSampleDist / 2.f);
-                    candidates.push_back(SurfacePoint(hitGeometry.p, hitGeometry.nn,
-                                                      area, isect.rayEpsilon));
+					SurfacePoint sp(hitGeometry.p, hitGeometry.nn, area, isect.rayEpsilon);
+					sp.u = hitGeometry.u;
+					sp.v = hitGeometry.v;
+					sp.materialId = dynamic_cast<const GeometricPrimitive*>(isect.primitive)->GetMaterial()->materialId;
+                    candidates.push_back(sp);
                 }
 
                 // Generate random ray from intersection point

@@ -45,12 +45,13 @@ public:
 		const Camera* c, ProgressReporter& pr,
 		const vector<SurfacePoint>& pts, float mix,
 		vector<IrradiancePoint>& irpts, Mutex& mt,
-		int tn, int tc)
+		int tn, int tc, bool showIPs)
 		: reporter(pr), surfacePoints(pts), irradiancePoints(irpts),
 		  mutex(mt)
 	{
 		scene = sc; renderer = ren; camera = c; this->mix = mix;
 		taskNum = tn; taskCount = tc;
+		showIrradiancePoints = showIPs;
 	}
 	void Run() override;
 private:
@@ -64,6 +65,7 @@ private:
 	Mutex& mutex;
 	int taskNum;
 	int taskCount;
+	bool showIrradiancePoints;
 };
 
 
@@ -83,55 +85,64 @@ void IrradianceTask::Run() {
 	vector<IrradiancePoint> localIrradiancePoints;
 	localIrradiancePoints.reserve(idxEnd - idxStart);
 
-    for (size_t i = idxStart; i < idxEnd; ++i) {
-        const SurfacePoint &sp = surfacePoints[i];
-        Spectrum E(0.f);
-		const MultipoleBSSRDF* bssrdf = NULL;
-		auto itermat = scene->materials.find(sp.materialId);
-		if (itermat != scene->materials.end()) {
-			const Material* mat = itermat->second.GetPtr();
-			Vector dpdu, dpdv;
-			CoordinateSystem(Vector(sp.n), &dpdu, &dpdv);
-			DifferentialGeometry dgs(sp.p, dpdu, dpdv, Normal::Zero, Normal::Zero, sp.u, sp.v, NULL);
-			bssrdf = mat->GetMultipoleBSSRDF(dgs, dgs, arena);
+	if (showIrradiancePoints) {
+		float rgbRed[] = { 1.f, 0.f, 0.f };
+		Spectrum redSpectrum = Spectrum::FromRGB(rgbRed);
+		for (size_t i = idxStart; i < idxEnd; ++i) {
+			const SurfacePoint &sp = surfacePoints[i];
+			localIrradiancePoints.push_back(IrradiancePoint(sp, redSpectrum));
 		}
-        for (uint32_t j = 0; j < scene->lights.size(); ++j) {
-            // Add irradiance from light at point
-            const Light *light = scene->lights[j];
-            Spectrum Elight = 0.f;
-            int nSamples = RoundUpPow2(light->nSamples);
-            uint32_t scramble[2] = { rng.RandomUInt(), rng.RandomUInt() };
-            uint32_t compScramble = rng.RandomUInt();
-            for (int s = 0; s < nSamples; ++s) {
-                float lpos[2];
-                Sample02(s, scramble, lpos);
-                float lcomp = VanDerCorput(s, compScramble);
-                LightSample ls(lpos[0], lpos[1], lcomp);
-                Vector wi;
-                float lightPdf;
-                VisibilityTester visibility;
-                Spectrum Li = light->Sample_L(sp.p, sp.rayEpsilon,
-                    ls, camera->shutterOpen, &wi, &lightPdf, &visibility);
-                if (Dot(wi, sp.n) <= 0.) continue;
-                if (Li.IsBlack() || lightPdf == 0.f) continue;
-                Li *= visibility.Transmittance(scene, renderer, NULL, rng, arena);
-                if (visibility.Unoccluded(scene)) {
-					float costheta = min(AbsDot(wi, sp.n), 1.f);
-					Spectrum Ft = bssrdf
-						? Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f))
-						: Spectrum(1.f);
-                    Elight += Ft * Li * costheta / lightPdf;
+	} else {
+		for (size_t i = idxStart; i < idxEnd; ++i) {
+			const SurfacePoint &sp = surfacePoints[i];
+			Spectrum E(0.f);
+			const MultipoleBSSRDF* bssrdf = NULL;
+			auto itermat = scene->materials.find(sp.materialId);
+			if (itermat != scene->materials.end()) {
+				const Material* mat = itermat->second.GetPtr();
+				Vector dpdu, dpdv;
+				CoordinateSystem(Vector(sp.n), &dpdu, &dpdv);
+				DifferentialGeometry dgs(sp.p, dpdu, dpdv, Normal::Zero, Normal::Zero, sp.u, sp.v, NULL);
+				bssrdf = mat->GetMultipoleBSSRDF(dgs, dgs, arena);
+			}
+			for (uint32_t j = 0; j < scene->lights.size(); ++j) {
+				// Add irradiance from light at point
+				const Light *light = scene->lights[j];
+				Spectrum Elight = 0.f;
+				int nSamples = RoundUpPow2(light->nSamples);
+				uint32_t scramble[2] = { rng.RandomUInt(), rng.RandomUInt() };
+				uint32_t compScramble = rng.RandomUInt();
+				for (int s = 0; s < nSamples; ++s) {
+					float lpos[2];
+					Sample02(s, scramble, lpos);
+					float lcomp = VanDerCorput(s, compScramble);
+					LightSample ls(lpos[0], lpos[1], lcomp);
+					Vector wi;
+					float lightPdf;
+					VisibilityTester visibility;
+					Spectrum Li = light->Sample_L(sp.p, sp.rayEpsilon,
+						ls, camera->shutterOpen, &wi, &lightPdf, &visibility);
+					if (Dot(wi, sp.n) <= 0.) continue;
+					if (Li.IsBlack() || lightPdf == 0.f) continue;
+					Li *= visibility.Transmittance(scene, renderer, NULL, rng, arena);
+					if (visibility.Unoccluded(scene)) {
+						float costheta = min(AbsDot(wi, sp.n), 1.f);
+						Spectrum Ft = bssrdf
+							? Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f))
+							: Spectrum(1.f);
+						Elight += Ft * Li * costheta / lightPdf;
+					}
 				}
-            }
-            E += Elight / nSamples;
-        }
-		// Add half contribution of albedo map
-		if (bssrdf)
-			E *= Pow(bssrdf->albedo(), mix);
-        localIrradiancePoints.push_back(IrradiancePoint(sp, E));
-        PBRT_SUBSURFACE_COMPUTED_IRRADIANCE_AT_POINT(&sp, &E);
-        arena.FreeAll();
-    }
+				E += Elight / nSamples;
+			}
+			// Add half contribution of albedo map
+			if (bssrdf)
+				E *= Pow(bssrdf->albedo(), mix);
+			localIrradiancePoints.push_back(IrradiancePoint(sp, E));
+			PBRT_SUBSURFACE_COMPUTED_IRRADIANCE_AT_POINT(&sp, &E);
+			arena.FreeAll();
+		}
+	}
 	{
 		MutexLock lock(mutex);
 		irradiancePoints.insert(irradiancePoints.end(),
@@ -169,8 +180,13 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 			pts.size(), filename.c_str());
 	}
 	if (pts.size() == 0) {
-		GetSurfacePointsThroughTessellation(camera->shutterOpen,
-			minSampleDist, scene, &originalPrimitives, &pts);
+		if (usePoissonPointFinder) {
+			Point pCamera = camera->CameraToWorld(camera->shutterOpen, Point(0, 0, 0));
+			FindPoissonPointDistribution(pCamera, camera->shutterOpen, minSampleDist, scene, &pts);
+		} else {
+			GetSurfacePointsThroughTessellation(camera->shutterOpen,
+				minSampleDist, scene, &originalPrimitives, &pts);
+		}
 	}
 
     // Compute irradiance values at sample points
@@ -187,7 +203,8 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 	renderTasks.reserve(nTasks);
 	for (int i = 0; i < nTasks; ++i) {
 		renderTasks.push_back(new IrradianceTask(scene, renderer,
-		camera, reporter, pts, mix, irradiancePoints, *mutex, i, nTasks));
+			camera, reporter, pts, mix, irradiancePoints, *mutex, i, nTasks,
+			showIrradiancePoints));
 	}
 	EnqueueTasks(renderTasks);
 	WaitForAllTasks();
@@ -199,7 +216,7 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 
     // Create octree of clustered irradiance samples
 	const int OTIrradiancePointsSlice = 65536;
-	int totalWork = (int)(irradiancePoints.size() + OTIrradiancePointsSlice - 1) / OTIrradiancePointsSlice + 2;
+	int totalWork = ((int)(irradiancePoints.size() + OTIrradiancePointsSlice - 1) / OTIrradiancePointsSlice) * 3 / 2 + 1;
 	ProgressReporter octreeReporter(totalWork, "Building Octree");
 
 	octree = octreeArena.Alloc<SubsurfaceOctreeNode>();
@@ -217,7 +234,6 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 		octreeReporter.Update();
 
     octree->InitHierarchy();
-	octreeReporter.Update();
 	octreeReporter.Done();
 }
 
@@ -270,17 +286,19 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
 		L += ((INV_PI * Ft) * Mo * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
-    L += UniformSampleAllLights(scene, renderer, arena, p, n,
-        wo, isect.rayEpsilon, ray.time, bsdf, sample, rng, lightSampleOffsets,
-        bsdfSampleOffsets);
-    if (ray.depth < maxSpecularDepth) {
-        // Trace rays for specular reflection and refraction
-        L += SpecularReflect(ray, bsdf, rng, isect, renderer, scene, sample,
-                             arena);
-        L += SpecularTransmit(ray, bsdf, rng, isect, renderer, scene, sample,
-                              arena);
-    }
-    return L;
+	if (!showIrradiancePoints) {
+		L += UniformSampleAllLights(scene, renderer, arena, p, n,
+			wo, isect.rayEpsilon, ray.time, bsdf, sample, rng, lightSampleOffsets,
+			bsdfSampleOffsets);
+		if (ray.depth < maxSpecularDepth) {
+			// Trace rays for specular reflection and refraction
+			L += SpecularReflect(ray, bsdf, rng, isect, renderer, scene, sample,
+								 arena);
+			L += SpecularTransmit(ray, bsdf, rng, isect, renderer, scene, sample,
+								  arena);
+		}
+	}
+	return L;
 }
 
 MultipoleSubsurfaceIntegrator *CreateMultipoleSubsurfaceIntegrator(const ParamSet &params,
@@ -291,7 +309,9 @@ MultipoleSubsurfaceIntegrator *CreateMultipoleSubsurfaceIntegrator(const ParamSe
     float minDist = params.FindOneFloat("minsampledistance", .25f);
     string pointsfile = params.FindOneString("pointsfile", "");
 	float mix = params.FindOneFloat("mix", .5f);
+	bool showIrradiancePoints = params.FindOneBool("showirradiancepoints", false);
+	bool usePoissonPointFinder = params.FindOneBool("usepoissonpointfinder", false);
     if (PbrtOptions.quickRender) { maxError *= 4.f; minDist *= 4.f; }
     return new MultipoleSubsurfaceIntegrator(maxDepth, maxError, minDist, pointsfile,
-		originalPrimitives, mix);
+		originalPrimitives, mix, showIrradiancePoints, usePoissonPointFinder);
 }
