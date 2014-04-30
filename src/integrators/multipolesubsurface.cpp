@@ -278,11 +278,15 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
         PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
 		MultipoleReflectance mr(bssrdf);
         Spectrum Mo = octree->Mo(octreeBounds, p, nn, mr, maxError);
+		float costheta = min(AbsDot(wo, nn), 1.f);
+#if 1
 		// Bypass outgoing fresnel term if it's a Monte-Carlo profile,
 		// because the term is already included in the profile
-		float costheta = min(AbsDot(wo, nn), 1.f);
-		Spectrum Ft = bssrdf->IsMonteCarlo() ? Spectrum(1.f)
-			: (Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f)));
+		Spectrum Ft = bssrdf->IsMonteCarlo() ? Spectrum(1.f) :
+#else
+		Spectrum Ft =
+#endif
+			(Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f)));
 		L += ((INV_PI * Ft) * Mo * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }

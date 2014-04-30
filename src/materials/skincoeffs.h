@@ -95,6 +95,20 @@ public:
 			(1.f - f_ohg) * WLDValue::FromSampled(
 			dhg_lambdas, dhg_vals, dhg_n));
 	}
+	static WLDValue mua_ohg() {
+		const float ln10 = 2.303f;
+		const float molarWeight = 64500.f; // g/mole
+		const float concentration = 150.f; // g/L
+		return ln10 / molarWeight * concentration *
+			WLDValue::FromSampled(ohg_lambdas, ohg_vals, ohg_n);
+	}
+	static WLDValue mua_dhg() {
+		const float ln10 = 2.303f;
+		const float molarWeight = 64500.f; // g/mole
+		const float concentration = 150.f; // g/L
+		return ln10 / molarWeight * concentration *
+			WLDValue::FromSampled(dhg_lambdas, dhg_vals, dhg_n);
+	}
 	// Average volume fraction of blood, f.blood
 	float f_blood;
 	// Absorption coefficient of dermis perfused with blood, mua.derm

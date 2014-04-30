@@ -264,6 +264,7 @@
     <ClInclude Include="..\renderers\profilefit.h" />
     <ClInclude Include="..\renderers\samplerrenderer.h" />
     <ClInclude Include="..\renderers\surfacepoints.h" />
+    <ClInclude Include="..\renderers\testrenderer.h" />
     <ClInclude Include="..\samplers\adaptive.h" />
     <ClInclude Include="..\samplers\bestcandidate.h" />
     <ClInclude Include="..\samplers\halton.h" />
@@ -1234,6 +1235,7 @@
     <ClCompile Include="..\renderers\mcprofile.cpp" />
     <ClCompile Include="..\renderers\samplerrenderer.cpp" />
     <ClCompile Include="..\renderers\surfacepoints.cpp" />
+    <ClCompile Include="..\renderers\testrenderer.cpp" />
     <ClCompile Include="..\samplers\adaptive.cpp" />
     <ClCompile Include="..\samplers\bestcandidate.cpp" />
     <ClCompile Include="..\samplers\halton.cpp" />

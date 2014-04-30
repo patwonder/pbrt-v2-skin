@@ -295,7 +295,11 @@ void ProfileRendererTask::TraceSinglePhoton(MCProfile& profile, RNG& rng) {
 				ray = DRay(isect.p, newd, 0.);
 
 				// Book-keeping
+#if 1
 				if (currentLayerId != targetLayerId) {
+#else
+				if (true) {
+#endif
 					if (isect.interfaceId == 0) {
 						double rd = DVector(isect.p.x, isect.p.y, 0.).Length();
 						int segmentId = (int)(rd * nSegments / extent);

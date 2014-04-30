@@ -51,6 +51,8 @@ public:
 		this->isMonteCarlo = isMonteCarlo;
 		this->rhoData = rhoData;
 		computeRhoIntegral();
+		Info("Rho_hd_ for incident beam: %f", rhoData.back().y());
+		Info("Rho_hh_: %f", rhoIntegral.y());
 	}
 	int numLayers() const { return nLayers; }
 	float thickness(int layer) const { return d[layer]; }

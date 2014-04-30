@@ -434,11 +434,14 @@ void MultipoleProfileFitRenderer::DoPbrtFileSplit() const {
 		}
 	}
 
+	string rawPbrtPrefix = FileNameWithoutExt(pbrtFilePath) + "-";
 	string pbrtFilePrefix = AbsolutePath(ResolveFilename(FileNameWithoutExt(pbrtFilePath))) + "-";
 	string outFilePrefix = FileNameWithoutExt(filename) + "-";
 	string pbrtFileSuffix = ".pbrt";
 	string outFileSuffix = ".txt";
 
+	string batchFilename = AbsolutePath(ResolveFilename("batch-run-" + FileNameWithoutExt(pbrtFilePath))) + ".bat";
+	ofstream batout(batchFilename, ios::out | ios::trunc);
 	for (int i = 0; i < nSubPbrtFiles; i++) {
 		int idMin = i * splitTasks;
 		int idMax = min((i + 1) * splitTasks, nTotalTasks);
@@ -467,7 +470,13 @@ void MultipoleProfileFitRenderer::DoPbrtFileSplit() const {
 			<< "WorldBegin" << endl
 			<< "WorldEnd" << endl;
 		out.close();
+
+		if (batout) {
+			batout << "bin\\pbrt.exe --verbose scenes\\"
+				<< CombineFileName(rawPbrtPrefix, i, pbrtFileSuffix) << endl;
+		}
 	}
+	batout.close();
 
 	Info("Generated %d files.", nSubPbrtFiles);
 }

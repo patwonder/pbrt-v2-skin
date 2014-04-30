@@ -193,17 +193,24 @@ void SurfacePointTask::Run() {
                         break;
                     hitOnSphere = true;
                 }
-                DifferentialGeometry &hitGeometry = isect.dg;
-                hitGeometry.nn = Faceforward(hitGeometry.nn, -ray.d);
 
-                // Store candidate sample point at ray intersection if appropriate
+				DifferentialGeometry &hitGeometry = isect.dg;
+				hitGeometry.nn = Faceforward(hitGeometry.nn, -ray.d);
+
+				// Store candidate sample point at ray intersection if appropriate
                 if (!hitOnSphere && ray.depth >= 3 &&
                     isect.GetBSSRDF(RayDifferential(ray), arena) != NULL) {
                     float area = M_PI * (minSampleDist / 2.f) * (minSampleDist / 2.f);
-					SurfacePoint sp(hitGeometry.p, hitGeometry.nn, area, isect.rayEpsilon);
-					sp.u = hitGeometry.u;
-					sp.v = hitGeometry.v;
-					sp.materialId = dynamic_cast<const GeometricPrimitive*>(isect.primitive)->GetMaterial()->materialId;
+
+					DifferentialGeometry dgShading, dgs;
+					isect.GetShadingGeometry(dgs);
+					const Material* mat = dynamic_cast<const GeometricPrimitive*>(isect.primitive)->GetMaterial();
+					mat->GetBumpMapping().Bump(hitGeometry, dgShading, &dgs);
+
+					SurfacePoint sp(dgs.p, dgs.nn, area, isect.rayEpsilon);
+					sp.u = dgs.u;
+					sp.v = dgs.v;
+					sp.materialId = mat->materialId;
                     candidates.push_back(sp);
                 }
 
