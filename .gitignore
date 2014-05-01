@@ -39,3 +39,4 @@ lib/
 # Scene files
 /scenes/
 randomwalk-probes.txt
+*.bat

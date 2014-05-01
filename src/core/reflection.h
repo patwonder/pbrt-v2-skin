@@ -312,6 +312,18 @@ private:
 };
 
 
+class FixedFresnelDielectric : public FresnelDielectric {
+public:
+    // FixedFresnelDielectric Public Methods
+	FixedFresnelDielectric(float ei, float et)
+		: FresnelDielectric(ei, et) { }
+    Spectrum Evaluate(float cosi) const override {
+		Spectrum val = FresnelDielectric::Evaluate(cosi);
+		return val + val * (Spectrum(1.f) - val) * (Spectrum(1.f) - val);
+	}
+};
+
+
 class FresnelNoOp : public Fresnel {
 public:
     Spectrum Evaluate(float) const { return Spectrum(1.); }

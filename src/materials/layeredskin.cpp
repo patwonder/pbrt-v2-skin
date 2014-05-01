@@ -38,11 +38,11 @@
 
 LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
-	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, float specularLerp,
+	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, bool doubleRefSSLF,
 	bool generateProfile, bool useMonteCarloProfile, uint64_t nPhotons, bool lerpOnThinSlab,
 	bool showIrradiancePoints, float irradiancePointSize)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
-	  bumpMap(bumpMap), albedo(albedo), specularLerp(specularLerp)
+	  bumpMap(bumpMap), albedo(albedo), doubleRefSSLF(doubleRefSSLF)
 {
 	const float NM_PER_CM = 1e7f;
 	// Calculate layer params
@@ -92,7 +92,8 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 		} else {
 			ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons);
 			MemoryArena arena;
-			Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, layers[0].ior, specularLerp);
+			Fresnel *fresnel = doubleRefSSLF ? BSDF_ALLOC(arena, FixedFresnelDielectric)(1.f, layers[0].ior)
+											 : BSDF_ALLOC(arena, FresnelDielectric)(1.f, layers[0].ior);
 			BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
 				BSDF_ALLOC(arena, Beckmann)(roughness));
 			rhoData = ComputeRhoDataFromBxDF(bxdf);
@@ -138,7 +139,8 @@ BSDF* LayeredSkin::GetBSDF(const DifferentialGeometry &dgGeom,
 	float ior = layers[0].ior;
 	BSDF* bsdf = BSDF_ALLOC(arena, BSDF)(dgs, dgGeom.nn, ior);
 	float rough = roughness;
-	Fresnel *fresnel = BSDF_ALLOC(arena, LerpedFresnelDielectric)(1.f, ior, specularLerp);
+	Fresnel *fresnel = doubleRefSSLF ? BSDF_ALLOC(arena, FixedFresnelDielectric)(1.f, ior)
+									 : BSDF_ALLOC(arena, FresnelDielectric)(1.f, ior);
 	Spectrum R = Kr->Evaluate(dgs);
 	Spectrum T = Kt->Evaluate(dgs);
 	if (!R.IsBlack())
@@ -233,7 +235,7 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	Reference<Texture<Spectrum> > albedo = mp.GetSpectrumTexture("albedo", Spectrum(1.f));
-	float specularLerp = ps.FindOneFloat("specularlerp", 1.f);
+	bool doubleRefSSLF = ps.FindOneBool("doublerefsslf", true);
 	bool generateProfile = ps.FindOneBool("genprofile", true);
 	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
 	string strPhotons = ps.FindOneString("photons", "10000000");
@@ -242,7 +244,7 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	bool showIrradiancePoints = ps.FindOneBool("showirradiancepoints", false);
 	float irradiancePointSize = ps.FindOneFloat("irradiancepointsize", 0.002f);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
-		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, specularLerp,
+		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, doubleRefSSLF,
 		generateProfile, useMonteCarloProfile, photons, lerpOnThinSlab,
 		showIrradiancePoints, irradiancePointSize);
 }

@@ -39,6 +39,7 @@ using namespace std;
 
 void TestRenderer::Render(const Scene* scene) {
 	// Do whatever you want here!
+#if 0
 	WLDValue mua_ohg = SkinCoefficients::mua_ohg();
 	WLDValue mua_dhg = SkinCoefficients::mua_dhg();
 	ofstream out("hg.txt", ios::trunc);
@@ -46,6 +47,18 @@ void TestRenderer::Render(const Scene* scene) {
 	for (int i = 0; i < WLD_nSamples; i++) {
 		float wl = WLD_lambdas[i];
 		out << wl << "\t" << mua_ohg[i] << "\t" << mua_dhg[i] << endl;
+	}
+
+	out.close();
+#endif
+	WLDValue musp_mie = SkinCoefficients::musp_Mie_fibers() / 2;
+	WLDValue musp_rayleigh = SkinCoefficients::musp_Rayleigh() / 2;
+
+	ofstream out("musp.txt", ios::trunc);
+
+	for (int i = 0; i < WLD_nSamples; i++) {
+		float wl = WLD_lambdas[i];
+		out << wl << "\t" << musp_mie[i] << "\t" << musp_rayleigh[i] << endl;
 	}
 
 	out.close();
