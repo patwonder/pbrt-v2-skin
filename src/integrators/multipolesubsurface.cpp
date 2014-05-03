@@ -128,7 +128,7 @@ void IrradianceTask::Run() {
 					if (visibility.Unoccluded(scene)) {
 						float costheta = min(AbsDot(wi, sp.n), 1.f);
 						Spectrum Ft = bssrdf
-							? Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f))
+							? Spectrum(1.f) - bssrdf->rho(costheta)
 							: Spectrum(1.f);
 						Elight += Ft * Li * costheta / lightPdf;
 					}
@@ -185,7 +185,7 @@ void MultipoleSubsurfaceIntegrator::Preprocess(const Scene *scene, const Camera 
 			FindPoissonPointDistribution(pCamera, camera->shutterOpen, minSampleDist, scene, &pts);
 		} else {
 			GetSurfacePointsThroughTessellation(camera->shutterOpen,
-				minSampleDist, scene, &originalPrimitives, &pts);
+				minSampleDist, scene, &originalPrimitives, &pts, incenter);
 		}
 	}
 
@@ -277,16 +277,13 @@ Spectrum MultipoleSubsurfaceIntegrator::Li(const Scene *scene, const Renderer *r
         // Use hierarchical integration to evaluate reflection from dipole model
         PBRT_SUBSURFACE_STARTED_OCTREE_LOOKUP(const_cast<Point *>(&p));
 		MultipoleReflectance mr(bssrdf);
-        Spectrum Mo = octree->Mo(octreeBounds, p, nn, mr, maxError);
+		Spectrum Mo = octree->Mo(octreeBounds, p, nn, mr, maxError);
 		float costheta = min(AbsDot(wo, nn), 1.f);
-#if 1
+
 		// Bypass outgoing fresnel term if it's a Monte-Carlo profile,
 		// because the term is already included in the profile
 		Spectrum Ft = bssrdf->IsMonteCarlo() ? Spectrum(1.f) :
-#else
-		Spectrum Ft =
-#endif
-			(Spectrum(1.f) - bssrdf->rho(SphericalDirection<float>(sqrtf(1 - costheta * costheta), costheta, 0.f)));
+			(Spectrum(1.f) - bssrdf->rho(costheta));
 		L += ((INV_PI * Ft) * Mo * Pow(bssrdf->albedo(), 1.f - mix)).Clamp(0.f);
         PBRT_SUBSURFACE_FINISHED_OCTREE_LOOKUP();
     }
@@ -315,7 +312,8 @@ MultipoleSubsurfaceIntegrator *CreateMultipoleSubsurfaceIntegrator(const ParamSe
 	float mix = params.FindOneFloat("mix", .5f);
 	bool showIrradiancePoints = params.FindOneBool("showirradiancepoints", false);
 	bool usePoissonPointFinder = params.FindOneBool("usepoissonpointfinder", false);
+	bool irPointsIncenter = params.FindOneBool("incenter", false);
     if (PbrtOptions.quickRender) { maxError *= 4.f; minDist *= 4.f; }
     return new MultipoleSubsurfaceIntegrator(maxDepth, maxError, minDist, pointsfile,
-		originalPrimitives, mix, showIrradiancePoints, usePoissonPointFinder);
+		originalPrimitives, mix, showIrradiancePoints, usePoissonPointFinder, irPointsIncenter);
 }

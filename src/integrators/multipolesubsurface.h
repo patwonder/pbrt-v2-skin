@@ -45,9 +45,9 @@ public:
 		const Sample *sample, RNG &rng, MemoryArena &arena) const override;
 	MultipoleSubsurfaceIntegrator(int mdepth, float merror, float mindist,
 		const string &fn, const vector<Reference<Primitive> >* ops, float mix,
-		bool showIrradiancePoints, bool usePoissonPointFinder)
+		bool showIrradiancePoints, bool usePoissonPointFinder, bool incenter)
 		: originalPrimitives(*ops), mix(mix), showIrradiancePoints(showIrradiancePoints),
-		  usePoissonPointFinder(usePoissonPointFinder)
+		  usePoissonPointFinder(usePoissonPointFinder), incenter(incenter)
 	{
 		maxSpecularDepth = mdepth;
 		maxError = merror;
@@ -66,7 +66,7 @@ private:
 	int maxSpecularDepth;
 	float maxError, minSampleDist;
 	float mix;
-	bool showIrradiancePoints, usePoissonPointFinder;
+	bool showIrradiancePoints, usePoissonPointFinder, incenter;
 	string filename;
 	vector<IrradiancePoint> irradiancePoints;
 	BBox octreeBounds;

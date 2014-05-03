@@ -33,11 +33,16 @@
 
 struct MultipoleProfileData;
 
+struct RhoData {
+	vector<Spectrum> hd;
+	Spectrum hh;
+};
+
 class MultipoleBSSRDFData {
 public:
 	// MultipoleBSSRDF Public Methods
     MultipoleBSSRDFData(int layers, const Spectrum mua[], const Spectrum musp[], float et[], float thickness[],
-		const MultipoleProfileData* pData, const vector<Spectrum>& rhoData, bool isMonteCarlo = false) {
+		const MultipoleProfileData* pData, const RhoData& rhoData, bool isMonteCarlo = false) {
 		if (layers > MAX_LAYERS)
 			layers = MAX_LAYERS;
 		nLayers = layers;
@@ -50,9 +55,7 @@ public:
 		this->pData = pData;
 		this->isMonteCarlo = isMonteCarlo;
 		this->rhoData = rhoData;
-		computeRhoIntegral();
-		Info("Rho_hd_ for incident beam: %f", rhoData.back().y());
-		Info("Rho_hh_: %f", rhoIntegral.y());
+		Info("Rho_hd_ for incident beam: %f; Rho_hh_: %f", rhoData.hd.back().y(), rhoData.hh.y());
 	}
 	int numLayers() const { return nLayers; }
 	float thickness(int layer) const { return d[layer]; }
@@ -60,7 +63,7 @@ public:
     Spectrum sigma_a(int layer) const { return sig_a[layer]; }
     Spectrum sigma_prime_s(int layer) const { return sigp_s[layer]; }
 	bool IsMonteCarlo() const { return isMonteCarlo; }
-	Spectrum rho(const Vector& wo) const;
+	Spectrum rho(float costheta) const;
 	Spectrum rho() const;
 
 	Spectrum reflectance(float distanceSquared) const;
@@ -80,8 +83,7 @@ private:
 	const MultipoleProfileData* pData;
 	bool isMonteCarlo;
 
-	vector<Spectrum> rhoData;
-	Spectrum rhoIntegral;
+	RhoData rhoData;
 
 	// MultipoleBSSRDF Private Methods
 	void computeRhoIntegral();
@@ -92,5 +94,5 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);
 
-vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf);
-vector<Spectrum> ComputeRoughRhoData();
+RhoData ComputeRhoDataFromBxDF(const BxDF* bxdf);
+RhoData ComputeRoughRhoData();

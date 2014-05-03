@@ -159,11 +159,11 @@ struct SubsurfaceOctreeNode {
                 ++nChildren;
                 children[i]->InitHierarchy();
                 float wt = children[i]->Et.y();
-                Et += children[i]->Et;
-                p += wt * children[i]->p;
+				Et += children[i]->Et;
+				p += wt * children[i]->p;
 				n += wt * children[i]->n;
-                sumWt += wt;
-                sumArea += children[i]->sumArea;
+				sumWt += wt;
+				sumArea += children[i]->sumArea;
             }
             if (sumWt > 0.f) {
 				p /= sumWt;
@@ -181,8 +181,7 @@ struct SubsurfaceOctreeNode {
 
 		// Compute $M_\roman{o}$ at node if error is low enough
 		float dw = sumArea / DistanceSquared(pt, p);
-		if (dw < maxError && !nodeBound.Inside(pt))
-		{
+		if (dw < maxError && !nodeBound.Inside(pt)) {
 			PBRT_SUBSURFACE_ADDED_INTERIOR_CONTRIBUTION(const_cast<SubsurfaceOctreeNode *>(this));
 			return Rd(ModifiedDistanceSquared(pt, nn, p, n)) * Et;
 		}

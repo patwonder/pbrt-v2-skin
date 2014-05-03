@@ -382,7 +382,7 @@ float LayeredIntegrator::RandomWalk(uint32_t wlIndex, float& pathThroughput,
 		while (currentLayer == targetLayer) {
 			// Sample mfp(s) according to the exponential distribution: musp * exp(-mfp * musp)
 			if (mfps == 0.f)
-				mfps = min(-logf(rng.RandomFloat()), 1e7f) / musp;
+				mfps = min(-logf(1.f - rng.RandomFloat()), 1e7f) / musp;
 		
 			// Hit test, using rayEpsilon for double ensurance
 			ray.mint = min(ray.mint, min(lp.thickness, mfps) / 10.f);

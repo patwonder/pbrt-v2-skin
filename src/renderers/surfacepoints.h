@@ -59,7 +59,8 @@ class Tessellatable {
 public:
 	// Tessellatable Interface Methods
 	virtual void TessellateSurfacePoints(float minDist, const BumpMapping& bump,
-		uint32_t materialId, vector<SurfacePoint>& points, ProgressReporter* pr = NULL) const = 0;
+		uint32_t materialId, vector<SurfacePoint>& points, ProgressReporter* pr = NULL,
+		bool incenter = false) const = 0;
 	virtual int GetTessellationWork() const = 0;
 	virtual ~Tessellatable() {}
 };
@@ -92,8 +93,9 @@ class TessellateSurfacePointsRenderer : public Renderer {
 public:
 	// TessellateSurfacePointsRenderer Public Methods
 	TessellateSurfacePointsRenderer(float md, float t, const string &fn,
-		const vector<Reference<Primitive> >* ops)
-		: minDist(md), time(t), filename(fn), originalPrimitives(*ops) { }
+		const vector<Reference<Primitive> >* ops, bool incenter = false)
+		: minDist(md), time(t), filename(fn), originalPrimitives(*ops),
+		  incenter(incenter) { }
 	void Render(const Scene *scene);
 	Spectrum Li(const Scene *scene, const RayDifferential &ray,
 		const Sample *sample, RNG &rng, MemoryArena &arena,
@@ -104,9 +106,10 @@ private:
 	// TessellateSurfacePointsRenderer Private Data
 	float minDist, time;
 	string filename;
+	bool incenter;
 	friend void GetSurfacePointsThroughTessellation(float time, float minDist,
 		const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
-		vector<SurfacePoint> *points);
+		vector<SurfacePoint> *points, bool incenter);
 	vector<SurfacePoint> points;
 	const vector<Reference<Primitive> >& originalPrimitives;
 };
@@ -115,7 +118,7 @@ void FindPoissonPointDistribution(const Point &pCamera, float time, float minDis
     const Scene *scene, vector<SurfacePoint> *points);
 void GetSurfacePointsThroughTessellation(float time, float minDist,
 	const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
-	vector<SurfacePoint> *points);
+	vector<SurfacePoint> *points, bool incenter = false);
 SurfacePointsRenderer *CreateSurfacePointsRenderer(const ParamSet &params,
     const Point &pCamera, float time);
 TessellateSurfacePointsRenderer* CreateTessellateSurfacePointsRenderer(const ParamSet& params,

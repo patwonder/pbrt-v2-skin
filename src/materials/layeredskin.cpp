@@ -84,7 +84,7 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			thickness[i] = lps[i].thickness;
 		}
 
-		vector<Spectrum> rhoData;
+		RhoData rhoData;
 
 		if (showIrradiancePoints) {
 			ComputeIrradiancePointsProfile(&profileData, irradiancePointSize);
@@ -235,7 +235,7 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
     Reference<Texture<Spectrum> > Kt = mp.GetSpectrumTexture("Kt", Spectrum(1.f));
     Reference<Texture<float> > bumpMap = mp.GetFloatTextureOrNull("bumpmap");
 	Reference<Texture<Spectrum> > albedo = mp.GetSpectrumTexture("albedo", Spectrum(1.f));
-	bool doubleRefSSLF = ps.FindOneBool("doublerefsslf", true);
+	bool doubleRefSSLF = ps.FindOneBool("doublerefsslf", false);
 	bool generateProfile = ps.FindOneBool("genprofile", true);
 	bool useMonteCarloProfile = ps.FindOneBool("usemontecarlo", false);
 	string strPhotons = ps.FindOneString("photons", "10000000");

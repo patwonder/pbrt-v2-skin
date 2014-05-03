@@ -61,7 +61,7 @@ public:
     void Refine(vector<Reference<Shape> > &refined) const;
 	Reference<ShrinkableShape> Shrink(float distance) const override;
 	void TessellateSurfacePoints(float minDist, const BumpMapping& bump, uint32_t materialId,
-		vector<SurfacePoint>& points, ProgressReporter* pr = NULL) const override;
+		vector<SurfacePoint>& points, ProgressReporter* pr = NULL, bool incenter = false) const override;
 	int GetTessellationWork() const override;
 	template<class MeshReferenceType>
 	friend class TriangleBase;

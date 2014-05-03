@@ -185,7 +185,7 @@ struct BarycentricCoordinate {
 const BarycentricCoordinate BarycentricCoordinate::baryCentric(1.f / 3.f, 1.f / 3.f, 1.f / 3.f);
 
 void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bump,
-	uint32_t materialId, vector<SurfacePoint>& points, ProgressReporter* pr) const
+	uint32_t materialId, vector<SurfacePoint>& points, ProgressReporter* pr, bool incenter) const
 {
 	// Assume tessellator splits a triangle into tf^2 pieces,
 	// That's roughtly 1 point per 1/2*(l/tf)^2 area (assume right triangles)
@@ -218,17 +218,18 @@ void TriangleMesh::TessellateSurfacePoints(float minDist, const BumpMapping& bum
 			Point sv0 = bv0.Evaluate(v0, v1, v2);
 			Point sv1 = bv1.Evaluate(v0, v1, v2);
 			Point sv2 = bv2.Evaluate(v0, v1, v2);
-#if 1
-			// Compute information about barycentric point
-			BarycentricCoordinate bc = BarycentricCoordinate::baryCentric.Evaluate(bv0, bv1, bv2);
-#else
-			// Compute information about incenter point
-			float l0 = (sv1 - sv2).Length();
-			float l1 = (sv2 - sv0).Length();
-			float l2 = (sv0 - sv1).Length();
-			BarycentricCoordinate bic(l0 / (l0 + l1 + l2), l1 / (l0 + l1 + l2), l2 / (l0 + l1 + l2));
-			BarycentricCoordinate bc = bic.Evaluate(bv0, bv1, bv2);
-#endif
+			BarycentricCoordinate bc;
+			if (!incenter) {
+				// Compute information about barycentric point
+				bc = BarycentricCoordinate::baryCentric.Evaluate(bv0, bv1, bv2);
+			} else {
+				// Compute information about incenter point
+				float l0 = (sv1 - sv2).Length();
+				float l1 = (sv2 - sv0).Length();
+				float l2 = (sv0 - sv1).Length();
+				BarycentricCoordinate bic(l0 / (l0 + l1 + l2), l1 / (l0 + l1 + l2), l2 / (l0 + l1 + l2));
+				bc = bic.Evaluate(bv0, bv1, bv2);
+			}
 			SurfacePoint sp;
 			sp.p = bc.Evaluate(v0, v1, v2);
 			DifferentialGeometry dgGeom, dgShading, dgBump;

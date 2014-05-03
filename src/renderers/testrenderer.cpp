@@ -34,6 +34,7 @@
 #include "testrenderer.h"
 #include "materials/skincoeffs.h"
 #include <fstream>
+#include "multipole.h"
 
 using namespace std;
 
@@ -50,7 +51,7 @@ void TestRenderer::Render(const Scene* scene) {
 	}
 
 	out.close();
-#endif
+#elif 0
 	WLDValue musp_mie = SkinCoefficients::musp_Mie_fibers() / 2;
 	WLDValue musp_rayleigh = SkinCoefficients::musp_Rayleigh() / 2;
 
@@ -62,6 +63,24 @@ void TestRenderer::Render(const Scene* scene) {
 	}
 
 	out.close();
+#else
+	MemoryArena arena;
+	Fresnel *fresnel = BSDF_ALLOC(arena, FixedFresnelDielectric)(1.f, 1.4f);
+	BxDF* bxdf = BSDF_ALLOC(arena, Microfacet)(Spectrum(1.f), fresnel,
+		BSDF_ALLOC(arena, Beckmann)(0.3));
+	auto rhoData = ComputeRhoDataFromBxDF(bxdf);
+	arena.FreeAll();
+
+	ofstream out("rho.txt", ios::trunc);
+
+	for (int i = 0; i < rhoData.hd.size(); i++) {
+		float rho = rhoData.hd[i].y();
+		float costh = (float)i / (rhoData.hd.size() - 1);
+		out << costh << "\t" << rho << endl;
+	}
+
+	out.close();
+#endif
 }
 
 

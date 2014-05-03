@@ -552,8 +552,9 @@ void Beckmann::Sample_f(const Vector &wo, Vector *wi,
 	// We sample according to D()cos(NdotH) instead
 
     // Compute sampled half-angle vector $\wh$ for Beckmann distribution
-    float costheta = cos(atanf(sqrtf(-rms2 * logf(u1))));
-    float sintheta = sqrtf(max(0.f, 1.f - costheta*costheta));
+    float theta = atanf(sqrtf(-rms2 * logf(1.f - u1)));
+	float costheta = cos(theta);
+    float sintheta = sin(theta);
     float phi = u2 * 2.f * M_PI;
     Vector wh = SphericalDirection<float>(sintheta, costheta, phi);
     if (!SameHemisphere(wo, wh)) wh = -wh;
@@ -829,8 +830,8 @@ bool MultipoleBSSRDF::IsMonteCarlo() const {
 	return pData->IsMonteCarlo();
 }
 
-Spectrum MultipoleBSSRDF::rho(const Vector& wo) const {
-	return pData->rho(wo);
+Spectrum MultipoleBSSRDF::rho(float costheta) const {
+	return pData->rho(costheta);
 }
 
 Spectrum MultipoleBSSRDF::rho() const {

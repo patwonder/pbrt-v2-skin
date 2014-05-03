@@ -605,7 +605,7 @@ public:
     Spectrum sigma_a(int layer) const;
     Spectrum sigma_prime_s(int layer) const;
 	bool IsMonteCarlo() const;
-	Spectrum rho(const Vector& wo) const;
+	Spectrum rho(float costheta) const;
 	Spectrum rho() const;
 	Spectrum albedo() const { return al; }
 

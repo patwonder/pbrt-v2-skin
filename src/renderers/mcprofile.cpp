@@ -254,7 +254,7 @@ void ProfileRendererTask::TraceSinglePhoton(MCProfile& profile, RNG& rng) {
 		do {
 			// Sample mfp(s) according to the exponential distribution: musp * exp(-mfp * musp)
 			if (len == 0.)
-				len = min(-log(rng.RandomDouble()), 1e7) * scatterMfp;
+				len = min(-log(1.f - rng.RandomDouble()), 1e7) * scatterMfp;
 
 			ray.maxt = len;
 			// Test intersection

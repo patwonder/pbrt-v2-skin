@@ -89,11 +89,11 @@ private:
         bool doTrilinear, float maxAniso, ImageWrap wm, float shift, float scale, float gamma);
     static void convertIn(const RGBSpectrum &from, RGBSpectrum *to,
                           float shift, float scale, float gamma) {
-        *to = Pow(scale * (from + shift), gamma);
+        *to = scale * (Pow(from, gamma) + shift);
     }
     static void convertIn(const RGBSpectrum &from, float *to,
                           float shift, float scale, float gamma) {
-        *to = powf(scale * (from.y() + shift), gamma);
+        *to = scale * (powf(from.y(), gamma) + shift);
     }
     static void convertOut(const RGBSpectrum &from, Spectrum *to) {
         float rgb[3];

@@ -359,28 +359,33 @@ void ReleaseMultipoleProfile(MultipoleProfileData* pData) {
 }
 
 
-Spectrum MultipoleBSSRDFData::rho(const Vector& wo) const {
-	float costheta = AbsCosTheta(wo);
-	float fid = costheta * (rhoData.size() - 1);
-	int id = Clamp((int)fid, 0, (int)(rhoData.size() - 2));
-	float lerp = fid - id;
-	return Lerp(lerp, rhoData[id], rhoData[id + 1]);
+Spectrum MultipoleBSSRDFData::rho(float costheta) const {
+	float fid = costheta * (rhoData.hd.size() - 1);
+	int id = Clamp((int)fid, 0, (int)(rhoData.hd.size() - 2));
+	float lerp = fid - (float)id;
+	return Lerp(lerp, rhoData.hd[id], rhoData.hd[id + 1]);
 }
 
 
-void MultipoleBSSRDFData::computeRhoIntegral() {
-	KahanSum<Spectrum> integral(0.f);
-	for (size_t id = 0; id < rhoData.size() - 1; id++) {
-		float costhetaLow = (float)id / (rhoData.size() - 1);
-		float costhetaHigh = (float)(id + 1) / (rhoData.size() - 1);
-		integral += costhetaLow * rhoData[id] + costhetaHigh * rhoData[id + 1];
-	}
-	rhoIntegral = integral.Value() / (rhoData.size() - 1);
+Spectrum ComputeRhoHHFromBxDF(const BxDF* bxdf) {
+	RNG rng(6428263 * 3 * 7);
+
+	int sqrtSamples = 256;
+    int nSamples = sqrtSamples * sqrtSamples;
+    float* s1 = (float*)malloc(sizeof(float) * 2 * nSamples);
+    StratifiedSample2D(s1, sqrtSamples, sqrtSamples, rng);
+    float* s2 = (float*)malloc(sizeof(float) * 2 * nSamples);
+    StratifiedSample2D(s2, sqrtSamples, sqrtSamples, rng);
+    Spectrum rhohh = bxdf->rho(nSamples, s1, s2);
+	free(s2);
+	free(s1);
+
+	return rhohh;
 }
 
 
 Spectrum MultipoleBSSRDFData::rho() const {
-	return rhoIntegral;
+	return rhoData.hh;
 }
 
 
@@ -417,28 +422,31 @@ void RhoTask::Run() {
 }
 
 
-vector<Spectrum> ComputeRhoDataFromBxDF(const BxDF* bxdf) {
-	vector<Spectrum> result;
+RhoData ComputeRhoDataFromBxDF(const BxDF* bxdf) {
+	RhoData result;
 
 	const int rhoDataSize = 1024;
-	result.resize(rhoDataSize + 1, Spectrum(0.f));
+	result.hd.resize(rhoDataSize + 1, Spectrum(0.f));
 
 	int nTasks = rhoDataSize + 1;
 	vector<Task*> tasks;
 	tasks.reserve(nTasks);
 
-	ProgressReporter reporter(nTasks, "Rho Data");
+	ProgressReporter reporter(nTasks + 1, "Rho Data");
 	for (int taskId = 0; taskId < nTasks; taskId++) {
 		float costheta = (float)taskId / rhoDataSize;
 		if (costheta == 0.f)
 			costheta = 0.01f / rhoDataSize;
-		tasks.push_back(new RhoTask(result[taskId], bxdf,
+		tasks.push_back(new RhoTask(result.hd[taskId], bxdf,
 			costheta, reporter, taskId));
 	}
 	EnqueueTasks(tasks);
 	WaitForAllTasks();
 	for (Task* task : tasks)
 		delete task;
+
+	result.hh = ComputeRhoHHFromBxDF(bxdf);
+	reporter.Update();
 	reporter.Done();
 
 	return result;
@@ -462,6 +470,7 @@ void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius
 	}
 }
 
-vector<Spectrum> ComputeRoughRhoData() {
-	return vector<Spectrum>(2, Spectrum(0.f));
+RhoData ComputeRoughRhoData() {
+	RhoData result = { vector<Spectrum>(2, Spectrum(0.f)), Spectrum(0.f) };
+	return result;
 }

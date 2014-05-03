@@ -203,7 +203,7 @@ void SurfacePointTask::Run() {
                     float area = M_PI * (minSampleDist / 2.f) * (minSampleDist / 2.f);
 
 					DifferentialGeometry dgShading, dgs;
-					isect.GetShadingGeometry(dgs);
+					isect.GetShadingGeometry(dgShading);
 					const Material* mat = dynamic_cast<const GeometricPrimitive*>(isect.primitive)->GetMaterial();
 					mat->GetBumpMapping().Bump(hitGeometry, dgShading, &dgs);
 
@@ -328,7 +328,7 @@ void TessellateSurfacePointsRenderer::Render(const Scene *scene) {
 	for (auto tessellatablePair : tessellatables) {
 		const Tessellatable* tessellatable = tessellatablePair.first;
 		const Material* mat = tessellatablePair.second;
-		tessellatable->TessellateSurfacePoints(minDist, mat->GetBumpMapping(), mat->materialId, points, &pr);
+		tessellatable->TessellateSurfacePoints(minDist, mat->GetBumpMapping(), mat->materialId, points, &pr, incenter);
 	}
 	pr.Done();
 
@@ -361,9 +361,9 @@ void FindPoissonPointDistribution(const Point &pCamera, float time,
 
 void GetSurfacePointsThroughTessellation(float time, float minDist,
 	const Scene *scene, const vector<Reference<Primitive> >* originalPrimitives,
-	vector<SurfacePoint> *points)
+	vector<SurfacePoint> *points, bool incenter)
 {
-	TessellateSurfacePointsRenderer tsp(minDist, time, "", originalPrimitives);
+	TessellateSurfacePointsRenderer tsp(minDist, time, "", originalPrimitives, incenter);
 	tsp.Render(scene);
 	points->swap(tsp.points);
 }
