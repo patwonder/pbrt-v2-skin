@@ -1,50 +1,27 @@
-Film "image" "integer xresolution" [640] "integer yresolution" [480]
-LookAt 1.34671 -2.88802 0.292805 0 0 0 0 0 1
+# sample pbrt file for rendering the head model using MultipoleSubsurfaceIntegrator
+Film "image" "integer xresolution" [1280] "integer yresolution" [720]
+LookAt 0.491171 -4.4848 0.897406 0 0 0 0 0 1
 Camera "perspective" "float fov" [30]
 
-# SurfaceIntegrator "dipolesubsurface"
-#  "float minsampledistance" 0.005
-#  "float maxerror" 0.002
-#  "integer maxdepth" 100
-
-Sampler "lowdiscrepancy" "integer pixelsamples" 1
-# Sampler "adaptive" "integer minsamples" 2
-                   # "integer maxsamples" 16
-
-#SurfaceIntegrator "path"
-#  "integer maxdepth" 100
-
-#SurfaceIntegrator "layered"
-#  "integer maxdepth" 100
+Sampler "lowdiscrepancy" "integer pixelsamples" 4
 
 SurfaceIntegrator "multipolesubsurface"
   "integer maxdepth" 5
-  "float maxerror" 0.05
+  "float maxerror" 0.1
   "float minsampledistance" 0.0015
-
-#Renderer "tessellatesurfacepoints"
-#  "float minsampledistance" 0.002
-#  "string filename" "skin-surfacepoints.bin"
 
 WorldBegin
 
   AttributeBegin
-    AreaLightSource "area" "color L" [ 6000 6000 6000 ] "integer nsamples" [4]
-    Translate 2.42104 6.58076 -0.214002
-    Shape "sphere" "float radius" 0.5
+    AreaLightSource "area" "color L" [ 3200 3200 3200 ] "integer nsamples" [4]
+    Translate -0.0859535 -4.92443 5.00725
+    Shape "sphere" "float radius" 0.2
   AttributeEnd
 
   AttributeBegin
-    AreaLightSource "area" "color L" [ 3000 3000 3000 ] "integer nsamples" [4]
-    Translate -5.20969 -4.48896 2.20104
-    Shape "sphere" "float radius" 0.5
-  AttributeEnd
-  
-  AttributeBegin
-    # Bounding sphere
-    Material "matte" "color Kd" [.5 .5 .8]
-    ReverseOrientation
-#    Shape "sphere" "float radius" 1000
+    AreaLightSource "area" "color L" [ 3200 3200 3200 ] "integer nsamples" [4]
+    Translate 2.88236 6.79042 -0.0884118
+    Shape "sphere" "float radius" 0.2
   AttributeEnd
 
   AttributeBegin
@@ -52,25 +29,21 @@ WorldBegin
     Rotate 90  1 0 0
     Scale 10 10 10
     Texture "headbump" "float" "imagemap" "string filename" "textures/bump-lowRes2.tga"
-      "string wrap" "clamp" "float scale" -0.01
-    Texture "lambertian" "color" "imagemap" "string filename" "textures/lambertian.tga"
-      "string wrap" "clamp" "float gamma" 2.2
+      "string wrap" "clamp" "float shift" -0.5 "float scale" 0.01
     Texture "lambertian-norm" "color" "imagemap" "string filename" "textures/lambertian-norm2.tga"
       "string wrap" "clamp" "float gamma" 2.2 "float scale" 2
-#    Material "kdsubsurface" "texture Kd" "lambertian"
-#      "float meanfreepath" 0.01
-   Material "layeredskin" "float roughness" 0.3
-                          "float nmperunit" 80e6
-                          "color Kr" [1 1 1]
-                          "color Kt" [0 0 0]
-                          "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
-                          "float f_mel" 0.005
-                          "float f_eu" 0.7
-                          "float f_blood" 0.005
-                          "float f_ohg" 0.75
-                          "texture bumpmap" "headbump"
-                          "texture albedo" "lambertian-norm"
-    # Material "matte" "texture Kd" "lambertian" "float sigma" 0.8 "texture bumpmap" "headbump"
+    Material "layeredskin" "float roughness" 0.3
+                           "float nmperunit" 40e6 # nanometers per unit length in world space
+                           "color Kr" [1 1 1]
+                           "color Kt" [0 0 0]
+                           # each layer's depth and index of refraction; units are in nanometers
+                           "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
+                           "float f_mel" 0.008
+                           "float f_eu" 0.6
+                           "float f_blood" 0.009
+                           "float f_ohg" 0.8
+                           "texture bumpmap" "headbump"
+                           "texture albedo" "lambertian-norm"
     Include "geometry/head.pbrt"
   AttributeEnd
   

@@ -1,3 +1,4 @@
+# sample pbrt file for rendering the head model using Monte-Carlo path tracing
 Film "image" "integer xresolution" [640] "integer yresolution" [480]
     "string filename" "skin-mc.exr"
 LookAt 1.34671 -2.88802 0.292805 0 0 0 0 0 1
@@ -26,7 +27,7 @@ WorldBegin
     Translate 0 0 0.2
     Rotate 90  1 0 0
     Scale 10 10 10
-   Material "layeredskin" "float roughness" 1
+   Material "layeredskin" "float roughness" 0.3
                           "float nmperunit" 80e6
                           "color Kr" [1 1 1]
                           "color Kt" [1 1 1]

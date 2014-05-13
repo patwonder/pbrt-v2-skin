@@ -27,12 +27,11 @@ Material "layeredskin" "float roughness" 0.3
                        "float nmperunit" 5e6
                        "color Kr" [0 0 0]
                        "color Kt" [0 0 0]
-                       "skinlayer layers" [ 0.25e6 1.4 20e6 1.4]
+                       "skinlayer layers" [ 0.1e6 1.0 20e6 1.0]
                        "float f_mel" 0.005
                        "float f_eu" 0.7
                        "float f_blood" 0.005
                        "float f_ohg" 0.75
-                       "texture bumpmap" "headbump"
 Shape "trianglemesh" "point P" [ -5 0 -5 5 0 -5 5 0 5 -5 0 5 ]
                      "float uv" [ 5 5 0 5 0 0 5 0 ]
                      "normal N" [ 0 -1 0 0 -1 0 0 -1 0 0 -1 0 ]

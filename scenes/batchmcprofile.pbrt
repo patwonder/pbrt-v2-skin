@@ -4,8 +4,8 @@ Renderer "batchmcprofile"
          "layer layers" [ 0.05 0.95 1.0 20 ]
          "float mfprange" 20.0 # gather samples within 16 mean free paths
          "integer segments" 1024 # number of segments within mfprange
-         "float thicknessrange" [ 0 2 ]
-         "integer thicknesssegments" 1024
+         "float thicknessrange" [ 0 2 ] # thickness of the first layer
+         "integer thicknesssegments" 1024 # number of thickness segments to compute
          "string photons" "100000000" # number of photons to trace
          "string filename" "batchmcoutput.txt" # output file
 WorldBegin
