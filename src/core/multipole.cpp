@@ -82,15 +82,46 @@ static SampledSpectrum sampleSpectralProfile(const Profile* spectralProfile, flo
 	return result;
 }
 
+static RGBSpectrum sampleRGBProfile(const Profile* rgbProfile, float distanceSquared,
+	float MultipoleProfileDataEntry::* dataField)
+{
+	RGBSpectrum result;
+	for (int i = 0; i < RGBSpectrum::nComponents; i++) {
+		result[i] = sampleProfile(rgbProfile[i], distanceSquared, dataField);
+	}
+	return result;
+}
+
 struct MultipoleProfileData {
 	Profile spectralProfile[nSpectralSamples];
+	bool isRGBProfile;
 
-	SampledSpectrum reflectance(float distanceSquared) const {
-		return sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::reflectance);
+	MultipoleProfileData(bool isRGBProfile = false) {
+		this->isRGBProfile = isRGBProfile;
 	}
-	SampledSpectrum transmittance(float distanceSquared) const {
+
+	Spectrum reflectance(float distanceSquared) const {
+		if (isRGBProfile) {
+			return Spectrum::FromRGBSpectrum(
+				sampleRGBProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::reflectance)
+			);
+		} else {
+			return Spectrum::FromSampledSpectrum(
+				sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::reflectance)
+			);
+		}
+	}
+	Spectrum transmittance(float distanceSquared) const {
 #ifdef SAMPLE_TRANSMITTANCE
-		return sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::transmittance);
+		if (isRGBProfile) {
+			return Spectrum::FromRGBSpectrum(
+				sampleRGBProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::transmittance)
+			);
+		} else {
+			return Spectrum::FromSampledSpectrum(
+				sampleSpectralProfile(spectralProfile, distanceSquared, &MultipoleProfileDataEntry::transmittance)
+			);
+		}
 #else
 		Severe("Transmittance profile sampling not implemented.");
 		return 0.f;
@@ -100,12 +131,12 @@ struct MultipoleProfileData {
 
 
 Spectrum MultipoleBSSRDFData::reflectance(float distanceSquared) const {
-	return Spectrum::FromSampledSpectrum(pData->reflectance(distanceSquared));
+	return pData->reflectance(distanceSquared);
 }
 
 
 Spectrum MultipoleBSSRDFData::transmittance(float distanceSquared) const {
-	return Spectrum::FromSampledSpectrum(pData->transmittance(distanceSquared));
+	return pData->transmittance(distanceSquared);
 }
 
 
@@ -130,7 +161,7 @@ float integrateProfile(const Profile& profile, float MultipoleProfileDataEntry::
 
 
 SampledSpectrum integrateSpectralProfile(const Profile profile[nSpectralSamples], float MultipoleProfileDataEntry::* dataField) {
-	Spectrum result;
+	SampledSpectrum result;
 	for (int i = 0; i < nSpectralSamples; i++) {
 		result[i] = integrateProfile(profile[i], dataField);
 	}
@@ -138,16 +169,35 @@ SampledSpectrum integrateSpectralProfile(const Profile profile[nSpectralSamples]
 }
 
 
+RGBSpectrum integrateRGBProfile(const Profile profile[RGBSpectrum::nComponents], float MultipoleProfileDataEntry::* dataField) {
+	RGBSpectrum result;
+	for (int i = 0; i < RGBSpectrum::nComponents; i++) {
+		result[i] = integrateProfile(profile[i], dataField);
+	}
+	return result;
+}
+
+
 Spectrum MultipoleBSSRDFData::totalReflectance() const {
-	return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
-		&MultipoleProfileDataEntry::reflectance));
+	if (pData->isRGBProfile) {
+		return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
+			&MultipoleProfileDataEntry::reflectance));
+	} else {
+		return Spectrum::FromRGBSpectrum(integrateRGBProfile(pData->spectralProfile,
+			&MultipoleProfileDataEntry::reflectance));
+	}
 }
 
 
 Spectrum MultipoleBSSRDFData::totalTransmittance() const {
 #ifdef SAMPLE_TRANSMITTANCE
-	return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
-		&MultipoleProfileDataEntry::transmittance));
+	if (pData->isRGBProfile) {
+		return Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
+			&MultipoleProfileDataEntry::transmittance));
+	} else {
+		return Spectrum::FromRGBSpectrum(integrateRGBProfile(pData->spectralProfile,
+			&MultipoleProfileDataEntry::transmittance));
+	}
 #else
 	Severe("Transmittance profile sampling not implemented.");
 	return 0.f;
@@ -343,13 +393,56 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 		reporter.Done();
 	}
 
-	Spectrum tr = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
-		&MultipoleProfileDataEntry::reflectance));
+	SampledSpectrum tr = integrateSpectralProfile(pData->spectralProfile, &MultipoleProfileDataEntry::reflectance);
+	Info("Total Reflectance: %s, %s", tr.ToString().c_str(), tr.ToRGBSpectrum().ToString().c_str());
+
+#ifdef SAMPLE_TRANSMITTANCE
+	SampledSpectrum tt = integrateSpectralProfile(pData->spectralProfile, &MultipoleProfileDataEntry::transmittance);
+	Info("Total Transmittance: %s, %s", tt.ToString().c_str(), tt..ToRGBSpectrum().ToString().c_str());
+#endif
+}
+
+void ComputeRGBMultipoleProfile(int layers, const RGBSpectrum mua[], const RGBSpectrum musp[], float et[], float thickness[],
+	MultipoleProfileData** oppData, bool lerpOnThinSlab)
+{
+	if (!oppData) {
+		Error("Cannot output multipole profile.");
+	}
+
+	// use SampledSpectrum to hold RGBSpectrum data
+	vector<SampledSpectrum> sampledMuaArray, sampledMuspArray;
+	for (int l = 0; l < layers; l++) {
+		SampledSpectrum sampledMua, sampledMusp;
+		for (int i = 0; i < RGBSpectrum::nComponents; i++) {
+			sampledMua[i] = mua[l][i];
+			sampledMusp[i] = musp[l][i];
+		}
+		sampledMuaArray.push_back(sampledMua);
+		sampledMuspArray.push_back(sampledMusp);
+	}
+
+	MultipoleProfileData* pData = *oppData = new MultipoleProfileData(true);
+
+	int nTasks = RGBSpectrum::nComponents;
+	ProgressReporter reporter(nTasks, "Profile");
+	vector<Task*> profileTasks;
+	profileTasks.reserve(nTasks);
+	for (int i = 0; i < nTasks; ++i) {
+		profileTasks.push_back(new MultipoleProfileTask(i, layers, &sampledMuaArray[0],
+			&sampledMuspArray[0], et, thickness, pData, reporter, lerpOnThinSlab));
+	}
+	EnqueueTasks(profileTasks);
+	WaitForAllTasks();
+	for (Task* task : profileTasks)
+		delete task;
+	MPC_ClearCache();
+	reporter.Done();
+
+	RGBSpectrum tr = integrateRGBProfile(pData->spectralProfile, &MultipoleProfileDataEntry::reflectance);
 	Info("Total Reflectance: %s", tr.ToString().c_str());
 
 #ifdef SAMPLE_TRANSMITTANCE
-	Spectrum tt = Spectrum::FromSampledSpectrum(integrateSpectralProfile(pData->spectralProfile,
-		&MultipoleProfileDataEntry::transmittance));
+	RGBSpectrum tt = integrateRGBProfile(pData->spectralProfile, &MultipoleProfileDataEntry::transmittance);
 	Info("Total Transmittance: %s", tt.ToString().c_str());
 #endif
 }

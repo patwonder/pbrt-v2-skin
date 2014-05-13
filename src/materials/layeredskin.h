@@ -44,7 +44,8 @@ public:
 		Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 		Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo,
 		bool doubleRefSSLF, bool generateProfile, bool useMonteCarloProfile, uint64_t nPhotons,
-		bool lerpOnThinSlab, bool showIrradiancePoints, float irradiancePointSize);
+		bool lerpOnThinSlab, bool showIrradiancePoints, float irradiancePointSize,
+		bool rgbProfile);
 	~LayeredSkin();
 
 	vector<float> GetLayerThickness() const override;

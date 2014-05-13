@@ -297,6 +297,7 @@ public:
     SampledSpectrum(const CoefficientSpectrum<nSpectralSamples> &v)
         : CoefficientSpectrum<nSpectralSamples>(v) { }
 	const SampledSpectrum& ToSampledSpectrum() const { return *this; }
+	static SampledSpectrum FromRGBSpectrum(const RGBSpectrum& v);
 	static const SampledSpectrum& FromSampledSpectrum(const SampledSpectrum& v) { return v; }
     static SampledSpectrum FromSampled(const float *lambda,
                                        const float *v, int n) {
@@ -438,6 +439,7 @@ public:
         *this = s;
     }
 	SampledSpectrum ToSampledSpectrum() const { return SampledSpectrum(*this); }
+	static const RGBSpectrum& FromRGBSpectrum(const RGBSpectrum& v) { return v; }
 	static RGBSpectrum FromSampledSpectrum(const SampledSpectrum& v) { return v.ToRGBSpectrum(); }
     static RGBSpectrum FromRGB(const float rgb[3],
             SpectrumType type = SPECTRUM_REFLECTANCE) {

@@ -909,6 +909,10 @@ const float RGBIllum2SpectBlue[nRGB2SpectSamples] =  {
 
 using namespace std;
 
+SampledSpectrum SampledSpectrum::FromRGBSpectrum(const RGBSpectrum& v) {
+	return v.ToSampledSpectrum();
+}
+
 string SampledSpectrum::ToString() const {
 	stringstream ss;
 	ss << "SampledSpectrum{ ";

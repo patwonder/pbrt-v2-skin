@@ -40,7 +40,7 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, bool doubleRefSSLF,
 	bool generateProfile, bool useMonteCarloProfile, uint64_t nPhotons, bool lerpOnThinSlab,
-	bool showIrradiancePoints, float irradiancePointSize)
+	bool showIrradiancePoints, float irradiancePointSize, bool rgbProfile)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
 	  bumpMap(bumpMap), albedo(albedo), doubleRefSSLF(doubleRefSSLF)
 {
@@ -70,6 +70,8 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	if (generateProfile) {
 		Spectrum mua[2];
 		Spectrum musp[2];
+		RGBSpectrum rgbmua[2];
+		RGBSpectrum rgbmusp[2];
 		SampledSpectrum smua[2];
 		SampledSpectrum smusp[2];
 
@@ -80,6 +82,8 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			musp[i] = lps[i].musp.toSpectrum();
 			smua[i] = lps[i].mua.toSampledSpectrum();
 			smusp[i] = lps[i].musp.toSampledSpectrum();
+			rgbmua[i] = smua[i].ToRGBSpectrum();
+			rgbmusp[i] = smusp[i].ToRGBSpectrum();
 			eta[i] = layers[i].ior;
 			thickness[i] = lps[i].thickness;
 		}
@@ -90,7 +94,11 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			ComputeIrradiancePointsProfile(&profileData, irradiancePointSize);
 			rhoData = ComputeRoughRhoData();
 		} else {
-			ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons);
+			if (rgbProfile) {
+				ComputeRGBMultipoleProfile(2, rgbmua, rgbmusp, eta, thickness, &profileData, lerpOnThinSlab);
+			} else {
+				ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons);
+			}
 			MemoryArena arena;
 			Fresnel *fresnel = doubleRefSSLF ? BSDF_ALLOC(arena, FixedFresnelDielectric)(1.f, layers[0].ior)
 											 : BSDF_ALLOC(arena, FresnelDielectric)(1.f, layers[0].ior);
@@ -243,8 +251,9 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	bool lerpOnThinSlab = ps.FindOneBool("lerponthinslab", true);
 	bool showIrradiancePoints = ps.FindOneBool("showirradiancepoints", false);
 	float irradiancePointSize = ps.FindOneFloat("irradiancepointsize", 0.002f);
+	bool rgbProfile = ps.FindOneBool("rgbprofile", false);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
 		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, doubleRefSSLF,
 		generateProfile, useMonteCarloProfile, photons, lerpOnThinSlab,
-		showIrradiancePoints, irradiancePointSize);
+		showIrradiancePoints, irradiancePointSize, rgbProfile);
 }
