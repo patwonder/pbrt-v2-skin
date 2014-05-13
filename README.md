@@ -1,3 +1,110 @@
+# About the fork
+
+### Brief
+
+pbrt-v2-skin is a forked pbrt-v2 repo with some specific extensions to 
+render human skin.
+
+Major changes include:
+
+  * A multipole profile calculator with extended support for very thin (<
+2 mfp) materials.
+  * A LayeredSkin material that basically translates skin parameters to
+multipole parameters.
+  * A MultipoleSubsurfaceIntegrator that use multipole profiles to compute
+subsurface scattering.
+  * SoG (Sum of Gaussians) fit routines that precompute SoG coefficients
+for the real-time renderer.
+  * A lot of infrastructural changes to the pbrt system in order to better
+implement the features I want... So the code might be very different from
+the original pbrt source in some places.
+
+### Code structure
+
+This list only includes added files.
+
+  * *src/pbrt.vs2012*: the solution & project files
+  * *src/multipole*: the multipole profile calculator. Written as a dll so the
+real-time renderer can use this as well.
+  * *src/materials/layeredskin.h/cpp,skincoeffs.h/cpp*: The LayeredSkin material
+and the utility to compute absorption/scattering coeffs.
+  * *src/integrators/multipolesubsurface.h/cpp*: MultipoleSubsurfaceIntegrator,
+similar to DipoleSubsurfaceIntegrator.
+  * *src/renderers*: various renderers added, most of which outputs plain text
+files, e.g. ProfileFitRenderer.
+  * *src/core*: various utility routines, like KahanSum and new parser types
+(e.g. Layer and SkinLayer)
+
+For a complete list of changes, please view the commit history :)
+
+### Build
+
+*Note: only Windows and Visual Studio 2012 is supported. I'm too lazy to
+support other platforms.*
+
+Open pbrt.sln, switch to **Release|x64** configuration, and build.
+
+You can build in Win32, but **x64 is recommended**. The memory required to render
+skin.pbrt is **6GB** which Win32 builds cannot handle.
+
+Once built, locate pbrt-v2-skin folder and run the following in command prompt:
+
+```bin\pbrt.exe --outfile skin.exr --verbose scenes\skin.pbrt```
+
+Typical rendering time is 5 minutes on a Core i7-2630QM processor.
+
+You need to use some exr viewer to view the rendering result.
+[exrdisplay](http://www.openexr.com/using.html) is recommended. You can also
+use Photoshop.
+
+### Sample scenes
+
+You can find sample scenes in the scenes/ subfolder, including:
+
+  * *skin.pbrt*: renders a frontal face using Caucasian skin parameters.
+  * *skin-mc.pbrt*: rendering using Monte-Carlo path tracer. This part is **not**
+quite **working**. The path tracer is subject to a precision problem, which
+needs changing a lot of floats to doubles in the pbrt source code.
+  * *tissue.pbrt*: renders the color bleeding effect of skin.
+  * *mcprofile.pbrt*: computes a reflectance profile using a simplified 
+monte-carlo path tracing process, as well as comparing it to Multipole
+profiles.
+  * *batchmcprofile.pbrt*: computes and compares total reflectance/transmittance.
+predicted by monte-carlo and Multipole profiles
+  * *profilefit.pbrt*: computes SoG coefficients for specified sample points.
+
+# License
+
+pbrt source code Copyright(c) 1998-2012 Matt Pharr and Greg Humphreys.
+
+Skin rendering techniques based on mmp/pbrt-v2
+Copyright(c) 2013-2014 Yifan Wu.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+- Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+# Original README
 
 Welcome to the 'final' version of pbrt, version 2.  This version of the
 source code corresponds to the system that is described in the second
@@ -17,7 +124,7 @@ including Windows (x86 and x64), Mac OS X, Linux, and OpenBSD.  It should
 build on most UNIX-like systems.  Please see the file
 src/README_BUILDING.txt for more information about compiling the system.
 
---- Organization ---
+## Organization
 
 src/ : The implementation of the pbrt rendering system is in this
 directory.  It includes a MSVC project to build the system as well as an
@@ -35,14 +142,14 @@ Dtrace is only supported on Mac OSX and FreeBSD; see the
 src/README_BUILDING.txt file for more information about building pbrt with
 dtrace support.
 
---- Changes ---
+## Changes
 
 The remainder of this document will summarize the major changes to the
 system since the version described in the first edition of the book.  See
 the file src/README_BUILDING.txt for information about how to compile the
 system.
 
---- Incompatibilities ---
+## Incompatibilities
 
 Many existing pbrt scene files will work unmodified with the second version
 of the system.  The most significant user-visible change is that we have
@@ -66,9 +173,9 @@ We have removed the "shinymetal" material, replacing it with a physically
 based "metal" material.  (Described further in the new features section
 below.)
 
---- New Features ---
+## New Features
 
--- General --
+### General
 
 pbrt is now multithreaded; performance should scale well with increasing
 numbers of CPU cores.  We are particularly interested to hear any
@@ -101,7 +208,7 @@ scenes/anim-moving-reflection.pbrt.
 
 A rudimentary adaptive sampler is included, see samplers/adaptive.*.
 
--- Integrators --
+### Integrators
 
 The 'instant global illumination', 'extended photon map', and 'extended
 infinite area light source' implementations from the author-supplied
@@ -140,7 +247,7 @@ results in a real-time rendering system.  Here we have also implemented the
 code that uses the results within pbrt for pedagogical purposes (and so
 that we don't need to include a real-time renderer with the book!).
 
--- Materials --
+### Materials
 
 A new 'metal' material has been added; it supports setting the spectral
 index of refraction and extinction coefficients via measured data from real
@@ -154,7 +261,7 @@ is the binary file format used by the MERL BRDF database.
 general text file format is supported; see the comments in
 scenes/brdfs/acryl_blue.brdf.
 
---- Example Scenes ---
+## Example Scenes
 
 A small number of example scenes that demonstrate some of the new features
 are provided in the scenes/ directory.
@@ -162,12 +269,12 @@ are provided in the scenes/ directory.
 anim-killeroos-moving.pbrt, anim-moving-reflection.pbrt: demonstrates
 motion blur features.
 
-bunny.pbrt: measured BRDFs
+ * *bunny.pbrt*: measured BRDFs
 
-killeroo-simple.pbrt: simple scene with "Killeroo" model
+ * *killeroo-simple.pbrt*: simple scene with "Killeroo" model
 
-metal.pbrt: Metropolis light transport, measured BRDFs
+ * *metal.pbrt*: Metropolis light transport, measured BRDFs
 
-prt-teapot.pbrt: precomputed radiance transfer
+ * *prt-teapot.pbrt*: precomputed radiance transfer
 
-ss-envmap.pbrt: subsurface scattering
+ * *ss-envmap.pbrt*: subsurface scattering
