@@ -35,8 +35,11 @@ lib/
 [Dd]ebug/
 [Rr]elease/
 
+# Windows garbage
+desktop.ini
+Thumbs.db
 
-# Scene files
+# Project specific
 /scenes/
 randomwalk-probes.txt
 *.bat

@@ -37,24 +37,31 @@ files, e.g. ProfileFitRenderer.
 
 For a complete list of changes, please view the commit history :)
 
-### Build
+### Build and Run
 
 *Note: only Windows and Visual Studio 2012 is supported. I'm too lazy to
 support other platforms.*
 
-Open pbrt.sln, switch to **Release|x64** configuration, and build.
+*Before building the project, ensure you have GNU
+[bison](http://www.gnu.org/software/bison/) and
+[flex](http://flex.sourceforge.net/) installed and accessible through the
+"PATH" environment variable.*
 
-You can build in Win32, but **x64 is recommended**. The memory required to render
-skin.pbrt is **6GB** which Win32 builds cannot handle.
+1. Open src/multipole/MultipoleProfileCalculator.sln, switch to **Release|x64**
+configuration, and build.
+2. Open src/pbrt.sln, switch to **Release|x64** configuration, and build.
 
-Once built, locate pbrt-v2-skin folder and run the following in command prompt:
+     You can build in Win32, but **x64 is recommended**. The memory required to render
+     skin.pbrt is **6GB** which Win32 builds cannot handle.
 
-```bin\pbrt.exe --outfile skin.exr --verbose scenes\skin.pbrt```
+3. Once built, locate pbrt-v2-skin folder and run the following in command prompt:
 
-Typical rendering time is 5 minutes on a Core i7-2630QM processor.
+     ```bin\pbrt.exe --outfile skin.exr --verbose scenes\skin.pbrt```
 
-You need to use some exr viewer to view the rendering result.
-[exrdisplay](http://www.openexr.com/using.html) is recommended. You can also
+   Typical rendering time is 5 minutes on a Core i7-2630QM processor.
+
+4. To view the result, you need to use some exr viewer.
+[exrdisplay](http://www.openexr.com/using.html) is recommended. Of course you can also
 use Photoshop.
 
 ### Sample scenes
