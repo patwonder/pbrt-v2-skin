@@ -209,7 +209,8 @@ class MultipoleProfileTask : public Task {
 public:
 	MultipoleProfileTask(int spectralChannel, int layers, const SampledSpectrum mua[],
 		const SampledSpectrum musp[], float et[], float thickness[],
-		MultipoleProfileData* pData, ProgressReporter& pr, bool lerpOnThinSlab)
+		MultipoleProfileData* pData, ProgressReporter& pr, bool lerpOnThinSlab,
+		int desiredLength)
 		: reporter(pr)
 	{
 		sc = spectralChannel;
@@ -220,6 +221,7 @@ public:
 		this->thickness = thickness;
 		this->pData = pData;
 		this->lerpOnThinSlab = lerpOnThinSlab;
+		this->desiredLength = desiredLength;
 	}
 
 	void Run() override;
@@ -233,12 +235,13 @@ private:
 	MultipoleProfileData* pData;
 	ProgressReporter& reporter;
 	bool lerpOnThinSlab;
+	int desiredLength;
 };
 
 void MultipoleProfileTask::Run() {
 	MPC_LayerSpec* pLayerSpecs = new MPC_LayerSpec[layers];
 	MPC_Options options;
-	options.desiredLength = 512;
+	options.desiredLength = desiredLength;
 	options.lerpOnThinSlab = lerpOnThinSlab;
 
 	// Compute mfp
@@ -366,7 +369,7 @@ static void ComputeMonteCarloProfile(int nLayers, const SampledSpectrum mua[], c
 
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData** oppData, bool useMonteCarlo, bool lerpOnThinSlab, uint64_t nPhotons)
+	MultipoleProfileData** oppData, bool useMonteCarlo, bool lerpOnThinSlab, uint64_t nPhotons, int desiredLength)
 {
 	if (!oppData) {
 		Error("Cannot output multipole profile.");
@@ -383,7 +386,7 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 		profileTasks.reserve(nTasks);
 		for (int i = 0; i < nTasks; ++i) {
 			profileTasks.push_back(new MultipoleProfileTask(i, layers, mua,
-				musp, et, thickness, pData, reporter, lerpOnThinSlab));
+				musp, et, thickness, pData, reporter, lerpOnThinSlab, desiredLength));
 		}
 		EnqueueTasks(profileTasks);
 		WaitForAllTasks();
@@ -403,7 +406,7 @@ void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const Samp
 }
 
 void ComputeRGBMultipoleProfile(int layers, const RGBSpectrum mua[], const RGBSpectrum musp[], float et[], float thickness[],
-	MultipoleProfileData** oppData, bool lerpOnThinSlab)
+	MultipoleProfileData** oppData, bool lerpOnThinSlab, int desiredLength)
 {
 	if (!oppData) {
 		Error("Cannot output multipole profile.");
@@ -429,7 +432,7 @@ void ComputeRGBMultipoleProfile(int layers, const RGBSpectrum mua[], const RGBSp
 	profileTasks.reserve(nTasks);
 	for (int i = 0; i < nTasks; ++i) {
 		profileTasks.push_back(new MultipoleProfileTask(i, layers, &sampledMuaArray[0],
-			&sampledMuspArray[0], et, thickness, pData, reporter, lerpOnThinSlab));
+			&sampledMuspArray[0], et, thickness, pData, reporter, lerpOnThinSlab, desiredLength));
 	}
 	EnqueueTasks(profileTasks);
 	WaitForAllTasks();

@@ -40,7 +40,7 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 	const SkinCoefficients& coeff, Reference<Texture<Spectrum> > Kr, Reference<Texture<Spectrum> > Kt,
 	Reference<Texture<float> > bumpMap, Reference<Texture<Spectrum> > albedo, bool doubleRefSSLF,
 	bool generateProfile, bool useMonteCarloProfile, uint64_t nPhotons, bool lerpOnThinSlab,
-	bool showIrradiancePoints, float irradiancePointSize, bool rgbProfile)
+	bool showIrradiancePoints, float irradiancePointSize, bool rgbProfile, int desiredLength)
 	: layers(layers), roughness(r), nmperunit(npu), pcoeff(new SkinCoefficients(coeff)), Kr(Kr), Kt(Kt),
 	  bumpMap(bumpMap), albedo(albedo), doubleRefSSLF(doubleRefSSLF)
 {
@@ -95,9 +95,11 @@ LayeredSkin::LayeredSkin(const vector<SkinLayer>& layers, float r, float npu,
 			rhoData = ComputeRoughRhoData();
 		} else {
 			if (rgbProfile) {
-				ComputeRGBMultipoleProfile(2, rgbmua, rgbmusp, eta, thickness, &profileData, lerpOnThinSlab);
+				ComputeRGBMultipoleProfile(2, rgbmua, rgbmusp, eta, thickness,
+										   &profileData, lerpOnThinSlab, desiredLength);
 			} else {
-				ComputeMultipoleProfile(2, smua, smusp, eta, thickness, &profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons);
+				ComputeMultipoleProfile(2, smua, smusp, eta, thickness,
+										&profileData, useMonteCarloProfile, lerpOnThinSlab, nPhotons, desiredLength);
 			}
 			MemoryArena arena;
 			Fresnel *fresnel = doubleRefSSLF ? BSDF_ALLOC(arena, FixedFresnelDielectric)(1.f, layers[0].ior)
@@ -252,8 +254,9 @@ LayeredSkin* CreateLayeredSkinMaterial(const ParamSet& ps, const TextureParams& 
 	bool showIrradiancePoints = ps.FindOneBool("showirradiancepoints", false);
 	float irradiancePointSize = ps.FindOneFloat("irradiancepointsize", 0.002f);
 	bool rgbProfile = ps.FindOneBool("rgbprofile", false);
+	int desiredLength = ps.FindOneInt("desiredlength", 512);
 	return new LayeredSkin(vector<SkinLayer>(layers, layers + nLayers),
 		roughness, nmperunit, coeff, Kr, Kt, bumpMap, albedo, doubleRefSSLF,
 		generateProfile, useMonteCarloProfile, photons, lerpOnThinSlab,
-		showIrradiancePoints, irradiancePointSize, rgbProfile);
+		showIrradiancePoints, irradiancePointSize, rgbProfile, desiredLength);
 }

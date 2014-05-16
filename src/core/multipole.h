@@ -90,9 +90,11 @@ private:
 };
 
 void ComputeMultipoleProfile(int layers, const SampledSpectrum mua[], const SampledSpectrum musp[], float et[], float thickness[],
-							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true, uint64_t nPhotons = 10000000);
+							 MultipoleProfileData** oppData, bool useMonteCarlo = false, bool lerpOnThinSlab = true, uint64_t nPhotons = 10000000,
+							 int desiredLength = 512);
 void ComputeRGBMultipoleProfile(int layers, const RGBSpectrum mua[], const RGBSpectrum musp[], float et[], float thickness[],
-								MultipoleProfileData** oppData, bool lerpOnThinSlab = true);
+								MultipoleProfileData** oppData, bool lerpOnThinSlab = true,
+								int desiredLength = 512);
 void ComputeIrradiancePointsProfile(MultipoleProfileData** oppData, float radius);
 void ReleaseMultipoleProfile(MultipoleProfileData* pData);
 
