@@ -56,7 +56,9 @@ configuration, and build.
 
 3. Once built, locate pbrt-v2-skin folder and run the following in command prompt:
 
-     ```bin\pbrt.exe --outfile skin.exr --verbose scenes\skin.pbrt```
+     ```bat
+     bin\pbrt.exe --outfile skin.exr --verbose scenes\skin.pbrt
+     ```
 
    Typical rendering time is 5 minutes on a Core i7-2630QM processor.
 
