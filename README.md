@@ -1,6 +1,6 @@
 # About the fork
 
-### Brief
+## Brief
 
 pbrt-v2-skin is a forked pbrt-v2 repo with some specific extensions to 
 render human skin.
@@ -19,7 +19,7 @@ for the real-time renderer.
 implement the features I want... So the code might be very different from
 the original pbrt source in some places.
 
-### Code structure
+## Code structure
 
 This list only includes added files.
 
@@ -37,7 +37,7 @@ files, e.g. ProfileFitRenderer.
 
 For a complete list of changes, please view the commit history :)
 
-### Build and Run
+## Build and Run
 
 *Note: only Windows and Visual Studio 2012 is supported. I'm too lazy to
 support other platforms.*
@@ -66,7 +66,7 @@ configuration, and build.
 [exrdisplay](http://www.openexr.com/using.html) is recommended. Of course you can also
 use Photoshop.
 
-### Sample scenes
+## Sample scenes
 
 You can find sample scenes in the scenes/ subfolder, including:
 
@@ -111,7 +111,6 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 
 # Original README
 
